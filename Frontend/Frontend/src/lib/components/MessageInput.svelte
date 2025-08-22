@@ -29,7 +29,7 @@
        bind:value={text}
        on:keydown={handleKeydown}
        rows="1"
-       placeholder="Message ChatGPT..."
+       placeholder="Chat with Sensai..."
        class="w-full p-3 pr-12 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
      ></textarea>
      <button
