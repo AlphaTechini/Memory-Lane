@@ -1,5 +1,4 @@
 <script>
-  /** @type {{id: string, sender: 'user' | 'bot', text: string, ts: number, meta?: any}} */
   export let message;
 
   $: isUser = message.sender === 'user';
@@ -15,4 +14,10 @@
     <p class="whitespace-pre-wrap">{message.text}</p>
     {#if hasWebSearch}
       <div class="mt-2 flex items-center">
-        <span class="text-xs bg-blue-100 text-blue-70
+        <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+          Web Search
+        </span>
+      </div>
+    {/if}
+  </div>
+</div>

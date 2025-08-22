@@ -31,24 +31,12 @@ const createPersistentStore = (key, startValue) => {
 
 // --- Svelte Stores ---
 
-/**
- * @type {import('svelte/store').Writable<Record<string, {id: string, title: string, lastUpdated: number, messageIds: string[]}>>}
- */
 export const conversations = createPersistentStore('conversations', {});
 
-/**
- * @type {import('svelte/store').Writable<Record<string, {id: string, sender: 'user' | 'bot', text: string, ts: number, meta?: any}>>}
- */
 export const messages = createPersistentStore('messages', {});
 
-/**
- * @type {import('svelte/store').Writable<string|null>}
- */
 export const activeConversationId = createPersistentStore('activeConversationId', null);
 
-/**
- * @type {import('svelte/store').Writable<boolean>}
- */
 export const webSearchActive = createPersistentStore('webSearchActive', false);
 
 // --- Helper Functions ---
