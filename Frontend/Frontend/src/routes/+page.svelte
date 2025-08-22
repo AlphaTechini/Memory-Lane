@@ -1,10 +1,9 @@
 <script>
   import { onMount } from 'svelte';
-  import { derived } from 'svelte/store';
   import ConversationsSidebar from '$lib/components/ConversationsSidebar.svelte';
   import ChatWindow from '$lib/components/ChatWindow.svelte';
   import MessageInput from '$lib/components/MessageInput.svelte';
-  import WebSearchButton from '$lib/components/WebSearchButton.svelte';
+  // WebSearchButton removed from header per request
   import {
     conversations,
     messages,
@@ -12,9 +11,11 @@
     webSearchActive,
     createConversation,
     addMessage,
-    setActiveConversation,
-    toggleWebSearch
+    setActiveConversation
+    // webSearchAllowed and toggleWebSearch removed (not used here)
   } from '$lib/stores/chat.js';
+
+  import { derived } from 'svelte/store';
 
   // --- Derived Stores ---
   const conversationsList = derived(conversations, ($conversations) =>
@@ -61,10 +62,6 @@
     }, 1000);
   }
 
-  function handleToggleWebSearch() {
-    toggleWebSearch();
-  }
-
   // --- Initial Setup (Client-side only) ---
   onMount(() => {
     if (!$activeConversationId && Object.keys($conversations).length === 0) {
@@ -84,14 +81,15 @@
   />
 
   <div class="flex-1 flex flex-col h-full bg-neutral-50 shadow-md md:rounded-xl md:m-2">
-    <header class="p-4 border-b border-gray-200 flex justify-between items-center">
+    <header class="p-4 sm:px-6 border-b border-gray-200 flex justify-between items-center">
       <h1 class="text-lg font-semibold">
         {$activeConversation?.title || 'ChatGPT'}
       </h1>
-      <WebSearchButton active={$webSearchActive} on:toggle={handleToggleWebSearch} />
+      <!-- top-right WebSearchButton removed per request -->
     </header>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <!-- main area must allow children to properly overflow; min-h-0 ensures the chat window can scroll -->
+    <div class="flex-1 flex flex-col overflow-hidden min-h-0">
       <ChatWindow messages={$activeMessages} />
       <MessageInput on:send={handleSendMessage} />
     </div>

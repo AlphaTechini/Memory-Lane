@@ -39,6 +39,18 @@ export const activeConversationId = createPersistentStore('activeConversationId'
 
 export const webSearchActive = createPersistentStore('webSearchActive', false);
 
+// --- New: store controlling whether web search is allowed per conversation ---
+// maps conversationId => boolean
+export const webSearchAllowed = createPersistentStore('webSearchAllowed', {});
+
+export function setWebSearchAllowed(conversationId, allowed = true) {
+  if (!conversationId) return;
+  webSearchAllowed.update((map) => {
+    map[conversationId] = allowed;
+    return map;
+  });
+}
+
 // --- Helper Functions ---
 
 /**
@@ -58,6 +70,14 @@ export function createConversation(initialTitle = 'New Chat') {
   conversations.update((convos) => {
     convos[newId] = newConversation;
     return convos;
+  });
+
+  // Ensure web search is turned off globally for new chat
+  webSearchActive.set(false);
+  // Lock web search for this new conversation until user input
+  webSearchAllowed.update((map) => {
+    map[newId] = false;
+    return map;
   });
 
   return newId;
@@ -93,6 +113,11 @@ export function addMessage(conversationId, { sender, text, meta }) {
     }
     return convos;
   });
+
+  // If user sent a message, ensure web-search becomes allowed for this conversation.
+  if (sender === 'user') {
+    setWebSearchAllowed(conversationId, true);
+  }
 
   return newMsgId;
 }

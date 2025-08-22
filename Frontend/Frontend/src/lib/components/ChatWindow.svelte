@@ -1,36 +1,41 @@
 <script>
-  import { afterUpdate } from 'svelte';
+  import { browser } from '$app/environment';
   import MessageBubble from './MessageBubble.svelte';
 
   /** @type {{id: string, sender: 'user' | 'bot', text: string, ts: number, meta?: any}[]} */
-  export let messages = [];
+  let { messages = [] } = $props();
 
   let chatContainer;
   let autoScroll = true;
 
-  function scrollToBottom() {
-    if (chatContainer && autoScroll) {
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-  }
-
   function handleScroll() {
-    if (!chatContainer) return;
+    if (!browser || !chatContainer) return;
     const { scrollTop, scrollHeight, clientHeight } = chatContainer;
     // Disable auto-scroll if user scrolls up
     autoScroll = scrollHeight - scrollTop - clientHeight < 1;
   }
 
-  afterUpdate(() => {
-    scrollToBottom();
-    autoScroll = true; // Re-enable auto-scroll on new message
-  });
+  if (browser) {
+    function scrollToBottom() {
+      if (chatContainer && autoScroll) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+    }
+
+    $effect(() => {
+      // run when messages changes
+      messages;
+      scrollToBottom();
+      autoScroll = true; // Re-enable auto-scroll on new message
+    });
+  }
 </script>
 
+<!-- Ensure this container can shrink and allow overflow-y scrolling (min-h-0) -->
 <div
   bind:this={chatContainer}
-  on:scroll={handleScroll}
-  class="flex-grow p-4 space-y-4 overflow-y-auto"
+  onscroll={handleScroll}
+  class="flex-1 p-4 space-y-4 overflow-y-auto min-h-0"
   role="log"
 >
   {#each messages as message (message.id)}
