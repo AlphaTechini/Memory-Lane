@@ -9,20 +9,13 @@
    function handleClick() {
      dispatch('toggle', { active: !active });
    }
- 
-   function handleKeydown(event) {
-     if (event.key === ' ' || event.key === 'Enter') {
-       event.preventDefault();
-       handleClick();
-     }
-   }
+
  </script>
  
  <button
    role="button"
    aria-pressed={active}
    on:click={handleClick}
-   on:keydown={handleKeydown}
    class="px-3 py-1.5 text-sm font-medium rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2"
    class:bg-blue-100={active}
    class:text-blue-800={active}
