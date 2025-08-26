@@ -1,14 +1,16 @@
 <script>
-  import { dispatch } from 'svelte';
-
   /** @type {boolean} */
-  export let active = false;
   /** @type {boolean} */
-  export let disabled = false;
+  // Svelte 5 callback prop
+  let { 
+    active = false, 
+    disabled = false, 
+    ontoggle 
+  } = $props();
 
   function handleClick() {
     if (disabled) return;
-    dispatch('toggle', { active: !active });
+    ontoggle?.({ active: !active });
   }
 </script>
 
@@ -16,7 +18,7 @@
   aria-pressed={active}
   aria-disabled={disabled}
   disabled={disabled}
-  on:click={handleClick}
+  onclick={handleClick}
   class="px-3 py-1.5 text-sm font-medium rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2"
   class:bg-blue-100={active}
   class:text-blue-800={active}
@@ -31,4 +33,3 @@
 >
   Web Search
 </button>
-

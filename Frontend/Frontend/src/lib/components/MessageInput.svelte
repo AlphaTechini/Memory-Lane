@@ -1,5 +1,5 @@
 <script>
-  import { dispatch } from 'svelte';
+  import { dispatch } from 'svelte/events';
   import { webSearchActive, webSearchAllowed, activeConversationId, setWebSearchAllowed } from '$lib/stores/chat.js';
 
   let text = '';

@@ -1,19 +1,20 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
-
-  const dispatch = createEventDispatcher();
-
   /** @type {{id: string, title: string, lastUpdated: number}[]} */
-  export let conversationsList = [];
   /** @type {string|null} */
-  export let activeId = null;
+  // Svelte 5 callback props
+  let { 
+    conversationsList = [], 
+    activeId = null, 
+    onselect, 
+    onnew 
+  } = $props();
 
   function handleSelect(id) {
-    dispatch('select', { id });
+    onselect?.({ id });
   }
 
   function handleNew() {
-    dispatch('new');
+    onnew?.();
   }
 
   function formatTimestamp(ts) {
@@ -53,7 +54,7 @@
   class="bg-neutral-100/50 w-72 p-2 h-full hidden md:flex flex-col"
 >
   <button
-    on:click={handleNew}
+    onclick={handleNew}
     class="w-full text-left p-2 mb-2 rounded-lg hover:bg-neutral-200 transition focus:outline-none focus:ring-2 focus:ring-blue-400"
   >
     + New Chat
@@ -62,7 +63,7 @@
   <div class="flex-grow overflow-y-auto pr-1">
     {#each conversationsList as conversation (conversation.id)}
       <button
-        on:click={() => handleSelect(conversation.id)}
+        onclick={() => handleSelect(conversation.id)}
         class="w-full text-left p-2 my-1 rounded-lg transition truncate focus:outline-none focus:ring-2 focus:ring-blue-400"
         class:bg-blue-100={activeId === conversation.id}
         class:hover:bg-neutral-200={activeId !== conversation.id}
@@ -77,7 +78,7 @@
   <!-- Settings area: uses globalThis.appSettings for all actions (no duplicate local state) -->
   <div class="mt-2 pt-2 border-t space-y-2">
     <button
-      on:click={toggleDarkMode}
+      onclick={toggleDarkMode}
       class="w-full flex items-center justify-between p-2 rounded-lg hover:bg-neutral-200 transition focus:outline-none focus:ring-2 focus:ring-blue-400"
       aria-pressed={globalThis.appSettings?.darkMode ?? false}
     >
@@ -86,21 +87,21 @@
     </button>
 
     <button
-      on:click={clearConversations}
+      onclick={clearConversations}
       class="w-full text-left p-2 rounded-lg hover:bg-neutral-200 transition focus:outline-none focus:ring-2 focus:ring-blue-400"
     >
       Clear Conversations
     </button>
 
     <button
-      on:click={exportChat}
+      onclick={exportChat}
       class="w-full text-left p-2 rounded-lg hover:bg-neutral-200 transition focus:outline-none focus:ring-2 focus:ring-blue-400"
     >
       Export Chat
     </button>
 
     <button
-      on:click={deleteAccount}
+      onclick={deleteAccount}
       class="w-full text-left p-2 rounded-lg text-red-600 hover:bg-red-50 transition focus:outline-none focus:ring-2 focus:ring-red-200"
     >
       Delete Account

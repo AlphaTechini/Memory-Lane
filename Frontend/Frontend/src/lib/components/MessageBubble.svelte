@@ -1,8 +1,8 @@
 <script>
-  export let message;
+  let { message } = $props();
 
-  $: isUser = message.sender === 'user';
-  $: hasWebSearch = message.meta?.webSearch === true;
+  const isUser = $derived(message.sender === 'user');
+  const hasWebSearch = $derived(message.meta?.webSearch === true);
 </script>
 
 <div class="flex" class:justify-end={isUser} class:justify-start={!isUser}>
