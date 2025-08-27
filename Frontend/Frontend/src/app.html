@@ -2,14 +2,12 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<link rel="icon" href="/favicon.png" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
 		<meta name="viewport" content="width=device-width" />
 		<script>
 			// This script prevents FOUC by setting the theme before the page loads.
-			if (
-				localStorage.getItem('color-theme') === 'dark' ||
-				(!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)
-			) {
+			// It defaults to light mode unless a 'dark' theme is explicitly stored.
+			if (localStorage.getItem('color-theme') === 'dark') {
 				document.documentElement.classList.add('dark');
 			} else {
 				document.documentElement.classList.remove('dark');

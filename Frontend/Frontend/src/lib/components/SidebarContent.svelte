@@ -6,19 +6,18 @@
     onnew,
     onclear
   } = $props();
-
 </script>
 
 <div class="flex items-center justify-between mb-2">
-  <div class="font-semibold dark:text-gray-200">Conversations</div>
-  <button class="p-1 rounded-md hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700" onclick={onnew} aria-label="New conversation">
+  <div class="font-semibold text-gray-900 dark:text-gray-200">Conversations</div>
+  <button class="p-1 rounded-md text-gray-600 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700" onclick={onnew} aria-label="New conversation">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
   </button>
 </div>
 <div class="flex-1 overflow-y-auto -mr-2 pr-2">
   {#each conversationsList as conversation (conversation.id)}
     <button
-      class="w-full text-left p-2 rounded-md truncate dark:text-gray-300 {activeId === conversation.id ? 'bg-blue-100 dark:bg-blue-900 dark:text-white' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}"
+      class="w-full text-left p-2 rounded-md truncate text-gray-700 dark:text-gray-300 {activeId === conversation.id ? 'bg-blue-100 text-blue-800 font-semibold dark:bg-blue-900 dark:text-white' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}"
       onclick={() => onselect?.({ detail: { id: conversation.id } })}
     >
       {conversation.title}

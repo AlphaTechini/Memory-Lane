@@ -68,7 +68,7 @@
   }
 </script>
 
-<main class="h-screen w-screen bg-gray-100 dark:bg-gray-900 flex font-sans">
+<main class="h-screen w-screen bg-white dark:bg-gray-900 flex font-sans">
   <ConversationsSidebar
     conversationsList={$conversationsList}
     activeId={$activeConversationId}
@@ -79,7 +79,7 @@
 
   <div class="flex-1 flex flex-col h-full bg-white dark:bg-gray-800 shadow-md md:rounded-xl md:m-2">
     <header class="p-4 sm:px-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-      <h1 class="text-lg font-semibold dark:text-gray-200">
+      <h1 class="text-lg font-semibold text-gray-900 dark:text-gray-200">
         {$activeConversation?.title || 'Chat'}
       </h1>
       <ThemeToggle />
