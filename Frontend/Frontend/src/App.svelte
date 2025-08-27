@@ -1,9 +1,9 @@
 <script>
+   import { onMount } from 'svelte';
    import { derived } from 'svelte/store';
    import ConversationsSidebar from './lib/components/ConversationsSidebar.svelte';
    import ChatWindow from './lib/components/ChatWindow.svelte';
    import MessageInput from './lib/components/MessageInput.svelte';
-   // Header WebSearchButton removed
    import {
      conversations,
      messages,
@@ -19,7 +19,7 @@
    // 2. It uses `derived` stores to compute data needed by child components, like `conversationsList` and `activeMessages`.
    //    This is efficient because these derived values only re-calculate when their dependencies change.
    // 3. It passes this reactive data down to child components as props.
-   // 4. It listens for events dispatched from child components (`on:select`, `on:new`, `on:send`, `on:toggle`).
+   // 4. It listens for events dispatched from child components (`onselect`, `onnew`, `onsend`).
    // 5. When an event is received, it calls the appropriate helper function from `chat.js` (e.g., `setActiveConversation`).
    // 6. This updates the central stores, which in turn causes the derived stores to update, and the changes flow
    //    reactively down through the component tree, updating the UI.
@@ -63,41 +63,39 @@
      const { text } = event.detail;
      if (!$activeConversationId) return;
 
-     const meta = undefined; // webSearchActive removed from header context here
-     addMessage($activeConversationId, { sender: 'user', text, meta });
- 
-     // Dummy bot response
+     addMessage($activeConversationId, { sender: 'user', text });
+
      setTimeout(() => {
        addMessage($activeConversationId, {
          sender: 'bot',
-         text: `This is a simulated response to "${text}".`,
+         text: `This is a simulated response: ${text}.`
        });
-     }, 1000);
+     }, 500);
    }
  
-   // --- Initial Setup ---
-   // If no conversation is active, create one.
-   if (!$activeConversationId && Object.keys($conversations).length === 0) {
-     handleNewConversation();
-   } else if (!$activeConversationId && $conversationsList.length > 0) {
-     setActiveConversation($conversationsList[0].id);
-   }
+   // --- Initial Setup - MOVED TO onMount for SSR safety ---
+   onMount(() => {
+     if (!$activeConversationId && Object.keys($conversations).length === 0) {
+       handleNewConversation();
+     } else if (!$activeConversationId && $conversationsList.length > 0) {
+       setActiveConversation($conversationsList[0].id);
+     }
+   });
 </script>
 
 <main class="h-screen w-screen bg-gray-100 flex font-sans">
   <ConversationsSidebar
     conversationsList={$conversationsList}
     activeId={$activeConversationId}
-    on:select={handleSelectConversation}
-    on:new={handleNewConversation}
+    onselect={handleSelectConversation}
+    onnew={handleNewConversation}
   />
 
   <div class="flex-1 flex flex-col h-full bg-neutral-50 shadow-md md:rounded-xl md:m-2">
     <header class="p-4 sm:px-6 border-b border-gray-200 flex justify-between items-center">
       <h1 class="text-lg font-semibold">
-        {$activeConversation?.title || 'ChatGPT'}
+        {$activeConversation?.title || 'Chat'}
       </h1>
-      <!-- header WebSearchButton removed -->
     </header>
 
     <div class="flex-1 flex flex-col overflow-hidden min-h-0">
@@ -106,4 +104,3 @@
     </div>
   </div>
 </main>
-
