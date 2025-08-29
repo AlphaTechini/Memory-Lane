@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { writable, derived } from 'svelte/store';
 import { browser } from '$app/environment';
 
 /**
@@ -42,12 +42,43 @@ function persistentWritable(key, startValue) {
 	return store;
 }
 
+// --- Base Stores ---
 export const conversations = persistentWritable('chat_conversations', {});
 export const messages = persistentWritable('chat_messages', {});
 export const activeConversationId = writable(null);
 export const webSearchActive = writable(false);
-export const theme = persistentWritable('color-theme', 'light');
+// Initialize theme based on what's actually in localStorage to match HTML script
+function getInitialTheme() {
+	if (!browser) return 'light';
+	const stored = localStorage.getItem('color-theme');
+	return stored === 'dark' ? 'dark' : 'light';
+}
 
+export const theme = persistentWritable('color-theme', getInitialTheme());
+
+// --- Derived Stores (centralized) ---
+// Create a sorted list of conversations for the sidebar.
+export const conversationsList = derived(conversations, ($conversations) =>
+	Object.values($conversations).sort((a, b) => b.lastUpdated - a.lastUpdated)
+);
+
+// Get the currently active conversation object.
+export const activeConversation = derived(
+	[conversations, activeConversationId],
+	([$conversations, $activeConversationId]) =>
+		$activeConversationId ? $conversations[$activeConversationId] : null
+);
+
+// Get the messages for the currently active conversation.
+export const activeMessages = derived(
+	[messages, activeConversation],
+	([$messages, $activeConversation]) => {
+		if (!$activeConversation) return [];
+		return $activeConversation.messageIds.map(id => $messages[id]).filter(Boolean);
+	}
+);
+
+// --- Action Functions ---
 /**
  * Creates a new conversation and sets it as active.
  * @returns {string} The ID of the new conversation.
@@ -83,6 +114,11 @@ export function addMessage(conversationId, message) {
 		if (convos[conversationId]) {
 			convos[conversationId].messageIds.push(messageId);
 			convos[conversationId].lastUpdated = Date.now();
+			
+			// Auto-update conversation title based on first user message
+			if (convos[conversationId].title === 'New Conversation' && message.sender === 'user') {
+				convos[conversationId].title = message.text.slice(0, 50) + (message.text.length > 50 ? '...' : '');
+			}
 		}
 		return convos;
 	});

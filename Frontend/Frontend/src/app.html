@@ -6,11 +6,16 @@
 		<meta name="viewport" content="width=device-width" />
 		<script>
 			// This script prevents FOUC by setting the theme before the page loads.
-			// It defaults to light mode unless a 'dark' theme is explicitly stored.
-			if (localStorage.getItem('color-theme') === 'dark') {
+			// It reads from localStorage and defaults to light mode if nothing is stored.
+			const storedTheme = localStorage.getItem('color-theme');
+			if (storedTheme === 'dark') {
 				document.documentElement.classList.add('dark');
 			} else {
 				document.documentElement.classList.remove('dark');
+				// Ensure localStorage reflects the default
+				if (!storedTheme) {
+					localStorage.setItem('color-theme', 'light');
+				}
 			}
 		</script>
 		%sveltekit.head%

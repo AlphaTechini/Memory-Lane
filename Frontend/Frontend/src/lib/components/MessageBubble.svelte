@@ -1,10 +1,11 @@
 <script>
   import { fly } from 'svelte/transition';
 
-  // prop + reactive flags (no $derived)
   let { message } = $props();
-  let isUser = derived(message, ($message) => $message?.sender === 'user');
-  let hasWebSearch = derived(message, ($message) => $message?.meta?.webSearch === true);
+  
+  // Use $derived instead of derived store for simple reactive values
+  let isUser = $derived(message?.sender === 'user');
+  let hasWebSearch = $derived(message?.meta?.webSearch === true);
 </script>
 
 <div class="flex" class:justify-end={isUser} class:justify-start={!isUser}>
