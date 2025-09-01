@@ -1,11 +1,12 @@
 <script>
   import { fly } from 'svelte/transition';
+  import AudioPlayer from './AudioPlayer.svelte';
 
   let { message } = $props();
   
-  // Use $derived instead of derived store for simple reactive values
   let isUser = $derived(message?.sender === 'user');
   let hasWebSearch = $derived(message?.meta?.webSearch === true);
+  let hasAudio = $derived(message?.audio?.url);
 </script>
 
 <div class="flex" class:justify-end={isUser} class:justify-start={!isUser}>
@@ -18,6 +19,15 @@
     class:text-gray-900={!isUser}
   >
     <p class="whitespace-pre-wrap">{message.text}</p>
+
+    {#if hasAudio}
+      <div class="mt-3">
+        <AudioPlayer 
+          audioUrl={message.audio.url}
+          duration={message.audio.duration}
+        />
+      </div>
+    {/if}
 
     {#if hasWebSearch}
       <div class="mt-2 flex items-center">
