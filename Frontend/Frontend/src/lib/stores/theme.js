@@ -9,10 +9,9 @@ const key = 'color-theme';
  * On the server, it defaults to 'light' since the theme is unknown.
  */
 function getInitialTheme() {
-	if (!browser) {
-		return 'light';
-	}
-	return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    if (!browser) return 'light';
+    // app.html sets document.documentElement.classList for FOUC prevention
+    return document.documentElement.classList.contains('dark') ? 'dark' : (localStorage.getItem(key) || 'light');
 }
 
 export const theme = writable(getInitialTheme());
@@ -21,11 +20,8 @@ export const theme = writable(getInitialTheme());
  * Subscribes to theme changes to persist them to localStorage and update the DOM.
  */
 theme.subscribe((value) => {
-	if (!browser) {
-		return;
-	}
-	// 1. Update localStorage for persistence
-	localStorage.setItem(key, value);
-	// 2. Update the <html> class for TailwindCSS
-	document.documentElement.classList.toggle('dark', value === 'dark');
+    if (!browser) return;
+    localStorage.setItem(key, value);
+    if (value === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
 });

@@ -1,27 +1,29 @@
 <script>
-    import '../app.css';
-    import { browser } from '$app/environment';
-    import { theme } from '$lib/stores/theme.js';
+  import '../app.css';
+  import { browser } from '$app/environment';
+  import { theme } from '$lib/stores/theme.js';
 
-    let { children } = $props();
+  let { children } = $props();
 
-    // Reactively update the document root class to reflect the theme.
-    // The theme store itself handles persisting the value to localStorage.
-    $effect(() => {
-      if (!browser) return;
-      
-      if ($theme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    });
+  $effect(() => {
+    if (!browser) return;
+    document.documentElement.classList.toggle('dark', $theme === 'dark');
+  });
 </script>
 
 <svelte:head>
-    <title>Senai Chat Interface</title>
+  <title>Senai Chat Interface</title>
 </svelte:head>
 
-<div class="app-shell">
+<div class="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  <nav class="p-4 bg-white dark:bg-gray-800 border-b dark:border-gray-700 flex gap-4 items-center">
+    <a href="/" class="font-medium">Chatbot</a>
+    <a href="/gallery" class="font-medium">Gallery</a>
+    <a href="/create-replicas" class="font-medium">Create Replicas</a>
+    <div class="ml-auto"><slot name="theme"/><slot/></div>
+  </nav>
+
+  <main class="p-4">
     {@render children()}
+  </main>
 </div>

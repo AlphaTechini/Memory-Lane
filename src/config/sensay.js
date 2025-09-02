@@ -1,24 +1,47 @@
 /**
- * This file loads and exports the configuration for the Sensay API.
- * It retrieves the API key from environment variables for security.
+ * Enhanced Sensay API configuration with proper headers and endpoints
  */
 
-// For a Node.js environment, you would typically use a package like `dotenv`
-// to load variables from a .env file into `process.env`.
-// For frontend frameworks like Vite, you would use `import.meta.env.VITE_SENSAY_API_KEY`.
-const apiKey = process.env.SENSAY_API_KEY;
+const organizationSecret = process.env.SENSAY_ORGANIZATION_SECRET;
+const apiVersion = process.env.SENSAY_API_VERSION || 'v1';
 
-// It's a critical best practice to ensure the API key is available.
-// This will stop the application from starting if the key is missing.
-if (!apiKey) {
-  throw new Error("Missing environment variable: SENSAY_API_KEY");
+if (!organizationSecret) {
+  throw new Error("Missing environment variable: SENSAY_ORGANIZATION_SECRET");
 }
 
 /**
- * Configuration object for the Sensay API.
+ * Configuration object for the Sensay API
  */
 export const sensayConfig = {
-  apiKey: apiKey,
-  baseUrl: "https://api.sensay.com/v1", // Replace with the actual API base URL
+  organizationSecret,
+  apiVersion,
+  baseUrl: "https://api.sensay.io", // Updated to actual Sensay API endpoint
+  endpoints: {
+    replicas: "/v1/replicas",
+    knowledgeBase: "/v1/kb",
+    chat: "/v1/replicas/{replicaId}/chat",
+    upload: "/v1/uploads",
+  },
+  headers: {
+    base: {
+      'X-ORGANIZATION-SECRET': organizationSecret,
+      'X-API-Version': apiVersion,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    withUser: (userId) => ({
+      'X-ORGANIZATION-SECRET': organizationSecret,
+      'X-API-Version': apiVersion,
+      'X-USER-ID': userId,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    }),
+    streaming: (userId) => ({
+      'X-ORGANIZATION-SECRET': organizationSecret,
+      'X-API-Version': apiVersion,
+      'X-USER-ID': userId,
+      'Accept': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+    }),
+  },
 };
-

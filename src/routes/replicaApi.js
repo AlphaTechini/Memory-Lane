@@ -1,16 +1,15 @@
 const { 
   createReplica, 
   trainReplica, 
-  sendChatMessage,
   getKnowledgeBaseEntryStatus 
 } = require('../services/sensayService');
 
 /**
- * Enhanced Sensay API routes with complete functionality
+ * Replica management routes
  * @param {import('fastify').FastifyInstance} fastify - The Fastify server instance
  * @param {object} options - Plugin options
  */
-async function sensayRoutes(fastify, options) {
+async function replicaRoutes(fastify, options) {
 
   // Schema for replica creation
   const createReplicaSchema = {
@@ -54,42 +53,6 @@ async function sensayRoutes(fastify, options) {
         rawText: { type: 'string' }
       },
       required: ['replicaId', 'title', 'rawText']
-    }
-  };
-
-  // Schema for chat
-  const chatSchema = {
-    params: {
-      type: 'object',
-      properties: {
-        replicaId: { type: 'string' }
-      },
-      required: ['replicaId']
-    },
-    headers: {
-      type: 'object',
-      properties: {
-        'x-user-id': { type: 'string' }
-      },
-      required: ['x-user-id']
-    },
-    body: {
-      type: 'object',
-      properties: {
-        message: { type: 'string' },
-        context: { 
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              role: { type: 'string' },
-              content: { type: 'string' }
-            }
-          }
-        },
-        streaming: { type: 'boolean' }
-      },
-      required: ['message']
     }
   };
 
@@ -212,50 +175,6 @@ async function sensayRoutes(fastify, options) {
   });
 
   /**
-   * Chat with a replica
-   */
-  fastify.post('/api/replicas/:replicaId/chat', { schema: chatSchema }, async (request, reply) => {
-    try {
-      const { replicaId } = request.params;
-      const userId = request.headers['x-user-id'];
-      const { message, context = [], streaming = false } = request.body;
-
-      const response = await sendChatMessage(replicaId, message, userId, context, streaming);
-      
-      if (streaming) {
-        // Handle streaming response
-        reply.raw.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive'
-        });
-        
-        response.data.pipe(reply.raw);
-        return reply;
-      }
-      
-      return { 
-        success: true, 
-        response: response.message || response.content || response 
-      };
-    } catch (error) {
-      fastify.log.error(error, 'Error in chat');
-      
-      if (error.status) {
-        return reply.status(error.status).send({ 
-          success: false, 
-          error: error.message 
-        });
-      }
-      
-      return reply.status(500).send({ 
-        success: false, 
-        error: 'Failed to process chat message' 
-      });
-    }
-  });
-
-  /**
    * Get training status
    */
   fastify.get('/api/kb/:entryId/status', async (request, reply) => {
@@ -283,17 +202,6 @@ async function sensayRoutes(fastify, options) {
       });
     }
   });
-
-  /**
-   * Health check endpoint
-   */
-  fastify.get('/api/health', async (request, reply) => {
-    return { 
-      success: true, 
-      message: 'Sensay API integration is healthy',
-      timestamp: new Date().toISOString()
-    };
-  });
 }
 
-module.exports = sensayRoutes;
+module.exports = replicaRoutes;
