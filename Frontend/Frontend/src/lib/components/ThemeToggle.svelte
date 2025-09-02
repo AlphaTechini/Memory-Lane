@@ -1,8 +1,8 @@
 <script>
-  import { toggleTheme, themeState } from '$lib/stores/chat.js';
+  import { theme, toggleTheme } from '$lib/stores/chat.js';
 
   // Svelte 5 derived for current theme
-  let isDark = $derived(themeState.value === 'dark');
+  let isDark = $derived($theme === 'dark');
 </script>
 
 <button
