@@ -1,7 +1,16 @@
 <!-- src/routes/dashboard/+page.svelte -->
 <script>
+  import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
+  import { protectRoute, logout } from '$lib/auth.js';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+
+  // Protect this route
+  $effect(() => {
+    if (browser) {
+      protectRoute();
+    }
+  });
 
   const navigationItems = [
     {
@@ -73,7 +82,15 @@
             </div>
           </div>
         </div>
-        <ThemeToggle />
+        <div class="flex items-center gap-3">
+          <ThemeToggle />
+          <button
+            onclick={logout}
+            class="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+          >
+            Logout
+          </button>
+        </div>
       </div>
     </div>
   </header>

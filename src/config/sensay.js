@@ -2,11 +2,11 @@
  * Enhanced Sensay API configuration with proper headers and endpoints
  */
 
-const organizationSecret = process.env.SENSAY_ORGANIZATION_SECRET;
+const organizationSecret = process.env.SENSAY_ORGANIZATION_SECRET || 'placeholder-secret';
 const apiVersion = process.env.SENSAY_API_VERSION || 'v1';
 
-if (!organizationSecret) {
-  throw new Error("Missing environment variable: SENSAY_ORGANIZATION_SECRET");
+if (!process.env.SENSAY_ORGANIZATION_SECRET) {
+  console.warn("⚠️ SENSAY_ORGANIZATION_SECRET not set. Sensay features will be limited.");
 }
 
 /**

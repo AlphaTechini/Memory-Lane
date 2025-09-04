@@ -1,53 +1,26 @@
-<!-- src/routes/+page.svelte -->
+<!-- Main page - redirect to chat interface -->
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import ConversationsSidebar from '$lib/components/ConversationsSidebar.svelte';
-  import ChatWindow from '$lib/components/ChatWindow.svelte';
-  import MessageInput from '$lib/components/MessageInput.svelte';
-  import ThemeToggle from '$lib/components/ThemeToggle.svelte';
-  import WebSearchButton from '$lib/components/WebSearchButton.svelte';
-  import {
-    conversations,
-    messages,
-    activeConversationId,
-    webSearchActive,
-    conversationsList,
-    activeConversation,
-    activeMessages,
-    createConversation,
-    addMessage,
-    setActiveConversation,
-    clearAllConversations,
-    toggleWebSearch
-  } from '$lib/stores/chat.js';
+  import { protectRoute } from '$lib/auth.js';
 
-  function handleSelectConversation(event) {
-    setActiveConversation(event.detail.id);
-  }
+  onMount(() => {
+    protectRoute();
+    // Redirect to the new chat interface
+    goto('/chat-replicas');
+  });
+</script>
 
-  function handleNewConversation() {
-    const newId = createConversation();
-    setActiveConversation(newId);
-  }
+<svelte:head>
+  <title>Sensay AI - Loading...</title>
+</svelte:head>
 
-  function handleClearConversations() {
-    clearAllConversations();
-  }
-
-  function handleWebSearchToggle(event) {
-    toggleWebSearch();
-  }
-
-  async function handleSendMessage(event) {
-    const { text } = event.detail;
-    
-    // Ensure we have an active conversation
-    if (!$activeConversationId) {
-      handleNewConversation();
-    }
-
-    // Add user message with web search metadata if active
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+  <div class="text-center">
+    <div class="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+    <p class="text-gray-600 dark:text-gray-400">Loading Sensay AI...</p>
+  </div>
+</div>
     addMessage($activeConversationId, { 
       sender: 'user', 
       text, 

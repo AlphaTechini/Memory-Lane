@@ -1,218 +1,77 @@
-<!-- src/routes/create-replica/+page.svelte -->
 <script>
-  import { goto } from '$app/navigation';
-  import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+  import { onMount } from 'svelte';
+  import { wizardStore } from '$lib/stores/wizardStore.js';
+  import { protectRoute } from '$lib/auth.js';
+  
+  import Step1Basics from '$lib/components/wizard/Step1Basics.svelte';
+  import Step2RequiredQuestions from '$lib/components/wizard/Step2RequiredQuestions.svelte';
+  import Step3ChooseSegments from '$lib/components/wizard/Step3ChooseSegments.svelte';
+  import Step4OptionalQuestions from '$lib/components/wizard/Step4OptionalQuestions.svelte';
+  import Step5ProfileImage from '$lib/components/wizard/Step5ProfileImage.svelte';
+  import Step6ReviewSubmit from '$lib/components/wizard/Step6ReviewSubmit.svelte';
 
-  // Form state
-  let userId = $state('');
-  let replicaName = $state('');
-  let shortDescription = $state('');
-  let greeting = $state('');
-  let slug = $state('');
-  
-  // Training data options
-  let trainingMethod = $state('text'); // 'text' or 'file'
-  let rawText = $state('');
-  let selectedFile = $state(null);
-  
-  // UI state
-  let isSubmitting = $state(false);
-  let submitError = $state('');
-  let submitSuccess = $state('');
-  let currentStep = $state(1);
-  
-  // File input reference
-  let fileInput = $state(null);
+  let state = $state();
 
-  // Auto-generate slug from replica name
   $effect(() => {
-    if (replicaName && !slug) {
-      slug = replicaName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
-    }
+    return wizardStore.subscribe(value => {
+      state = value;
+    });
   });
 
-  // Form validation
-  let isValidStep1 = $derived(
-    userId.trim() && 
-    replicaName.trim() && 
-    shortDescription.trim() && 
-    greeting.trim() && 
-    slug.trim()
-  );
+  onMount(() => {
+    protectRoute();
+    wizardStore.loadFromStorage();
+  });
 
-  let isValidStep2 = $derived(
-    (trainingMethod === 'text' && rawText.trim()) || 
-    (trainingMethod === 'file' && selectedFile)
-  );
+  const steps = [
+    { number: 1, title: 'Basic Info', component: Step1Basics },
+    { number: 2, title: 'Required Questions', component: Step2RequiredQuestions },
+    { number: 3, title: 'Choose Categories', component: Step3ChooseSegments },
+    { number: 4, title: 'Optional Questions', component: Step4OptionalQuestions },
+    { number: 5, title: 'Profile Image', component: Step5ProfileImage },
+    { number: 6, title: 'Review & Submit', component: Step6ReviewSubmit }
+  ];
 
-  function handleFileChange(event) {
-    const file = event.target.files?.[0];
-    if (file) {
-      selectedFile = file;
-      // Validate file type
-      const validTypes = ['text/plain', 'text/csv', 'application/json', 'text/markdown'];
-      if (!validTypes.includes(file.type)) {
-        submitError = 'Please upload a text file (.txt, .csv, .json, or .md)';
-        selectedFile = null;
-        return;
-      }
-      
-      // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        submitError = 'File size must be less than 10MB';
-        selectedFile = null;
-        return;
-      }
-      
-      submitError = '';
-    }
-  }
-
-  function removeFile() {
-    selectedFile = null;
-    if (fileInput) fileInput.value = '';
+  function goToStep(stepNumber) {
+    wizardStore.setCurrentStep(stepNumber);
   }
 
   function nextStep() {
-    if (currentStep === 1 && isValidStep1) {
-      currentStep = 2;
-      submitError = '';
+    if (state.currentStep < 6) {
+      wizardStore.setCurrentStep(state.currentStep + 1);
     }
   }
 
-  function prevStep() {
-    if (currentStep === 2) {
-      currentStep = 1;
+  function previousStep() {
+    if (state.currentStep > 1) {
+      wizardStore.setCurrentStep(state.currentStep - 1);
     }
   }
 
-  async function handleSubmit() {
-    if (!isValidStep1 || !isValidStep2) {
-      submitError = 'Please fill in all required fields';
-      return;
-    }
-
-    isSubmitting = true;
-    submitError = '';
-    submitSuccess = '';
-
-    try {
-      // Step 1: Create replica
-      const replicaResponse = await fetch('/api/replicas', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: userId.trim(),
-          name: replicaName.trim(),
-          shortDescription: shortDescription.trim(),
-          greeting: greeting.trim(),
-          slug: slug.trim()
-        }),
-      });
-
-      if (!replicaResponse.ok) {
-        throw new Error(`Failed to create replica: ${replicaResponse.statusText}`);
-      }
-
-      const replicaData = await replicaResponse.json();
-      const replicaId = replicaData.id;
-
-      // Step 2: Create training entry
-      const trainingResponse = await fetch('/api/training', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          replicaId,
-          userId: userId.trim(),
-          name: `${replicaName.trim()} Training Data`,
-          description: `Training data for ${replicaName.trim()}`
-        }),
-      });
-
-      if (!trainingResponse.ok) {
-        throw new Error(`Failed to create training entry: ${trainingResponse.statusText}`);
-      }
-
-      const trainingData = await trainingResponse.json();
-      const trainingId = trainingData.id;
-
-      // Step 3: Upload training data
-      if (trainingMethod === 'text') {
-        // Upload raw text
-        const textUploadResponse = await fetch(`/api/training/${trainingId}/data`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            content: rawText.trim(),
-            type: 'text'
-          }),
-        });
-
-        if (!textUploadResponse.ok) {
-          throw new Error(`Failed to upload text data: ${textUploadResponse.statusText}`);
-        }
-      } else if (trainingMethod === 'file' && selectedFile) {
-        // Upload file
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        formData.append('type', 'file');
-
-        const fileUploadResponse = await fetch(`/api/training/${trainingId}/upload`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!fileUploadResponse.ok) {
-          throw new Error(`Failed to upload file: ${fileUploadResponse.statusText}`);
-        }
-      }
-
-      submitSuccess = `Successfully created replica "${replicaName}" and uploaded training data!`;
-      
-      // Reset form after 2 seconds
-      setTimeout(() => {
-        resetForm();
-        goto('/dashboard');
-      }, 2000);
-
-    } catch (error) {
-      console.error('Submit error:', error);
-      submitError = error.message || 'An unexpected error occurred. Please try again.';
-    } finally {
-      isSubmitting = false;
+  function canProceedToStep(stepNumber) {
+    if (stepNumber <= state.currentStep) return true;
+    
+    switch (stepNumber) {
+      case 2:
+        return state?.basics?.name?.trim() && state?.basics?.description?.trim() && state?.basics?.consent;
+      case 3:
+        return Object.keys(state?.requiredAnswers || {}).length >= 10;
+      case 4:
+        return (state?.selectedSegments || []).length > 0;
+      case 5:
+        return Object.keys(state?.optionalAnswers || {}).length >= 40;
+      case 6:
+        return true; // Image is optional
+      default:
+        return false;
     }
   }
 
-  function resetForm() {
-    userId = '';
-    replicaName = '';
-    shortDescription = '';
-    greeting = '';
-    slug = '';
-    rawText = '';
-    selectedFile = null;
-    trainingMethod = 'text';
-    currentStep = 1;
-    submitError = '';
-    submitSuccess = '';
-    if (fileInput) fileInput.value = '';
-  }
-
-  function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  function getStepStatus(stepNumber) {
+    if (stepNumber < state.currentStep) return 'completed';
+    if (stepNumber === state.currentStep) return 'current';
+    if (canProceedToStep(stepNumber)) return 'available';
+    return 'locked';
   }
 </script>
 
@@ -221,393 +80,96 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-  <!-- Navigation -->
-  <nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-    <div class="max-w-4xl mx-auto px-4 py-4">
-      <div class="flex justify-between items-center">
-        <div class="flex items-center space-x-4">
-          <button
-            onclick={() => goto('/dashboard')}
-            class="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m12 19-7-7 7-7"/>
-              <path d="M19 12H5"/>
-            </svg>
-            <span>Back to Dashboard</span>
-          </button>
-        </div>
-        <ThemeToggle />
+  <div class="max-w-4xl mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+        Create Your Digital Replica
+      </h1>
+      <p class="text-gray-600 dark:text-gray-400">
+        Build an AI that thinks and responds like you
+      </p>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="mb-8">
+      <div class="flex justify-between items-center mb-4">
+        {#each steps as step}
+          <div class="flex flex-col items-center flex-1">
+            <button
+              onclick={() => canProceedToStep(step.number) && goToStep(step.number)}
+              class="w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-colors mb-2
+                {getStepStatus(step.number) === 'completed' 
+                  ? 'bg-green-600 border-green-600 text-white' 
+                  : getStepStatus(step.number) === 'current'
+                  ? 'bg-blue-600 border-blue-600 text-white'
+                  : getStepStatus(step.number) === 'available'
+                  ? 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-blue-500 hover:text-blue-600'
+                  : 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'}"
+              disabled={!canProceedToStep(step.number)}
+            >
+              {#if getStepStatus(step.number) === 'completed'}
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              {:else}
+                {step.number}
+              {/if}
+            </button>
+            <span class="text-xs text-center
+              {getStepStatus(step.number) === 'current' 
+                ? 'text-blue-600 dark:text-blue-400 font-medium' 
+                : 'text-gray-500 dark:text-gray-400'}">
+              {step.title}
+            </span>
+          </div>
+          {#if step.number < steps.length}
+            <div class="flex-1 h-0.5 mx-2 
+              {step.number < state.currentStep 
+                ? 'bg-green-600' 
+                : 'bg-gray-200 dark:bg-gray-700'}">
+            </div>
+          {/if}
+        {/each}
       </div>
     </div>
-  </nav>
 
-  <!-- Header -->
-  <header class="bg-white dark:bg-gray-800 shadow-sm">
-    <div class="max-w-4xl mx-auto px-4 py-6">
-      <div class="text-center">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Create AI Replica</h1>
-        <p class="text-gray-600 dark:text-gray-400 mt-2">Build a personalized AI assistant with custom training data</p>
-      </div>
-      
-      <!-- Progress Steps -->
-      <div class="mt-8">
-        <div class="flex items-center justify-center space-x-4">
-          <div class="flex items-center">
-            <div class="flex items-center justify-center w-8 h-8 rounded-full {currentStep >= 1 ? 'bg-purple-600 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-500'}">
-              {#if currentStep > 1}
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20 6L9 17l-5-5"/>
-                </svg>
-              {:else}
-                1
-              {/if}
-            </div>
-            <span class="ml-2 text-sm font-medium {currentStep >= 1 ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500'}">Replica Details</span>
-          </div>
-          
-          <div class="w-16 h-1 {currentStep >= 2 ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'}"></div>
-          
-          <div class="flex items-center">
-            <div class="flex items-center justify-center w-8 h-8 rounded-full {currentStep >= 2 ? 'bg-purple-600 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-500'}">
-              2
-            </div>
-            <span class="ml-2 text-sm font-medium {currentStep >= 2 ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500'}">Training Data</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <!-- Main Content -->
-  <main class="max-w-4xl mx-auto px-4 py-8">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8">
-      {#if currentStep === 1}
-        <!-- Step 1: Replica Configuration -->
-        <div class="space-y-6">
-          <div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Replica Configuration</h2>
-          </div>
-
-          <!-- User ID -->
-          <div>
-            <label for="userId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              User ID *
-            </label>
-            <input
-              id="userId"
-              type="text"
-              bind:value={userId}
-              placeholder="Enter your user identifier"
-              class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors"
-            />
-          </div>
-
-          <!-- Replica Name -->
-          <div>
-            <label for="replicaName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Replica Name *
-            </label>
-            <input
-              id="replicaName"
-              type="text"
-              bind:value={replicaName}
-              placeholder="Give your replica a name"
-              class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors"
-            />
-          </div>
-
-          <!-- Short Description -->
-          <div>
-            <label for="shortDescription" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Short Description *
-            </label>
-            <textarea
-              id="shortDescription"
-              bind:value={shortDescription}
-              placeholder="Briefly describe what this replica does"
-              rows="3"
-              class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors"
-            ></textarea>
-          </div>
-
-          <!-- Greeting -->
-          <div>
-            <label for="greeting" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Greeting Message *
-            </label>
-            <textarea
-              id="greeting"
-              bind:value={greeting}
-              placeholder="How should your replica greet users?"
-              rows="2"
-              class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors"
-            ></textarea>
-          </div>
-
-          <!-- Slug -->
-          <div>
-            <label for="slug" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              URL Slug *
-            </label>
-            <input
-              id="slug"
-              type="text"
-              bind:value={slug}
-              placeholder="unique-identifier-for-url"
-              class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors"
-            />
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              This will be used in the URL to access your replica
-            </p>
-          </div>
-
-          <!-- Navigation -->
-          <div class="flex justify-end pt-6">
-            <button
-              onclick={nextStep}
-              disabled={!isValidStep1}
-              class="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:dark:bg-gray-600 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 flex items-center gap-2"
-            >
-              Next Step
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14"/>
-                <path d="M12 5l7 7-7 7"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-      {:else if currentStep === 2}
-        <!-- Step 2: Training Data -->
-        <div class="space-y-6">
-          <div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Training Data</h2>
-          </div>
-
-          <!-- Training Method Selection -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
-              How would you like to provide training data? *
-            </label>
-            <div class="space-y-3">
-              <label for="trainingMethodText"
-                     class="flex items-center p-4 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors {trainingMethod === 'text' ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' : ''}">
-                <input
-                  type="radio"
-                  name="trainingMethod"
-                  value="text"
-                  bind:group={trainingMethod}
-                  class="text-purple-600 focus:ring-purple-500"
-                />
-                <span id="trainingMethodText">
-                <div class="ml-3">
-                  <div class="font-medium text-gray-900 dark:text-white">Paste Text</div>
-                  <div class="text-sm text-gray-500 dark:text-gray-400">Directly paste or type your training content</div>
-                </div>
-                </span>
-              </label>
-              
-              <label for="trainingMethodFile" class="flex items-center p-4 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors {trainingMethod === 'file' ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' : ''}">
-                <input
-                  type="radio"
-                  name="trainingMethod"
-                  value="file"
-                  bind:group={trainingMethod}
-                  class="text-purple-600 focus:ring-purple-500"
-                />
-                <span id = "trainingMethodFile">
-                <div class="ml-3">
-                  <div class="font-medium text-gray-900 dark:text-white">Upload File</div>
-                  <div class="text-sm text-gray-500 dark:text-gray-400">Upload a text, CSV, JSON, or Markdown file</div>
-                </span>
-                </div>
-            </div>
-          </div>
-
-          {#if trainingMethod === 'text'}
-            <!-- Raw Text Input -->
-            <div>
-              <label for="rawText" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Training Text *
-              </label>
-              <textarea
-                id="rawText"
-                bind:value={rawText}
-                placeholder="Paste your training content here. This could be conversations, documentation, or any text that represents how you want your replica to behave..."
-                rows="12"
-                class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors font-mono text-sm"
-              ></textarea>
-              <div class="flex justify-between mt-2">
-                <p class="text-sm text-gray-500 dark:text-gray-400">
-                  Provide detailed examples of conversations or content that reflect your replica's personality and knowledge
-                </p>
-                <p class="text-sm text-gray-500 dark:text-gray-400">
-                  {rawText.length} characters
-                </p>
-              </div>
-            </div>
-
-          {:else if trainingMethod === 'file'}
-            <!-- File Upload -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Upload Training File *
-              </label>
-              
-              {#if !selectedFile}
-                <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center hover:border-purple-400 transition-colors">
-                  <div class="w-12 h-12 mx-auto mb-4 text-gray-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                      <polyline points="14,2 14,8 20,8"/>
-                    </svg>
-                  </div>
-                  <button
-                    type="button"
-                    onclick={() => fileInput?.click()}
-                    class="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    Choose File
-                  </button>
-                  <p class="text-gray-500 dark:text-gray-400 mt-2">
-                    Or drag and drop your file here
-                  </p>
-                  <p class="text-sm text-gray-400 dark:text-gray-500 mt-1">
-                    Supports .txt, .csv, .json, .md files (max 10MB)
-                  </p>
-                </div>
-              {:else}
-                <div class="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                      <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-purple-600">
-                          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                          <polyline points="14,2 14,8 20,8"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <p class="font-medium text-gray-900 dark:text-white">{selectedFile.name}</p>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">{formatFileSize(selectedFile.size)}</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onclick={removeFile}
-                      class="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                      aria-label="Remove file"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M18 6 6 18"/>
-                        <path d="m6 6 12 12"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              {/if}
-
-              <input
-                bind:this={fileInput}
-                type="file"
-                accept=".txt,.csv,.json,.md"
-                onchange={handleFileChange}
-                class="hidden"
-              />
-            </div>
+    <!-- Step Content -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 min-h-96">
+      {#if state}
+        {#each steps as step}
+          {#if step.number === state.currentStep}
+            <svelte:component this={step.component} />
           {/if}
-
-          <!-- Error/Success Messages -->
-          {#if submitError}
-            <div class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <div class="flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600 mr-2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="15" y1="9" x2="9" y2="15"/>
-                  <line x1="9" y1="9" x2="15" y2="15"/>
-                </svg>
-                <p class="text-red-700 dark:text-red-300 font-medium">{submitError}</p>
-              </div>
-            </div>
-          {/if}
-
-          {#if submitSuccess}
-            <div class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-              <div class="flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600 mr-2">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                  <polyline points="22,4 12,14.01 9,11.01"/>
-                </svg>
-                <p class="text-green-700 dark:text-green-300 font-medium">{submitSuccess}</p>
-              </div>
-            </div>
-          {/if}
-
-          <!-- Navigation -->
-          <div class="flex justify-between pt-6">
-            <button
-              onclick={prevStep}
-              class="px-6 py-3 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 flex items-center gap-2"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M19 12H5"/>
-                <path d="M12 19l-7-7 7-7"/>
-              </svg>
-              Previous Step
-            </button>
-            
-            <button
-              onclick={handleSubmit}
-              disabled={!isValidStep2 || isSubmitting}
-              class="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:dark:bg-gray-600 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 flex items-center gap-2 min-w-[140px] justify-center"
-            >
-              {#if isSubmitting}
-                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Creating...
-              {:else}
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                  <polyline points="22,4 12,14.01 9,11.01"/>
-                </svg>
-                Create Replica
-              {/if}
-            </button>
-          </div>
-        </div>
+        {/each}
       {/if}
     </div>
 
-    <!-- Tips Section -->
-    <div class="mt-8 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-      <h3 class="font-semibold text-blue-900 dark:text-blue-200 mb-3 flex items-center">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 16v-4"/>
-          <path d="M12 8h.01"/>
-        </svg>
-        Training Tips
-      </h3>
-      <ul class="text-blue-800 dark:text-blue-300 space-y-2">
-        <li class="flex items-start">
-          <span class="text-blue-600 mr-2">•</span>
-          <span>Include examples of conversations or responses that represent your desired replica behavior</span>
-        </li>
-        <li class="flex items-start">
-          <span class="text-blue-600 mr-2">•</span>
-          <span>Provide diverse examples to help your replica handle various scenarios</span>
-        </li>
-        <li class="flex items-start">
-          <span class="text-blue-600 mr-2">•</span>
-          <span>The more quality training data you provide, the better your replica will perform</span>
-        </li>
-        <li class="flex items-start">
-          <span class="text-blue-600 mr-2">•</span>
-          <span>Consider including context about the replica's personality, expertise, and communication style</span>
-        </li>
-      </ul>
+    <!-- Navigation -->
+    <div class="flex justify-between items-center mt-6">
+      <button
+        onclick={previousStep}
+        disabled={state.currentStep <= 1}
+        class="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        Previous
+      </button>
+      
+      <div class="text-sm text-gray-500 dark:text-gray-400">
+        Step {state?.currentStep || 1} of {steps.length}
+      </div>
+      
+      {#if state.currentStep < 6}
+        <button
+          onclick={nextStep}
+          disabled={!canProceedToStep(state.currentStep + 1)}
+          class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          Next
+        </button>
+      {:else}
+        <div></div>
+      {/if}
     </div>
-  </main>
+  </div>
 </div>

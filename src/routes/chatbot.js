@@ -4,6 +4,7 @@ const {
   sendChatMessage,
   getKnowledgeBaseEntryStatus 
 } = require('../services/sensayService');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
 
 /**
  * Enhanced Sensay API routes with complete functionality
@@ -94,9 +95,12 @@ async function sensayRoutes(fastify, options) {
   };
 
   /**
-   * Create a new replica
+   * Create a new replica (protected route)
    */
-  fastify.post('/api/replicas', { schema: createReplicaSchema }, async (request, reply) => {
+  fastify.post('/api/replicas', { 
+    schema: createReplicaSchema,
+    preHandler: authenticateToken 
+  }, async (request, reply) => {
     try {
       const replica = await createReplica(request.body);
       
@@ -122,9 +126,12 @@ async function sensayRoutes(fastify, options) {
   });
 
   /**
-   * Train a replica with text content
+   * Train a replica with text content (protected route)
    */
-  fastify.post('/api/replicas/train', { schema: trainWithTextSchema }, async (request, reply) => {
+  fastify.post('/api/replicas/train', { 
+    schema: trainWithTextSchema,
+    preHandler: authenticateToken 
+  }, async (request, reply) => {
     try {
       const { replicaId, title, description, rawText } = request.body;
       
@@ -156,9 +163,11 @@ async function sensayRoutes(fastify, options) {
   });
 
   /**
-   * Train a replica with file upload
+   * Train a replica with file upload (protected route)
    */
-  fastify.post('/api/replicas/train/file', async (request, reply) => {
+  fastify.post('/api/replicas/train/file', { 
+    preHandler: authenticateToken 
+  }, async (request, reply) => {
     try {
       const data = await request.file();
       
@@ -212,12 +221,15 @@ async function sensayRoutes(fastify, options) {
   });
 
   /**
-   * Chat with a replica
+   * Chat with a replica (protected route)
    */
-  fastify.post('/api/replicas/:replicaId/chat', { schema: chatSchema }, async (request, reply) => {
+  fastify.post('/api/replicas/:replicaId/chat', { 
+    schema: chatSchema,
+    preHandler: authenticateToken 
+  }, async (request, reply) => {
     try {
       const { replicaId } = request.params;
-      const userId = request.headers['x-user-id'];
+      const userId = request.user.id; // Get from authenticated user
       const { message, context = [], streaming = false } = request.body;
 
       const response = await sendChatMessage(replicaId, message, userId, context, streaming);
