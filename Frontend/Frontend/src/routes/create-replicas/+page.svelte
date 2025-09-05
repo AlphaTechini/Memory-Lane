@@ -76,7 +76,7 @@
       case 4:
         return (state?.selectedSegments || []).length > 0;
       case 5:
-        return Object.keys(state?.optionalAnswers || {}).length >= 40;
+        return true; // Optional questions are now truly optional
       case 6:
         return true; // Image is optional
       default:
@@ -170,19 +170,11 @@
     <!-- Step Content -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 min-h-96">
       {#if state}
-        {#if state.currentStep === 1}
-          <Step1Basics />
-        {:else if state.currentStep === 2}
-          <Step2RequiredQuestions />
-        {:else if state.currentStep === 3}
-          <Step3ChooseSegments />
-        {:else if state.currentStep === 4}
-          <Step4OptionalQuestions />
-        {:else if state.currentStep === 5}
-          <Step5ProfileImage />
-        {:else if state.currentStep === 6}
-          <Step6ReviewSubmit />
-        {/if}
+        {#each steps as step (step.number)}
+          {#if step.number === state.currentStep}
+            <svelte:component this={step.component} />
+          {/if}
+        {/each}
       {/if}
     </div>
 

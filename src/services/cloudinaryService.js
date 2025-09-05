@@ -5,21 +5,41 @@ import { v2 as cloudinary } from 'cloudinary';
  * Handles image uploads, deletions, and transformations
  */
 
-// Configure Cloudinary (assuming credentials are in environment variables)
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true
-});
+// Check if Cloudinary is properly configured
+const isCloudinaryConfigured = Boolean(
+  process.env.CLOUDINARY_CLOUD_NAME && 
+  process.env.CLOUDINARY_API_KEY && 
+  process.env.CLOUDINARY_API_SECRET &&
+  !process.env.CLOUDINARY_CLOUD_NAME.includes('placeholder') &&
+  !process.env.CLOUDINARY_API_KEY.includes('placeholder') &&
+  !process.env.CLOUDINARY_API_SECRET.includes('placeholder')
+);
+
+if (isCloudinaryConfigured) {
+  // Configure Cloudinary
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+    secure: true
+  });
+  console.log('✅ Cloudinary configured successfully');
+} else {
+  console.warn('⚠️ Cloudinary not configured - using fallback mock service');
+}
 
 /**
- * Upload image to Cloudinary
+ * Upload image to Cloudinary or fallback service
  * @param {Buffer} fileBuffer - Image file buffer
  * @param {Object} options - Upload options (folder, transformation, etc.)
  * @returns {Promise<Object>} - { url, public_id }
  */
 export const uploadImage = async (fileBuffer, options = {}) => {
+  // If Cloudinary is not configured, use fallback
+  if (!isCloudinaryConfigured) {
+    return mockUploadImage(fileBuffer, options);
+  }
+
   try {
     return new Promise((resolve, reject) => {
       const uploadOptions = {
@@ -57,11 +77,16 @@ export const uploadImage = async (fileBuffer, options = {}) => {
 };
 
 /**
- * Delete image from Cloudinary
+ * Delete image from Cloudinary or fallback service
  * @param {String} publicId - Cloudinary public_id of the image
  * @returns {Promise<Object>} - Deletion result
  */
 export const deleteImage = async (publicId) => {
+  // If Cloudinary is not configured, use fallback
+  if (!isCloudinaryConfigured) {
+    return mockDeleteImage(publicId);
+  }
+
   try {
     const result = await cloudinary.uploader.destroy(publicId);
     
@@ -156,6 +181,46 @@ export const validateImageFile = (file) => {
   }
   
   return true;
+};
+
+/**
+ * Mock image upload for when Cloudinary is not configured
+ * @param {Buffer} fileBuffer - Image file buffer
+ * @param {Object} options - Upload options
+ * @returns {Promise<Object>} - Mock upload result
+ */
+const mockUploadImage = async (fileBuffer, options = {}) => {
+  // Simulate upload delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // Generate mock URL and public ID
+  const mockId = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const mockUrl = `https://via.placeholder.com/500x500/4F46E5/FFFFFF?text=Profile+Image`;
+  
+  console.log('📸 Mock image upload successful (Cloudinary not configured)');
+  
+  return {
+    url: mockUrl,
+    public_id: mockId,
+    width: 500,
+    height: 500,
+    format: 'png',
+    bytes: fileBuffer.length
+  };
+};
+
+/**
+ * Mock image deletion for when Cloudinary is not configured
+ * @param {String} publicId - Mock public ID
+ * @returns {Promise<Object>} - Mock deletion result
+ */
+const mockDeleteImage = async (publicId) => {
+  console.log('🗑️ Mock image deletion successful (Cloudinary not configured)');
+  return {
+    success: true,
+    result: 'ok',
+    public_id: publicId
+  };
 };
 
 export default {

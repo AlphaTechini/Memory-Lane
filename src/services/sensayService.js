@@ -25,16 +25,17 @@ const sensayApi = axios.create({
  */
 export const createReplica = async (replicaData) => {
   try {
-    // Validate required fields
-    const requiredFields = ['name', 'shortDescription', 'greeting', 'ownerID', 'slug', 'llm'];
+    // Validate required fields (LLM is now optional)
+    const requiredFields = ['name', 'shortDescription', 'greeting', 'ownerID', 'slug'];
     for (const field of requiredFields) {
       if (!replicaData[field]) {
         throw new Error(`Missing required field: ${field}`);
       }
     }
     
-    if (!replicaData.llm.model) {
-      throw new Error('Missing required field: llm.model');
+    // Validate LLM field if it exists and is an object
+    if (replicaData.llm && typeof replicaData.llm === 'object' && !replicaData.llm.model && !replicaData.llm.type) {
+      throw new Error('LLM field must have either model or type property');
     }
 
     const response = await sensayApi.post(sensayConfig.endpoints.replicas, replicaData, {

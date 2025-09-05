@@ -2,19 +2,19 @@
   import { onMount } from 'svelte';
   import { wizardStore } from '$lib/stores/wizardStore.js';
 
-  let state = $state({
-    profileImage: null
-  });
   let fileInput = $state(null);
   let isUploading = $state(false);
   let uploadError = $state(null);
   let dragOver = $state(false);
   
+  // Get wizard state reactively
+  let wizardState = $state({});
+  
   // Subscribe to wizard store
   let unsubscribe;
   onMount(() => {
     unsubscribe = wizardStore.subscribe(value => {
-      state = value;
+      wizardState = value;
     });
     
     return () => {
@@ -40,26 +40,29 @@
     return { valid: true };
   }
 
-  async function uploadToCloudinary(file) {
+  async function uploadToBackend(file) {
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', 'replica_avatars'); // You'll need to set this up in Cloudinary
+    formData.append('image', file);
     
     try {
-      const response = await fetch('https://api.cloudinary.com/v1_1/your-cloud-name/image/upload', {
+      const response = await fetch('http://localhost:4000/replica/upload', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
         body: formData
       });
       
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const errorData = await response.json();
+        throw new Error(errorData.errors?.[0] || 'Upload failed');
       }
       
       const result = await response.json();
       return {
         success: true,
-        url: result.secure_url,
-        publicId: result.public_id
+        url: result.data.replicaImageUrl,
+        publicId: result.data.replicaImageId
       };
     } catch (error) {
       return {
@@ -90,8 +93,8 @@
         isUploaded: false
       });
 
-      // Upload to Cloudinary
-      const uploadResult = await uploadToCloudinary(file);
+      // Upload to backend
+      const uploadResult = await uploadToBackend(file);
       
       if (uploadResult.success) {
         wizardStore.updateProfileImage({
@@ -105,7 +108,7 @@
         uploadError = uploadResult.error;
         wizardStore.updateProfileImage(null);
       }
-    } catch {
+    } catch (error) {
       uploadError = 'Upload failed. Please try again.';
       wizardStore.updateProfileImage(null);
     } finally {
@@ -141,8 +144,8 @@
   }
 
   function removeImage() {
-    if (state?.profileImage?.previewUrl) {
-      URL.revokeObjectURL(state.profileImage.previewUrl);
+    if (wizardState?.profileImage?.previewUrl) {
+      URL.revokeObjectURL(wizardState.profileImage.previewUrl);
     }
     wizardStore.updateProfileImage(null);
     uploadError = null;
@@ -158,12 +161,21 @@
   // Cleanup preview URL on component destroy
   $effect(() => {
     return () => {
-      if (state?.profileImage?.previewUrl) {
-        URL.revokeObjectURL(state.profileImage.previewUrl);
+      if (wizardState?.profileImage?.previewUrl) {
+        URL.revokeObjectURL(wizardState.profileImage.previewUrl);
       }
     };
   });
 </script>
+
+<!-- Hidden file input -->
+<input
+  bind:this={fileInput}
+  type="file"
+  accept=".jpg,.jpeg,.png,.webp"
+  style="display: none;"
+  onchange={handleFileSelect}
+/>
 
 <div class="p-6">
   <div class="mb-6">
@@ -174,13 +186,13 @@
   </div>
 
   <div class="max-w-lg mx-auto">
-    {#if state?.profileImage?.previewUrl}
+    {#if wizardState?.profileImage?.previewUrl}
       <!-- Image Preview -->
       <div class="mb-6">
         <div class="relative">
           <div class="w-64 h-64 mx-auto rounded-full overflow-hidden border-4 border-gray-200 dark:border-gray-600 shadow-lg">
             <img 
-              src={state.profileImage.previewUrl} 
+              src={wizardState.profileImage.previewUrl} 
               alt="Profile preview"
               class="w-full h-full object-cover"
             />
@@ -195,7 +207,7 @@
                 </svg>
                 Uploading...
               </div>
-            {:else if state.profileImage.isUploaded}
+            {:else if wizardState.profileImage.isUploaded}
               <div class="bg-green-600 text-white px-3 py-1 rounded-full text-xs flex items-center gap-1">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -237,7 +249,6 @@
         ondrop={handleDrop}
         ondragover={handleDragOver}
         ondragleave={handleDragLeave}
-        onclick={triggerFileSelect}
         onkeydown={(e) => e.key === 'Enter' && triggerFileSelect()}
       >
         <div class="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500">

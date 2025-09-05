@@ -1,8 +1,10 @@
 <script>
   import { onMount } from 'svelte';
-  import { wizardStore } from '$lib/stores/wizardStore.js';
+  import { wizardStore, coverageScore } from '$lib/stores/wizardStore.js';
   import { REQUIRED_QUESTIONS, OPTIONAL_SEGMENTS } from '$lib/questionBank.js';
   import { goto } from '$app/navigation';
+
+  const API_BASE_URL = 'http://localhost:4000';
 
   let state = $state({
     basics: {},
@@ -12,7 +14,8 @@
   });
   let isSubmitting = $state(false);
   let submitError = $state(null);
-  let expandedAnswers = $state([]);
+  let editingSection = $state(null);
+  let expandedAnswers = $state(new Set());
   
   // Subscribe to wizard store
   let unsubscribe;
@@ -53,11 +56,12 @@
   }
 
   function toggleAnswerExpansion(questionId) {
-    if (expandedAnswers.includes(questionId)) {
-      expandedAnswers = expandedAnswers.filter(id => id !== questionId);
+    if (expandedAnswers.has(questionId)) {
+      expandedAnswers.delete(questionId);
     } else {
-      expandedAnswers = [...expandedAnswers, questionId];
+      expandedAnswers.add(questionId);
     }
+    expandedAnswers = new Set(expandedAnswers);
   }
 
   function truncateText(text, maxLength = 150) {
@@ -66,6 +70,7 @@
   }
 
   function editSection(section) {
+    editingSection = section;
     wizardStore.setCurrentStep(section);
   }
 
@@ -88,7 +93,7 @@
       };
 
       // Submit to backend API
-      const response = await fetch('/api/replicas', {
+      const response = await fetch(`${API_BASE_URL}/api/replicas`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +107,7 @@
         throw new Error(errorData.message || 'Failed to create replica');
       }
 
-      await response.json();
+      const result = await response.json();
       
       // Clear wizard state
       wizardStore.reset();
@@ -165,15 +170,15 @@
       </div>
       <div class="p-4 space-y-4">
         <div>
-          <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</span>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
           <p class="text-gray-900 dark:text-gray-100">{state?.basics?.name || 'Not provided'}</p>
         </div>
         <div>
-          <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</span>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
           <p class="text-gray-900 dark:text-gray-100">{state?.basics?.description || 'Not provided'}</p>
         </div>
         <div>
-          <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Consent</span>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Consent</label>
           <p class="text-gray-900 dark:text-gray-100">
             {state?.basics?.consent ? '✓ Provided' : '✗ Not provided'}
           </p>
@@ -237,7 +242,7 @@
                   {getRequiredQuestionText(questionId)}
                 </div>
                 <div class="text-gray-900 dark:text-gray-100">
-                  {#if expandedAnswers.includes(questionId)}
+                  {#if expandedAnswers.has(questionId)}
                     <p>{answer}</p>
                     <button
                       onclick={() => toggleAnswerExpansion(questionId)}
@@ -395,6 +400,7 @@
     <div class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
       <p>By submitting, you agree to our terms of service and privacy policy.</p>
       <p>Your replica will be processed and available in your dashboard shortly.</p>
+      <p class="mt-2 text-blue-600 dark:text-blue-400">💡 After creation, you can continue training your replica with additional questions from the "Train Models" page.</p>
     </div>
   </div>
 </div>

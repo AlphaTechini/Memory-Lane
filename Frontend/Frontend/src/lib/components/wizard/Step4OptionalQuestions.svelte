@@ -42,13 +42,20 @@
 
   function isQuestionAnswered(questionId) {
     const answer = state?.optionalAnswers?.[questionId] || '';
-    return answer.trim().length >= 120;
+    const question = questions.find(q => q.id === questionId);
+    return answer.trim().length >= (question?.minLength || 40);
   }
 
   function getCompletionStats() {
     const total = questions.length;
     const answered = questions.filter(q => isQuestionAnswered(q.id)).length;
-    return { answered, total, remaining: Math.max(0, 40 - answered) };
+    return { answered, total, remaining: Math.max(0, 0 - answered) }; // No minimum required
+  }
+
+  function goToQuestion(index) {
+    if (index >= 0 && index < filteredQuestions.length) {
+      currentQuestionIndex = index;
+    }
   }
 
   function nextQuestion() {
@@ -91,7 +98,7 @@
       </div>
     </div>
     <p class="text-gray-600 dark:text-gray-400">
-      Answer questions from your selected categories. You need at least 40 total answers to proceed.
+      Answer questions from your selected categories. These are optional - you can skip this step and continue training your replica later.
     </p>
   </div>
 
@@ -107,9 +114,9 @@
     </div>
     <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
       <div class="text-2xl font-bold text-green-600 dark:text-green-400">
-        {Math.max(0, Math.round((getCompletionStats().answered / 40) * 100))}%
+        {getCompletionStats().answered > 0 ? Math.round((getCompletionStats().answered / questions.length) * 100) : 0}%
       </div>
-      <div class="text-sm text-green-700 dark:text-green-300">Progress to Goal</div>
+      <div class="text-sm text-green-700 dark:text-green-300">Progress Made</div>
     </div>
   </div>
 
@@ -169,7 +176,7 @@
           oninput={(e) => updateAnswer(currentQuestion.id, e.target.value)}
           rows="5"
           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          placeholder="Share your thoughts... (minimum 120 characters)"
+          placeholder="Share your thoughts... (minimum {currentQuestion.minLength} characters)"
         ></textarea>
         
         <div class="mt-3 flex justify-between items-center">
@@ -177,7 +184,7 @@
             {getAnswerLength(currentQuestion.id)} characters
             {#if !isQuestionAnswered(currentQuestion.id) && getAnswerLength(currentQuestion.id) > 0}
               <span class="text-orange-500 dark:text-orange-400">
-                • Need {120 - getAnswerLength(currentQuestion.id)} more
+                • Need {currentQuestion.minLength - getAnswerLength(currentQuestion.id)} more
               </span>
             {/if}
           </div>
@@ -226,7 +233,7 @@
   <div class="mt-8">
     <h3 class="font-medium text-gray-900 dark:text-gray-100 mb-4">Progress by Category</h3>
     <div class="space-y-3">
-      {#each (state?.selectedSegments || []) as segmentKey (segmentKey)}
+      {#each (state?.selectedSegments || []) as segmentKey}
         {@const stats = getSegmentStats(segmentKey)}
         <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
           <div>
@@ -256,20 +263,35 @@
     </div>
   </div>
 
-  <!-- Minimum Requirements Notice -->
-  {#if getCompletionStats().answered < 40}
-    <div class="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+  <!-- Informational Messages -->
+  {#if getCompletionStats().answered === 0}
+    <div class="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
       <div class="flex items-start gap-3">
-        <svg class="flex-shrink-0 w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+        <svg class="flex-shrink-0 w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
         <div>
-          <h3 class="font-medium text-yellow-800 dark:text-yellow-200">
-            More answers needed
+          <h3 class="font-medium text-blue-800 dark:text-blue-200">
+            Optional Training Questions
           </h3>
-          <p class="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-            You need to answer at least 40 questions to proceed to the next step. 
-            You currently have {getCompletionStats().answered} complete answers.
+          <p class="text-sm text-blue-700 dark:text-blue-300 mt-1">
+            You can skip these questions and create your replica now. You can always continue training your replica later from the dashboard.
+          </p>
+        </div>
+      </div>
+    </div>
+  {:else if getCompletionStats().answered > 0}
+    <div class="mt-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+      <div class="flex items-start gap-3">
+        <svg class="flex-shrink-0 w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <div>
+          <h3 class="font-medium text-green-800 dark:text-green-200">
+            Great progress!
+          </h3>
+          <p class="text-sm text-green-700 dark:text-green-300 mt-1">
+            You've answered {getCompletionStats().answered} questions. This will help make your replica more personalized. You can continue adding more training data after creating your replica.
           </p>
         </div>
       </div>

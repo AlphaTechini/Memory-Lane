@@ -6,7 +6,7 @@ const rawOrgSecret = process.env.SENSAY_ORGANIZATION_SECRET;
 const PLACEHOLDERS = new Set(['placeholder-secret', 'your-sensay-organization-secret', '']);
 const allowPlaceholder = process.env.SENSAY_ALLOW_PLACEHOLDER === 'true';
 let organizationSecret = rawOrgSecret && (!PLACEHOLDERS.has(rawOrgSecret) || allowPlaceholder) ? rawOrgSecret : null;
-const apiVersion = process.env.SENSAY_API_VERSION || 'v1';
+const apiVersion = process.env.SENSAY_API_VERSION || '2024-01-01';
 
 if (!organizationSecret) {
   console.warn('⚠️ SENSAY_ORGANIZATION_SECRET not properly configured (value is missing or placeholder). Sensay features will be limited.');

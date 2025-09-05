@@ -1,12 +1,10 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   
-  let { 
-    photo,
-    albums = [],
-    showControls = true,
-    showAlbumSelector = false
-  } = $props();
+  export let photo;
+  export let albums = [];
+  export let showControls = true;
+  export let showAlbumSelector = false;
   
   const dispatch = createEventDispatcher();
   
@@ -68,18 +66,13 @@
 
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow group">
   <div class="aspect-square relative">
-    <button
+    <img
+      src={photo.imageUrl}
+      alt={photo.originalName || 'Gallery photo'}
+      class="w-full h-full object-cover cursor-pointer"
       onclick={handleView}
-      class="w-full h-full p-0 border-0 bg-transparent cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
-      aria-label={`View ${photo.originalName || 'photo'}`}
-    >
-      <img
-        src={photo.imageUrl}
-        alt={photo.originalName || 'Gallery photo'}
-        class="w-full h-full object-cover"
-        loading="lazy"
-      />
-    </button>
+      loading="lazy"
+    />
     
     {#if showControls}
       <!-- Photo controls -->
@@ -88,7 +81,6 @@
           onclick={handleEdit}
           class="p-1.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors"
           title="Edit photo"
-          aria-label="Edit photo"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
@@ -98,7 +90,6 @@
           onclick={handleDelete}
           class="p-1.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
           title="Delete photo"
-          aria-label="Delete photo"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -121,11 +112,10 @@
       <!-- Edit mode -->
       <div class="space-y-3">
         <div>
-          <label for="photo-description-{photo.id}" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
             Description {#if photo.albumId}<span class="text-yellow-600 dark:text-yellow-400">(overwrites album description)</span>{/if}
           </label>
           <textarea
-            id="photo-description-{photo.id}"
             bind:value={description}
             placeholder="Add a description..."
             class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
@@ -135,9 +125,8 @@
         
         {#if showAlbumSelector}
           <div>
-            <label for="photo-album-{photo.id}" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Album</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Album</label>
             <select
-              id="photo-album-{photo.id}"
               bind:value={selectedAlbumId}
               class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >

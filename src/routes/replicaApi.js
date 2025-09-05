@@ -71,23 +71,60 @@ async function replicaRoutes(fastify, options) {
       // Generate a slug from the name
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
       
+      // Ensure description is within 50 character limit for Sensay API
+      const shortDescription = description.length > 50 ? description.substring(0, 50) : description;
+      
       // Create a greeting from the description
-      const greeting = `Hi! I'm ${name}. ${description.slice(0, 100)}${description.length > 100 ? '...' : ''}`;
+      const greeting = `Hi! I'm ${name}. ${shortDescription}`;
       
-      // Prepare Sensay replica data
-      const sensayReplicaData = {
-        name,
-        shortDescription: description,
-        greeting,
-        ownerID: request.user.id,
-        slug: `${slug}-${Date.now()}`, // Make it unique
-        llm: {
-          model: 'gpt-4' // Default model
+      // List of LLM configurations to try
+      const llmConfigsToTry = [
+        null, // Try without LLM field
+        { model: "gpt-4" },
+        { model: "gpt-3.5-turbo" },
+        "gpt-4", // Try as string
+        "gpt-3.5-turbo", // Try as string
+        { type: "gpt-4" }, // Try with 'type' instead of 'model'
+        { type: "gpt-3.5-turbo" },
+        { provider: "openai", model: "gpt-4" }, // Try with provider
+        { provider: "openai", model: "gpt-3.5-turbo" }
+      ];
+      
+      let sensayReplica;
+      let lastError;
+      
+      // Try each LLM config until one works
+      for (const llmConfig of llmConfigsToTry) {
+        try {
+          // Prepare Sensay replica data
+          const sensayReplicaData = {
+            name,
+            shortDescription,
+            greeting,
+            ownerID: request.user.id,
+            slug: `${slug}-${Date.now()}` // Make it unique
+          };
+          
+          // Add LLM config if it's not null
+          if (llmConfig !== null) {
+            sensayReplicaData.llm = llmConfig;
+          }
+          
+          fastify.log.info(`Attempting to create replica with LLM config:`, llmConfig);
+          sensayReplica = await createReplica(sensayReplicaData);
+          fastify.log.info(`Successfully created replica with LLM config:`, llmConfig);
+          break; // Success, exit the loop
+        } catch (error) {
+          fastify.log.warn(`Failed to create replica with LLM config ${JSON.stringify(llmConfig)}: ${error.message}`);
+          lastError = error;
+          // Continue to next config
         }
-      };
+      }
       
-      // Create replica in Sensay
-      const sensayReplica = await createReplica(sensayReplicaData);
+      // If all configs failed, throw the last error
+      if (!sensayReplica) {
+        throw lastError || new Error('Failed to create replica with any available LLM configuration');
+      }
       
       // Prepare training data from wizard responses
       const trainingTexts = [];

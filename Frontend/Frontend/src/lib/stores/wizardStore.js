@@ -94,7 +94,10 @@ export const wizardStore = {
   canProceedToStep: (step, $state) => {
     switch (step) {
       case 2:
-        return $state.basics?.name?.trim() && $state.basics?.description?.trim() && $state.basics?.consent;
+        return $state.basics?.name?.trim() && 
+               $state.basics?.description?.trim() && 
+               $state.basics?.description?.trim().length <= 50 && 
+               $state.basics?.consent;
       case 3:
         return Object.keys($state.requiredAnswers).length === REQUIRED_QUESTIONS.length;
       case 4:
@@ -111,7 +114,10 @@ export const wizardStore = {
   isStepValid: (step, $state) => {
     switch (step) {
       case 1:
-        return $state.basics?.name?.trim() && $state.basics?.description?.trim() && $state.basics?.consent;
+        return $state.basics?.name?.trim() && 
+               $state.basics?.description?.trim() && 
+               $state.basics?.description?.trim().length <= 50 && 
+               $state.basics?.consent;
       case 2:
         return Object.keys($state.requiredAnswers).length === REQUIRED_QUESTIONS.length &&
                REQUIRED_QUESTIONS.every(q => {
@@ -286,5 +292,13 @@ export const wizardStore = {
     if (browser) {
       localStorage.removeItem(STORAGE_KEY);
     }
+  },
+
+  calculateCoverageScore: () => {
+    let currentCoverage = 0;
+    coverageScore.subscribe(value => {
+      currentCoverage = value;
+    })();
+    return currentCoverage;
   }
 };

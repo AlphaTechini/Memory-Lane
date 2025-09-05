@@ -42,6 +42,28 @@
   let selectedImage = $state(null);
   let showUploadModal = $state(false);
 
+  function handleFileSelect(event) {
+    const files = Array.from(event.target.files);
+    files.forEach(file => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          galleryStore.addImage({
+            name: file.name,
+            url: e.target.result,
+            size: file.size,
+            type: file.type
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    
+    // Reset file input
+    if (fileInput) fileInput.value = '';
+    showUploadModal = false;
+  }
+
   function openFileDialog() {
     fileInput?.click();
   }

@@ -63,7 +63,7 @@
     </div>
     <p class="text-gray-600 dark:text-gray-400">
       These deep, existential questions help capture your core personality and worldview. 
-      Each answer should be at least 200 characters to provide meaningful insights.
+      Each answer should be at least 150 characters to provide meaningful insights.
     </p>
   </div>
 

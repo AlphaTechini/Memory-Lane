@@ -1,11 +1,9 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   
-  let { 
-    isOpen = false,
-    title = 'Create Album',
-    album = null // For editing existing album
-  } = $props();
+  export let isOpen = false;
+  export let title = 'Create Album';
+  export let album = null; // For editing existing album
   
   const dispatch = createEventDispatcher();
   
@@ -32,8 +30,7 @@
     }
   }
   
-  async function handleSubmit(event) {
-    event.preventDefault();
+  async function handleSubmit() {
     if (!name.trim() || !description.trim() || !dateOfMemory) {
       return;
     }
@@ -80,11 +77,11 @@
     role="dialog"
     aria-modal="true"
     aria-labelledby="modal-title"
-    tabindex="0"
   >
     <!-- Modal content -->
     <div 
       class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+      onclick={(e) => e.stopPropagation()}
     >
       <!-- Header -->
       <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
@@ -95,7 +92,6 @@
           onclick={handleClose}
           class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
           disabled={isSubmitting}
-          aria-label="Close modal"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -104,7 +100,7 @@
       </div>
       
       <!-- Form -->
-      <form onsubmit={handleSubmit} class="p-6 space-y-4">
+      <form onsubmit|preventDefault={handleSubmit} class="p-6 space-y-4">
         <div>
           <label for="album-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Album Name *

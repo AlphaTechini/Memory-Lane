@@ -579,8 +579,8 @@
         {/if}
 
         <!-- Recent photos section -->
-        {#if getStandalonePhotos().length > 0}
-          {@const standalonePhotos = getStandalonePhotos()}
+        {@const standalonePhotos = getStandalonePhotos()}
+        {#if standalonePhotos.length > 0}
           <div>
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Recent Photos</h3>
@@ -730,6 +730,7 @@
 <PhotoSelector
   bind:isOpen={showPhotoSelector}
   photos={getStandalonePhotos()}
+  {albums}
   selectedAlbum={selectedAlbumForPhotos}
   on:addPhotos={(e) => addPhotosToAlbum(e.detail)}
   on:close={() => { showPhotoSelector = false; selectedAlbumForPhotos = null; }}

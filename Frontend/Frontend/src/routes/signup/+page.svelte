@@ -73,7 +73,7 @@
       } else {
         error = data.message || 'Signup failed';
       }
-    } catch {
+    } catch (err) {
       error = 'Network error. Please try again.';
     } finally {
       loading = false;

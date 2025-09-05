@@ -68,6 +68,20 @@
       color: 'bg-purple-500 hover:bg-purple-600',
       textColor: 'text-purple-600',
       requiresAuth: true
+    },
+    {
+      id: 'train-models',
+      title: 'Train Models',
+      description: 'Continue training your replicas with additional questions and data',
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>`,
+      route: '/train-models',
+      color: 'bg-emerald-500 hover:bg-emerald-600',
+      textColor: 'text-emerald-600',
+      requiresAuth: true
     }
   ];
 
@@ -211,7 +225,6 @@
           <div class="relative p-8">
             <!-- Icon -->
             <div class="w-16 h-16 mx-auto mb-6 {item.textColor} group-hover:scale-110 transition-transform duration-300">
-              <!-- eslint-disable-next-line svelte/no-at-html-tags -->
               {@html item.icon}
             </div>
             

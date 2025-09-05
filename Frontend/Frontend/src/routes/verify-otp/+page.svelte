@@ -90,7 +90,7 @@
       } else {
         error = data.message || 'Verification failed';
       }
-    } catch {
+    } catch (err) {
       error = 'Network error. Please try again.';
     } finally {
       loading = false;
@@ -125,7 +125,7 @@
       } else {
         error = data.message || 'Failed to resend code';
       }
-    } catch {
+    } catch (err) {
       error = 'Network error. Please try again.';
     } finally {
       resendLoading = false;
