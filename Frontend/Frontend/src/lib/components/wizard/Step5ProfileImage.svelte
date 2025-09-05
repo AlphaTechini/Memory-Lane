@@ -1,16 +1,25 @@
 <script>
+  import { onMount } from 'svelte';
   import { wizardStore } from '$lib/stores/wizardStore.js';
 
-  let state = $state();
+  let state = $state({
+    profileImage: null
+  });
   let fileInput = $state(null);
   let isUploading = $state(false);
   let uploadError = $state(null);
   let dragOver = $state(false);
   
-  $effect(() => {
-    return wizardStore.subscribe(value => {
+  // Subscribe to wizard store
+  let unsubscribe;
+  onMount(() => {
+    unsubscribe = wizardStore.subscribe(value => {
       state = value;
     });
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   });
 
   // Image validation
@@ -96,7 +105,7 @@
         uploadError = uploadResult.error;
         wizardStore.updateProfileImage(null);
       }
-    } catch (error) {
+    } catch {
       uploadError = 'Upload failed. Please try again.';
       wizardStore.updateProfileImage(null);
     } finally {

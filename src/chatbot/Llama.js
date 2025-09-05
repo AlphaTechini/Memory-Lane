@@ -15,8 +15,7 @@ export async function main() {
   const response = await client.path("/chat/completions").post({
     body: {
       messages: [
-        { role:"system", content: "You are a helpful assistant." },
-        { role:"user", content: "What is the capital of France?" }
+        { role:"system", content: "You are a helpful assistant. You specialize in documenting and organizing raw input text to markdown or a clean format" },
       ],
       temperature: 1.0,
       top_p: 1.0,

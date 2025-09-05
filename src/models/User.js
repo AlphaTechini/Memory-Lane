@@ -58,8 +58,32 @@ const userSchema = new mongoose.Schema({
   passwordResetExpires: {
     type: Date
   },
-  // Gallery images
-  gallery: [{
+  // Gallery albums
+  albums: [{
+    name: {
+      type: String,
+      required: true
+    },
+    description: {
+      type: String,
+      required: true
+    },
+    dateOfMemory: {
+      type: Date,
+      required: true
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    photos: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Photo'
+    }]
+  }],
+  
+  // Gallery photos (standalone photos not in albums)
+  photos: [{
     imageUrl: {
       type: String,
       required: true
@@ -67,6 +91,16 @@ const userSchema = new mongoose.Schema({
     imageId: {
       type: String,
       required: true
+    },
+    originalName: {
+      type: String
+    },
+    description: {
+      type: String
+    },
+    albumId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Album'
     },
     uploadedAt: {
       type: Date,
@@ -170,7 +204,7 @@ userSchema.statics.findByEmail = function(email) {
 };
 
 // Index for better performance
-userSchema.index({ email: 1 });
+// userSchema.index({ email: 1 }); // Removed to prevent duplicate index warning; unique constraint is already set in schema
 userSchema.index({ createdAt: 1 });
 
 const User = mongoose.model('User', userSchema);

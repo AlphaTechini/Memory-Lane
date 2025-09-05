@@ -227,7 +227,9 @@ async function authRoutes(fastify, options) {
    */
   fastify.post('/auth/signup', { schema: signupSchema }, async (request, reply) => {
     try {
+      fastify.log.info('Signup request body:', request.body);
       const result = await authService.signUp(request.body);
+      fastify.log.info('Signup result:', result);
       
       if (result.success) {
         reply.code(201).send(result);

@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { wizardStore } from '$lib/stores/wizardStore.js';
-  import { protectRoute } from '$lib/auth.js';
+  import { requireAuthForAction, checkAuthStatus } from '$lib/auth.js';
   
   import Step1Basics from '$lib/components/wizard/Step1Basics.svelte';
   import Step2RequiredQuestions from '$lib/components/wizard/Step2RequiredQuestions.svelte';
@@ -10,17 +10,31 @@
   import Step5ProfileImage from '$lib/components/wizard/Step5ProfileImage.svelte';
   import Step6ReviewSubmit from '$lib/components/wizard/Step6ReviewSubmit.svelte';
 
-  let state = $state();
+  let state = $state({
+    currentStep: 1,
+    basics: {},
+    requiredAnswers: {},
+    optionalAnswers: {},
+    selectedSegments: []
+  });
+  let isAuthenticated = $state(false);
 
-  $effect(() => {
-    return wizardStore.subscribe(value => {
+  // Subscribe to wizard store
+  let unsubscribe;
+  onMount(() => {
+    isAuthenticated = checkAuthStatus();
+    if (isAuthenticated) {
+      wizardStore.loadFromStorage && wizardStore.loadFromStorage();
+    }
+    
+    // Subscribe to wizard store changes
+    unsubscribe = wizardStore.subscribe(value => {
       state = value;
     });
-  });
-
-  onMount(() => {
-    protectRoute();
-    wizardStore.loadFromStorage();
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   });
 
   const steps = [
@@ -33,16 +47,19 @@
   ];
 
   function goToStep(stepNumber) {
+    if (!requireAuthForAction('create and customize your replica')) return;
     wizardStore.setCurrentStep(stepNumber);
   }
 
   function nextStep() {
+    if (!requireAuthForAction('proceed to the next step')) return;
     if (state.currentStep < 6) {
       wizardStore.setCurrentStep(state.currentStep + 1);
     }
   }
 
   function previousStep() {
+    if (!requireAuthForAction('go back to the previous step')) return;
     if (state.currentStep > 1) {
       wizardStore.setCurrentStep(state.currentStep - 1);
     }
@@ -89,16 +106,23 @@
       <p class="text-gray-600 dark:text-gray-400">
         Build an AI that thinks and responds like you
       </p>
+      {#if !isAuthenticated}
+        <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <p class="text-sm text-blue-700 dark:text-blue-300">
+            🔍 You're in preview mode. <a href="/login" class="underline hover:text-blue-800 dark:hover:text-blue-200">Log in</a> to create your personal AI replica.
+          </p>
+        </div>
+      {/if}
     </div>
 
     <!-- Progress Bar -->
     <div class="mb-8">
       <div class="flex justify-between items-center mb-4">
-        {#each steps as step}
+        {#each steps as step (step.number)}
           <div class="flex flex-col items-center flex-1">
             <button
               onclick={() => canProceedToStep(step.number) && goToStep(step.number)}
-              class="w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-colors mb-2
+              class="w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-colors mb-2 relative
                 {getStepStatus(step.number) === 'completed' 
                   ? 'bg-green-600 border-green-600 text-white' 
                   : getStepStatus(step.number) === 'current'
@@ -108,6 +132,15 @@
                   : 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'}"
               disabled={!canProceedToStep(step.number)}
             >
+              {#if !isAuthenticated}
+                <!-- Lock overlay for non-authenticated users -->
+                <div class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center">
+                  <svg class="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+              {/if}
+              
               {#if getStepStatus(step.number) === 'completed'}
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -137,11 +170,19 @@
     <!-- Step Content -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 min-h-96">
       {#if state}
-        {#each steps as step}
-          {#if step.number === state.currentStep}
-            <svelte:component this={step.component} />
-          {/if}
-        {/each}
+        {#if state.currentStep === 1}
+          <Step1Basics />
+        {:else if state.currentStep === 2}
+          <Step2RequiredQuestions />
+        {:else if state.currentStep === 3}
+          <Step3ChooseSegments />
+        {:else if state.currentStep === 4}
+          <Step4OptionalQuestions />
+        {:else if state.currentStep === 5}
+          <Step5ProfileImage />
+        {:else if state.currentStep === 6}
+          <Step6ReviewSubmit />
+        {/if}
       {/if}
     </div>
 

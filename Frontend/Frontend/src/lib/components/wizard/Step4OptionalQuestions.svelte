@@ -1,26 +1,36 @@
 <script>
+  import { onMount } from 'svelte';
   import { wizardStore } from '$lib/stores/wizardStore.js';
   import { getQuestionsBySegments, OPTIONAL_SEGMENTS } from '$lib/questionBank.js';
 
-  let state = $state();
+  let state = $state({
+    selectedSegments: [],
+    optionalAnswers: {}
+  });
   let currentQuestionIndex = $state(0);
   let filterBySegment = $state('all');
   
-  $effect(() => {
-    return wizardStore.subscribe(value => {
+  // Subscribe to wizard store
+  let unsubscribe;
+  onMount(() => {
+    unsubscribe = wizardStore.subscribe(value => {
       state = value;
     });
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   });
 
   // Get questions for selected segments
-  $derived questions = getQuestionsBySegments(state?.selectedSegments || []);
+  let questions = $derived(getQuestionsBySegments(state?.selectedSegments || []));
   
   // Filter questions
-  $derived filteredQuestions = filterBySegment === 'all' 
+  let filteredQuestions = $derived(filterBySegment === 'all' 
     ? questions 
-    : questions.filter(q => q.segment === filterBySegment);
+    : questions.filter(q => q.segment === filterBySegment));
 
-  $derived currentQuestion = filteredQuestions[currentQuestionIndex];
+  let currentQuestion = $derived(filteredQuestions[currentQuestionIndex]);
 
   function updateAnswer(questionId, value) {
     wizardStore.updateOptionalAnswer(questionId, value);
@@ -39,12 +49,6 @@
     const total = questions.length;
     const answered = questions.filter(q => isQuestionAnswered(q.id)).length;
     return { answered, total, remaining: Math.max(0, 40 - answered) };
-  }
-
-  function goToQuestion(index) {
-    if (index >= 0 && index < filteredQuestions.length) {
-      currentQuestionIndex = index;
-    }
   }
 
   function nextQuestion() {
@@ -122,7 +126,7 @@
         class="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
       >
         <option value="all">All Categories ({questions.length})</option>
-        {#each (state?.selectedSegments || []) as segmentKey}
+        {#each (state?.selectedSegments || []) as segmentKey (segmentKey)}
           <option value={segmentKey}>
             {getSegmentName(segmentKey)} ({getSegmentQuestions(segmentKey).length})
           </option>
@@ -222,7 +226,7 @@
   <div class="mt-8">
     <h3 class="font-medium text-gray-900 dark:text-gray-100 mb-4">Progress by Category</h3>
     <div class="space-y-3">
-      {#each (state?.selectedSegments || []) as segmentKey}
+      {#each (state?.selectedSegments || []) as segmentKey (segmentKey)}
         {@const stats = getSegmentStats(segmentKey)}
         <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
           <div>

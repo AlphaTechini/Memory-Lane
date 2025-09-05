@@ -8,13 +8,15 @@ const STORAGE_KEY = 'replica_wizard_state';
 // Initial state
 function createInitialState() {
   return {
-    // Basic info
-    name: '',
-    description: '',
-    consent: false,
-    
     // Current step
     currentStep: 1,
+    
+    // Basic info
+    basics: {
+      name: '',
+      description: '',
+      consent: false
+    },
     
     // Answers
     requiredAnswers: {},
@@ -92,7 +94,7 @@ export const wizardStore = {
   canProceedToStep: (step, $state) => {
     switch (step) {
       case 2:
-        return $state.name.trim() && $state.description.trim() && $state.consent;
+        return $state.basics?.name?.trim() && $state.basics?.description?.trim() && $state.basics?.consent;
       case 3:
         return Object.keys($state.requiredAnswers).length === REQUIRED_QUESTIONS.length;
       case 4:
@@ -109,7 +111,7 @@ export const wizardStore = {
   isStepValid: (step, $state) => {
     switch (step) {
       case 1:
-        return $state.name.trim() && $state.description.trim() && $state.consent;
+        return $state.basics?.name?.trim() && $state.basics?.description?.trim() && $state.basics?.consent;
       case 2:
         return Object.keys($state.requiredAnswers).length === REQUIRED_QUESTIONS.length &&
                REQUIRED_QUESTIONS.every(q => {
@@ -144,9 +146,12 @@ export const wizardStore = {
   updateBasics: (data) => {
     state.update(s => ({
       ...s,
-      name: data.name !== undefined ? data.name : s.name,
-      description: data.description !== undefined ? data.description : s.description,
-      consent: data.consent !== undefined ? data.consent : s.consent
+      basics: {
+        ...s.basics,
+        name: data.name !== undefined ? data.name : s.basics.name,
+        description: data.description !== undefined ? data.description : s.basics.description,
+        consent: data.consent !== undefined ? data.consent : s.basics.consent
+      }
     }));
   },
   
@@ -260,6 +265,20 @@ export const wizardStore = {
     state.set(createInitialState());
     if (browser) {
       localStorage.removeItem(STORAGE_KEY);
+    }
+  },
+  
+  loadFromStorage: () => {
+    if (browser) {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsedState = JSON.parse(saved);
+          state.set({ ...createInitialState(), ...parsedState });
+        } catch (e) {
+          console.warn('Failed to load wizard state from localStorage:', e);
+        }
+      }
     }
   },
   

@@ -1,12 +1,23 @@
 <script>
+  import { onMount } from 'svelte';
   import { wizardStore } from '$lib/stores/wizardStore.js';
 
-  let state = $state();
+  let state = $state({
+    name: '',
+    description: '',
+    consent: false
+  });
   
-  $effect(() => {
-    return wizardStore.subscribe(value => {
+  // Subscribe to wizard store
+  let unsubscribe;
+  onMount(() => {
+    unsubscribe = wizardStore.subscribe(value => {
       state = value;
     });
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   });
 
   function updateName(value) {
@@ -37,7 +48,7 @@
       <input
         type="text"
         id="replicaName"
-        value={state?.name || ''}
+        value={state?.basics?.name || ''}
         oninput={(e) => updateName(e.target.value)}
         required
         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
@@ -55,7 +66,7 @@
       </label>
       <textarea
         id="description"
-        value={state?.description || ''}
+        value={state?.basics?.description || ''}
         oninput={(e) => updateDescription(e.target.value)}
         required
         rows="4"
@@ -73,7 +84,7 @@
         <input
           type="checkbox"
           id="consent"
-          checked={state?.consent || false}
+          checked={state?.basics?.consent || false}
           onchange={(e) => updateConsent(e.target.checked)}
           class="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
         />

@@ -42,28 +42,6 @@
   let selectedImage = $state(null);
   let showUploadModal = $state(false);
 
-  function handleFileSelect(event) {
-    const files = Array.from(event.target.files);
-    files.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          galleryStore.addImage({
-            name: file.name,
-            url: e.target.result,
-            size: file.size,
-            type: file.type
-          });
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-    
-    // Reset file input
-    if (fileInput) fileInput.value = '';
-    showUploadModal = false;
-  }
-
   function openFileDialog() {
     fileInput?.click();
   }
@@ -253,4 +231,22 @@
         aria-label="Close image"
       ></button>
       
-      <div class="relative z-
+      <div class="relative z-10 max-w-4xl mx-auto p-4">
+        <img
+          src={selectedImage.src}
+          alt={selectedImage.alt}
+          class="max-w-full max-h-screen object-contain mx-auto"
+        />
+        <div class="text-center mt-4">
+          <h3 class="text-white text-lg font-semibold">{selectedImage.alt}</h3>
+          <button
+            onclick={closeImageModal}
+            class="mt-2 px-4 py-2 bg-white text-gray-900 rounded-md hover:bg-gray-100"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+</div>

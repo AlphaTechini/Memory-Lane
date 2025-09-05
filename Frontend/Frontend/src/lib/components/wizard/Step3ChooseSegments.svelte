@@ -1,13 +1,22 @@
 <script>
+  import { onMount } from 'svelte';
   import { wizardStore } from '$lib/stores/wizardStore.js';
   import { OPTIONAL_SEGMENTS } from '$lib/questionBank.js';
 
-  let state = $state();
+  let state = $state({
+    selectedSegments: []
+  });
   
-  $effect(() => {
-    return wizardStore.subscribe(value => {
+  // Subscribe to wizard store
+  let unsubscribe;
+  onMount(() => {
+    unsubscribe = wizardStore.subscribe(value => {
       state = value;
     });
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   });
 
   function toggleSegment(segmentKey) {
@@ -120,7 +129,7 @@
           <div class="text-xs text-gray-500 dark:text-gray-400">
             <div class="font-medium mb-1">Sample questions:</div>
             <ul class="space-y-1">
-              {#each segment.questions.slice(0, 2) as question}
+              {#each segment.questions.slice(0, 2) as question (question.id)}
                 <li class="line-clamp-1">• {question.text}</li>
               {/each}
               {#if segment.questions.length > 2}
@@ -171,7 +180,7 @@
     <div class="mt-6">
       <h3 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Selected Categories:</h3>
       <div class="flex flex-wrap gap-2">
-        {#each (state?.selectedSegments || []) as segmentKey}
+        {#each (state?.selectedSegments || []) as segmentKey (segmentKey)}
           <span class="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm rounded-full">
             {OPTIONAL_SEGMENTS[segmentKey].name}
             <span class="text-blue-600 dark:text-blue-400">

@@ -3,7 +3,6 @@
   import '../app.css';
   import { browser } from '$app/environment';
   import { page } from '$app/stores';
-  import { goto } from '$app/navigation';
   import { theme } from '$lib/stores/theme.js';
   import Navigation from '$lib/components/Navigation.svelte';
 

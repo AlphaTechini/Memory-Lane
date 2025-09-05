@@ -73,7 +73,7 @@
       } else {
         error = data.message || 'Signup failed';
       }
-    } catch (err) {
+    } catch {
       error = 'Network error. Please try again.';
     } finally {
       loading = false;
@@ -261,13 +261,30 @@
 
         <!-- Footer Links -->
         <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 rounded-b-lg">
-          <div class="text-center">
+          <div class="text-center space-y-3">
             <p class="text-sm text-gray-600 dark:text-gray-400">
               Already have an account?
               <a href="/login" class="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
                 Sign in
               </a>
             </p>
+            
+            <!-- Explore Without Signup -->
+            <div class="border-t border-gray-200 dark:border-gray-600 pt-3">
+              <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                Want to explore first?
+              </p>
+              <button
+                onclick={() => goto('/dashboard')}
+                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+                Explore without signup
+              </button>
+            </div>
           </div>
         </div>
       </div>

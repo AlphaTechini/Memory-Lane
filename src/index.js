@@ -1,8 +1,9 @@
+// Load environment variables BEFORE any other imports that might read them
+import './config/loadEnv.js';
 import fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import multipart from '@fastify/multipart';
-import dotenv from 'dotenv';
 import replicaRoutes from './routes/replicaApi.js';
 import authRoutes from './routes/authRoutes.js';
 import galleryRoutes from './routes/galleryRoutes.js';
@@ -10,8 +11,7 @@ import replicaImageRoutes from './routes/replicaImageRoutes.js';
 import genericChatRoutes from './routes/genericChatRoutes.js';
 import databaseConfig from './config/database.js';
 
-// Load environment variables
-dotenv.config();
+// (dotenv already loaded via loadEnv.js)
 
 // Create Fastify instance
 const server = fastify({

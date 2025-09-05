@@ -1,14 +1,23 @@
 <script>
+  import { onMount } from 'svelte';
   import { wizardStore } from '$lib/stores/wizardStore.js';
   import { REQUIRED_QUESTIONS } from '$lib/questionBank.js';
 
-  let state = $state();
+  let state = $state({
+    requiredAnswers: {}
+  });
   let expandedQuestion = $state(null);
   
-  $effect(() => {
-    return wizardStore.subscribe(value => {
+  // Subscribe to wizard store
+  let unsubscribe;
+  onMount(() => {
+    unsubscribe = wizardStore.subscribe(value => {
       state = value;
     });
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   });
 
   function updateAnswer(questionId, value) {

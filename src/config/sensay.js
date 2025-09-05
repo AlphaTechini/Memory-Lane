@@ -2,11 +2,20 @@
  * Enhanced Sensay API configuration with proper headers and endpoints
  */
 
-const organizationSecret = process.env.SENSAY_ORGANIZATION_SECRET || 'placeholder-secret';
+const rawOrgSecret = process.env.SENSAY_ORGANIZATION_SECRET;
+const PLACEHOLDERS = new Set(['placeholder-secret', 'your-sensay-organization-secret', '']);
+const allowPlaceholder = process.env.SENSAY_ALLOW_PLACEHOLDER === 'true';
+let organizationSecret = rawOrgSecret && (!PLACEHOLDERS.has(rawOrgSecret) || allowPlaceholder) ? rawOrgSecret : null;
 const apiVersion = process.env.SENSAY_API_VERSION || 'v1';
 
-if (!process.env.SENSAY_ORGANIZATION_SECRET) {
-  console.warn("⚠️ SENSAY_ORGANIZATION_SECRET not set. Sensay features will be limited.");
+if (!organizationSecret) {
+  console.warn('⚠️ SENSAY_ORGANIZATION_SECRET not properly configured (value is missing or placeholder). Sensay features will be limited.');
+} else {
+  if (PLACEHOLDERS.has(rawOrgSecret) && allowPlaceholder) {
+    console.warn('⚠️ Using placeholder SENSAY_ORGANIZATION_SECRET because SENSAY_ALLOW_PLACEHOLDER=true. Do NOT use this in production.');
+  } else if (process.env.NODE_ENV !== 'production') {
+    console.log('🔐 SENSAY_ORGANIZATION_SECRET loaded (length:', organizationSecret.length, ')');
+  }
 }
 
 /**
@@ -14,6 +23,7 @@ if (!process.env.SENSAY_ORGANIZATION_SECRET) {
  */
 export const sensayConfig = {
   organizationSecret,
+  isConfigured: Boolean(organizationSecret),
   apiVersion,
   baseUrl: "https://api.sensay.io", // Updated to actual Sensay API endpoint
   endpoints: {

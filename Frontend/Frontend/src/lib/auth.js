@@ -26,6 +26,7 @@ export function logout() {
   
   localStorage.removeItem('authToken');
   localStorage.removeItem('userEmail');
+  localStorage.removeItem('userData');
   goto('/login');
 }
 
@@ -35,11 +36,14 @@ export function logout() {
 export async function apiCall(endpoint, options = {}) {
   const token = getAuthToken();
   
+  // Don't set Content-Type for FormData - let browser handle it
+  const isFormData = options.body instanceof FormData;
+  
   const config = {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...(!isFormData && { 'Content-Type': 'application/json' }),
       ...options.headers
     }
   };
@@ -70,12 +74,29 @@ export async function verifyAuth() {
     return null;
   }
   
+  // Try to get cached user data first
   try {
-    const response = await apiCall('/auth/verify');
+    const cachedUser = localStorage.getItem('userData');
+    if (cachedUser) {
+      const user = JSON.parse(cachedUser);
+      // Return cached data immediately - only verify token if there's an actual error
+      return user;
+    }
+  } catch {
+    localStorage.removeItem('userData');
+  }
+  
+  // Only make API call if no cached data exists
+  try {
+    const response = await apiCall('/auth/me');
     
     if (response.ok) {
       const data = await response.json();
-      return data.success ? data.data.user : null;
+      if (data.success) {
+        // Cache the user data - note: /auth/me returns user directly, not data.user
+        localStorage.setItem('userData', JSON.stringify(data.user));
+        return data.user;
+      }
     }
     
     return null;
@@ -104,4 +125,29 @@ export async function protectRoute() {
   }
   
   return true;
+}
+
+/**
+ * Soft protection - redirects to login if not authenticated
+ * Can optionally store a redirect URL to come back to after login
+ */
+export function requireAuthForAction(redirectAfterLogin = null) {
+  if (!browser) return false;
+  
+  if (!isAuthenticated()) {
+    // Store where to redirect after login (optional)
+    if (redirectAfterLogin) {
+      localStorage.setItem('redirectAfterLogin', redirectAfterLogin);
+    }
+    goto('/login');
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Check if user is authenticated without redirecting
+ */
+export function checkAuthStatus() {
+  return isAuthenticated();
 }

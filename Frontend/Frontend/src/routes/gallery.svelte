@@ -1,5 +1,5 @@
 <script>
-  import { writable, derived } from 'svelte/store';
+  import { writable } from 'svelte/store';
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
@@ -276,7 +276,7 @@
     }
   });
 </script>
-</script>
+
 <svelte:head>
   <title>Gallery - Sensay AI</title>
 </svelte:head>
@@ -384,7 +384,7 @@
                   Selected Files ({selectedFiles.length})
                 </h4>
                 <ul class="space-y-1">
-                  {#each selectedFiles as file}
+                  {#each selectedFiles as file (file.name)}
                     <li class="text-sm text-gray-600 dark:text-gray-400">
                       {file.name} ({formatFileSize(file.size)})
                     </li>
@@ -449,10 +449,17 @@
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
             {#each $galleryImages as image (image.imageId)}
               <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden group">
-                <div class="aspect-square bg-gray-100 dark:bg-gray-700 cursor-pointer relative" onclick={() => openImageModal(image)}>
+                <div 
+                  class="aspect-square bg-gray-100 dark:bg-gray-700 cursor-pointer relative" 
+                  onclick={() => openImageModal(image)}
+                  role="button"
+                  tabindex="0"
+                  aria-label="View image"
+                  onkeydown={(e) => e.key === 'Enter' && openImageModal(image)}
+                >
                   <img 
                     src={image.imageUrl} 
-                    alt="Gallery image"
+                    alt="Gallery photo"
                     class="w-full h-full object-cover transition-transform group-hover:scale-105"
                   />
                   <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200"></div>
@@ -481,12 +488,21 @@
 
   <!-- Image Modal -->
   {#if selectedImageModal}
-    <div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onclick={closeImageModal}>
-      <div class="bg-white dark:bg-gray-800 rounded-lg max-w-4xl max-h-full overflow-auto" onclick={(e) => e.stopPropagation()}>
+    <div 
+      class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" 
+      onclick={closeImageModal}
+      role="dialog"
+      aria-label="Image viewer"
+    >
+      <div 
+        class="bg-white dark:bg-gray-800 rounded-lg max-w-4xl max-h-full overflow-auto" 
+        onclick={(e) => e.stopPropagation()}
+        role="document"
+      >
         <div class="p-4">
           <img 
             src={selectedImageModal.imageUrl} 
-            alt="Gallery image"
+            alt={selectedImageModal.description || 'Photo'}
             class="w-full h-auto max-h-[70vh] object-contain"
           />
           

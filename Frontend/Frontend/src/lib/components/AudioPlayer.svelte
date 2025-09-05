@@ -19,17 +19,10 @@
   function handleEnded() { isPlaying = false; currentTime = 0; }
   function handlePlay() { isPlaying = true; }
   function handlePause() { isPlaying = false; }
-
-  function formatTime(seconds) {
-    if (isNaN(seconds)) return '0:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }
 </script>
 
 <div class="flex items-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-lg p-2">
-  <button on:click={togglePlay} class="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300" aria-label={isPlaying ? 'Pause audio' : 'Play audio'}>
+  <button onclick={togglePlay} class="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300" aria-label={isPlaying ? 'Pause audio' : 'Play audio'}>
     {#if isPlaying}
       <!-- Pause icon -->
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -54,11 +47,11 @@
     src={url}
     preload="metadata"
     {autoplay}
-    on:timeupdate={handleTimeUpdate}
-    on:loadedmetadata={handleLoadedMetadata}
-    on:ended={handleEnded}
-    on:play={handlePlay}
-    on:pause={handlePause}
+    ontimeupdate={handleTimeUpdate}
+    onloadedmetadata={handleLoadedMetadata}
+    onended={handleEnded}
+    onplay={handlePlay}
+    onpause={handlePause}
     class="hidden"
   ></audio>
 </div>

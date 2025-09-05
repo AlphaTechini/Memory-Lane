@@ -64,22 +64,33 @@
       if (response.ok && data.success) {
         success = 'Email verified successfully! Redirecting...';
         
-        // Store token if provided
-        if (data.data?.token) {
-          localStorage.setItem('authToken', data.data.token);
+        // Store token and user data
+        if (data.token) {
+          localStorage.setItem('authToken', data.token);
+        }
+        
+        // Store user data for immediate availability
+        if (data.user) {
+          localStorage.setItem('userData', JSON.stringify(data.user));
         }
         
         // Clear email from storage
         localStorage.removeItem('userEmail');
         
-        // Redirect to dashboard after a short delay
+        // Redirect to intended destination or dashboard
         setTimeout(() => {
-          goto('/dashboard');
-        }, 2000);
+          const redirectTo = localStorage.getItem('redirectAfterLogin');
+          if (redirectTo) {
+            localStorage.removeItem('redirectAfterLogin');
+            goto(redirectTo);
+          } else {
+            goto('/dashboard');
+          }
+        }, 1500);
       } else {
         error = data.message || 'Verification failed';
       }
-    } catch (err) {
+    } catch {
       error = 'Network error. Please try again.';
     } finally {
       loading = false;
@@ -114,7 +125,7 @@
       } else {
         error = data.message || 'Failed to resend code';
       }
-    } catch (err) {
+    } catch {
       error = 'Network error. Please try again.';
     } finally {
       resendLoading = false;

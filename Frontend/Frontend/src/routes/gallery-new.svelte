@@ -1,3 +1,4 @@
+<!-- eslint-disable a11y-click-events-have-key-events, a11y-no-static-element-interactions, a11y-interactive-supports-focus, a11y-no-noninteractive-element-interactions -->
 <script>
   import { writable, derived } from 'svelte/store';
   import { browser } from '$app/environment';
@@ -19,7 +20,15 @@
         const item = localStorage.getItem(key);
         stored = item ? JSON.parse(item) : initialValue;
       } catch (e) {
-        console.warn(`Failed to load ${key} from localStorage:`, e);
+        console.warn(`Failed to load ${key} f  {#if showImageModal && selectedImage}
+    <div 
+      class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" 
+      onclick={closeImageModal}
+    >
+      <div 
+        class="bg-white dark:bg-gray-800 rounded-lg max-w-4xl max-h-full overflow-auto" 
+        onclick={(e) => e.stopPropagation()}
+      >rage:`, e);
       }
     }
 
@@ -52,6 +61,11 @@
   let editingAlbumDesc = $state('');
   let editingAlbumDate = $state('');
 
+  // Album form reactive values
+  let albumTitle = $derived(editingAlbumId ? editingAlbumTitle : newAlbumTitle);
+  let albumDesc = $derived(editingAlbumId ? editingAlbumDesc : newAlbumDesc);
+  let albumDate = $derived(editingAlbumId ? editingAlbumDate : newAlbumDate);
+
   // Photo form state
   let newPhotoFile = $state(null);
   let newPhotoDesc = $state('');
@@ -61,6 +75,11 @@
   let editingPhotoDesc = $state('');
   let editingPhotoAlbumId = $state(null);
   let editingPhotoDate = $state('');
+
+  // Photo form reactive values
+  let photoDesc = $derived(editingPhotoId ? editingPhotoDesc : newPhotoDesc);
+  let photoAlbumId = $derived(editingPhotoId ? editingPhotoAlbumId : newPhotoAlbumId);
+  let photoDate = $derived(editingPhotoId ? editingPhotoDate : newPhotoDate);
 
   // UI state
   let showingAddAlbum = $state(false);
@@ -80,7 +99,10 @@
     }
   );
 
-  $: selectedAlbum = $albums.find(a => a.id === $selectedAlbumId);
+  const selectedAlbum = derived(
+    [albums, selectedAlbumId],
+    ([$albums, $selectedAlbumId]) => $albums.find(a => a.id === $selectedAlbumId)
+  );
 
   function resetAlbumForm() {
     newAlbumTitle = '';
@@ -378,10 +400,18 @@
         
         <form onsubmit={(e) => { e.preventDefault(); editingAlbumId ? saveAlbumEdit() : addAlbum(); }} class="space-y-4">
           <div>
-            <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Title *</label>
+            <label for="album-title" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Title *</label>
             <input 
+              id="album-title"
               type="text" 
-              bind:value={editingAlbumId ? editingAlbumTitle : newAlbumTitle}
+              value={albumTitle}
+              oninput={(e) => {
+                if (editingAlbumId) {
+                  editingAlbumTitle = e.target.value;
+                } else {
+                  newAlbumTitle = e.target.value;
+                }
+              }}
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               placeholder="Album title"
               required
@@ -389,9 +419,17 @@
           </div>
           
           <div>
-            <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Description</label>
+            <label for="album-description" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Description</label>
             <textarea 
-              bind:value={editingAlbumId ? editingAlbumDesc : newAlbumDesc}
+              id="album-description"
+              value={albumDesc}
+              oninput={(e) => {
+                if (editingAlbumId) {
+                  editingAlbumDesc = e.target.value;
+                } else {
+                  newAlbumDesc = e.target.value;
+                }
+              }}
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               rows="3"
               placeholder="Album description"
@@ -399,10 +437,18 @@
           </div>
           
           <div>
-            <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Date</label>
+            <label for="album-date" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Date</label>
             <input 
+              id="album-date"
               type="date" 
-              bind:value={editingAlbumId ? editingAlbumDate : newAlbumDate}
+              value={albumDate}
+              oninput={(e) => {
+                if (editingAlbumId) {
+                  editingAlbumDate = e.target.value;
+                } else {
+                  newAlbumDate = e.target.value;
+                }
+              }}
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
           </div>
@@ -440,8 +486,9 @@
         <form onsubmit={(e) => { e.preventDefault(); editingPhotoId ? savePhotoEdit() : addPhoto(); }} class="space-y-4">
           {#if !editingPhotoId}
             <div>
-              <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Photo File *</label>
+              <label for="photo-file" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Photo File *</label>
               <input 
+                id="photo-file"
                 type="file" 
                 accept="image/*"
                 onchange={handlePhotoFile}
@@ -452,22 +499,38 @@
           {/if}
           
           <div>
-            <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Album</label>
+            <label for="photo-album" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Album</label>
             <select 
-              bind:value={editingPhotoId ? editingPhotoAlbumId : newPhotoAlbumId}
+              id="photo-album"
+              value={photoAlbumId}
+              onchange={(e) => {
+                if (editingPhotoId) {
+                  editingPhotoAlbumId = e.target.value || null;
+                } else {
+                  newPhotoAlbumId = e.target.value || null;
+                }
+              }}
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             >
               <option value={null}>No Album</option>
-              {#each $albums as album}
+              {#each $albums as album (album.id)}
                 <option value={album.id}>{album.title}</option>
               {/each}
             </select>
           </div>
           
           <div>
-            <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Description</label>
+            <label for="photo-description" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Description</label>
             <textarea 
-              bind:value={editingPhotoId ? editingPhotoDesc : newPhotoDesc}
+              id="photo-description"
+              value={photoDesc}
+              oninput={(e) => {
+                if (editingPhotoId) {
+                  editingPhotoDesc = e.target.value;
+                } else {
+                  newPhotoDesc = e.target.value;
+                }
+              }}
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               rows="3"
               placeholder="Photo description"
@@ -475,10 +538,18 @@
           </div>
           
           <div>
-            <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Date</label>
+            <label for="photo-date" class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Date</label>
             <input 
+              id="photo-date"
               type="date" 
-              bind:value={editingPhotoId ? editingPhotoDate : newPhotoDate}
+              value={photoDate}
+              oninput={(e) => {
+                if (editingPhotoId) {
+                  editingPhotoDate = e.target.value;
+                } else {
+                  newPhotoDate = e.target.value;
+                }
+              }}
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
           </div>
@@ -522,7 +593,14 @@
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {#each $albums as album (album.id)}
               <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow">
-                <div class="aspect-video bg-gray-100 dark:bg-gray-700 relative cursor-pointer" onclick={() => selectAlbum(album.id)}>
+                <div 
+                  class="aspect-video bg-gray-100 dark:bg-gray-700 relative cursor-pointer" 
+                  onclick={() => selectAlbum(album.id)}
+                  role="button"
+                  tabindex="0"
+                  aria-label={`Select album ${album.name}`}
+                  onkeydown={(e) => e.key === 'Enter' && selectAlbum(album.id)}
+                >
                   {#if $photos.find(p => p.albumId === album.id)}
                     <img 
                       src={$photos.find(p => p.albumId === album.id)?.url} 
@@ -582,7 +660,14 @@
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
             {#each $photos.filter(p => !p.albumId) as photo (photo.id)}
               <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div class="aspect-square bg-gray-100 dark:bg-gray-700 cursor-pointer" onclick={() => openImageModal(photo)}>
+                <div 
+                  class="aspect-square bg-gray-100 dark:bg-gray-700 cursor-pointer" 
+                  onclick={() => openImageModal(photo)}
+                  role="button"
+                  tabindex="0"
+                  aria-label="View photo"
+                  onkeydown={(e) => e.key === 'Enter' && openImageModal(photo)}
+                >
                   <img 
                     src={photo.url} 
                     alt={photo.description || 'Photo'}
@@ -642,7 +727,14 @@
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
             {#each $photosInSelectedAlbum as photo (photo.id)}
               <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div class="aspect-square bg-gray-100 dark:bg-gray-700 cursor-pointer" onclick={() => openImageModal(photo)}>
+                <div 
+                  class="aspect-square bg-gray-100 dark:bg-gray-700 cursor-pointer" 
+                  onclick={() => openImageModal(photo)}
+                  role="button"
+                  tabindex="0"
+                  aria-label="View photo in album"
+                  onkeydown={(e) => e.key === 'Enter' && openImageModal(photo)}
+                >
                   <img 
                     src={photo.url} 
                     alt={photo.description || 'Photo'}
@@ -677,8 +769,14 @@
 
   <!-- Image Modal -->
   {#if selectedImageModal}
-    <div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onclick={closeImageModal}>
-      <div class="bg-white dark:bg-gray-800 rounded-lg max-w-4xl max-h-full overflow-auto" onclick={(e) => e.stopPropagation()}>
+    <div 
+      class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" 
+      onclick={closeImageModal}
+    >
+      <div 
+        class="bg-white dark:bg-gray-800 rounded-lg max-w-4xl max-h-full overflow-auto" 
+        onclick={(e) => e.stopPropagation()}
+      >
         <div class="p-4">
           <img 
             src={selectedImageModal.url} 

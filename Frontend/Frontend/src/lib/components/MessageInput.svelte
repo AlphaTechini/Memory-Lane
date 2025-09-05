@@ -1,13 +1,8 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
-  import WebSearchButton from './WebSearchButton.svelte';
-
   let { 
     webSearchActive = false,
     onsend 
   } = $props();
-
-  const dispatch = createEventDispatcher();
   
   let value = $state('');
   let textarea = $state();
@@ -49,10 +44,6 @@
       event.preventDefault();
       handleSubmit(event);
     }
-  }
-
-  function handleWebSearchToggle(event) {
-    // This will be handled by the parent component
   }
 </script>
 

@@ -1,22 +1,33 @@
 <script>
+  import { onMount } from 'svelte';
   import { wizardStore } from '$lib/stores/wizardStore.js';
   import { REQUIRED_QUESTIONS, OPTIONAL_SEGMENTS } from '$lib/questionBank.js';
   import { goto } from '$app/navigation';
 
-  let state = $state();
+  let state = $state({
+    basics: {},
+    requiredAnswers: {},
+    optionalAnswers: {},
+    selectedSegments: []
+  });
   let isSubmitting = $state(false);
   let submitError = $state(null);
-  let editingSection = $state(null);
-  let expandedAnswers = $state(new Set());
+  let expandedAnswers = $state([]);
   
-  $effect(() => {
-    return wizardStore.subscribe(value => {
+  // Subscribe to wizard store
+  let unsubscribe;
+  onMount(() => {
+    unsubscribe = wizardStore.subscribe(value => {
       state = value;
     });
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   });
 
   // Calculate submission readiness
-  $derived canSubmit = (() => {
+  let canSubmit = $derived(() => {
     if (!state) return false;
     
     const hasBasics = state.basics?.name?.trim() && state.basics?.description?.trim() && state.basics?.consent;
@@ -24,32 +35,29 @@
     const hasOptionalAnswers = Object.keys(state.optionalAnswers || {}).length >= 40;
     
     return hasBasics && hasRequiredAnswers && hasOptionalAnswers;
-  })();
+  });
 
-  $derived submissionStats = (() => {
+  let submissionStats = $derived(() => {
     const requiredCount = Object.keys(state?.requiredAnswers || {}).length;
     const optionalCount = Object.keys(state?.optionalAnswers || {}).length;
-    const coverageScore = wizardStore.calculateCoverageScore();
     
     return {
       requiredAnswers: requiredCount,
       optionalAnswers: optionalCount,
-      totalAnswers: requiredCount + optionalCount,
-      coverageScore: Math.round(coverageScore)
+      totalAnswers: requiredCount + optionalCount
     };
-  })();
+  });
 
   function getSegmentName(segmentKey) {
     return OPTIONAL_SEGMENTS[segmentKey]?.name || segmentKey;
   }
 
   function toggleAnswerExpansion(questionId) {
-    if (expandedAnswers.has(questionId)) {
-      expandedAnswers.delete(questionId);
+    if (expandedAnswers.includes(questionId)) {
+      expandedAnswers = expandedAnswers.filter(id => id !== questionId);
     } else {
-      expandedAnswers.add(questionId);
+      expandedAnswers = [...expandedAnswers, questionId];
     }
-    expandedAnswers = new Set(expandedAnswers);
   }
 
   function truncateText(text, maxLength = 150) {
@@ -58,7 +66,6 @@
   }
 
   function editSection(section) {
-    editingSection = section;
     wizardStore.setCurrentStep(section);
   }
 
@@ -95,7 +102,7 @@
         throw new Error(errorData.message || 'Failed to create replica');
       }
 
-      const result = await response.json();
+      await response.json();
       
       // Clear wizard state
       wizardStore.reset();
@@ -158,15 +165,15 @@
       </div>
       <div class="p-4 space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+          <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</span>
           <p class="text-gray-900 dark:text-gray-100">{state?.basics?.name || 'Not provided'}</p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+          <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</span>
           <p class="text-gray-900 dark:text-gray-100">{state?.basics?.description || 'Not provided'}</p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Consent</label>
+          <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Consent</span>
           <p class="text-gray-900 dark:text-gray-100">
             {state?.basics?.consent ? '✓ Provided' : '✗ Not provided'}
           </p>
@@ -224,13 +231,13 @@
       <div class="p-4">
         {#if Object.keys(state?.requiredAnswers || {}).length > 0}
           <div class="space-y-3">
-            {#each Object.entries(state.requiredAnswers) as [questionId, answer]}
+            {#each Object.entries(state.requiredAnswers) as [questionId, answer] (questionId)}
               <div class="border border-gray-100 dark:border-gray-700 rounded-lg p-3">
                 <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   {getRequiredQuestionText(questionId)}
                 </div>
                 <div class="text-gray-900 dark:text-gray-100">
-                  {#if expandedAnswers.has(questionId)}
+                  {#if expandedAnswers.includes(questionId)}
                     <p>{answer}</p>
                     <button
                       onclick={() => toggleAnswerExpansion(questionId)}
@@ -275,7 +282,7 @@
       <div class="p-4">
         {#if (state?.selectedSegments || []).length > 0}
           <div class="flex flex-wrap gap-2">
-            {#each state.selectedSegments as segmentKey}
+            {#each state.selectedSegments as segmentKey (segmentKey)}
               <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">
                 {getSegmentName(segmentKey)}
               </span>
@@ -308,7 +315,7 @@
           
           <!-- Category breakdown -->
           <div class="space-y-2">
-            {#each (state?.selectedSegments || []) as segmentKey}
+            {#each (state?.selectedSegments || []) as segmentKey (segmentKey)}
               {@const segmentAnswers = Object.entries(state?.optionalAnswers || {}).filter(([qId]) => 
                 qId.startsWith(segmentKey)
               ).length}

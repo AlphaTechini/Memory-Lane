@@ -2,23 +2,60 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { protectRoute } from '$lib/auth.js';
+  import { requireAuthForAction, checkAuthStatus, getAuthToken } from '$lib/auth.js';
   import MessageInput from '$lib/components/MessageInput.svelte';
 
   let userReplicas = $state([]);
   let selectedReplica = $state(null);
-  let isLoadingReplicas = $state(true);
+  let isLoadingReplicas = $state(false); // Changed default to false for non-auth users
   let chatMessages = $state([]);
   let isSendingMessage = $state(false);
+  let isAuthenticated = $state(false);
+
+  // Demo replicas for non-authenticated users
+  const demoReplicas = [
+    {
+      replicaId: 'demo-1',
+      name: 'Alex Chen',
+      description: 'A creative software developer passionate about AI and innovation',
+      profileImageUrl: null,
+      coverageScore: 85,
+      isActive: true,
+      isDemo: true
+    },
+    {
+      replicaId: 'demo-2', 
+      name: 'Dr. Sarah Johnson',
+      description: 'A research scientist specializing in machine learning and data science',
+      profileImageUrl: null,
+      coverageScore: 92,
+      isActive: true,
+      isDemo: true
+    },
+    {
+      replicaId: 'demo-3',
+      name: 'Marcus Rodriguez',
+      description: 'An entrepreneur and business strategist with expertise in startups',
+      profileImageUrl: null,
+      coverageScore: 78,
+      isActive: true,
+      isDemo: true
+    }
+  ];
 
   onMount(async () => {
-    protectRoute();
-    await loadUserReplicas();
+    isAuthenticated = checkAuthStatus();
+    if (isAuthenticated) {
+      await loadUserReplicas();
+    }
   });
 
   async function loadUserReplicas() {
+    if (!isAuthenticated) return;
+    
+    isLoadingReplicas = true;
     try {
-      const token = localStorage.getItem('authToken');
+      const token = getAuthToken();
       const response = await fetch('/api/user/replicas', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -39,6 +76,8 @@
   }
 
   function selectReplica(replica) {
+    if (!requireAuthForAction('chat with your replicas')) return;
+    
     selectedReplica = replica;
     chatMessages = [];
   }
@@ -63,10 +102,13 @@
     isSendingMessage = true;
 
     try {
-      const token = localStorage.getItem('authToken');
+      const token = getAuthToken();
       let response;
 
       if (selectedReplica) {
+        // Require auth for replica chat
+        if (!requireAuthForAction('chat with your replica')) return;
+        
         // Chat with specific replica
         response = await fetch(`/api/replicas/${selectedReplica.replicaId}/chat`, {
           method: 'POST',
@@ -83,12 +125,12 @@
           })
         });
       } else {
-        // Generic chat (fallback)
+        // Generic chat (no auth required)
         response = await fetch('/api/chat/generic', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            ...(token && { 'Authorization': `Bearer ${token}` })
           },
           body: JSON.stringify({
             message: text,
@@ -142,7 +184,10 @@
     <div class="p-4 border-b border-gray-200 dark:border-gray-700">
       <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Your Replicas</h2>
       <button
-        onclick={() => goto('/create-replicas')}
+        onclick={() => {
+          if (!requireAuthForAction('create a new replica')) return;
+          goto('/create-replicas');
+        }}
         class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
       >
         Create New Replica
@@ -156,6 +201,32 @@
           <svg class="animate-spin w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
           </svg>
+        </div>
+      {:else if !isAuthenticated}
+        <div class="text-center py-8">
+          <div class="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+            </svg>
+          </div>
+          <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Demo Mode</h3>
+          <p class="text-gray-600 dark:text-gray-400 mb-4">
+            You're viewing in demo mode. Log in to create and chat with your personal AI replicas.
+          </p>
+          <div class="space-y-2">
+            <button
+              onclick={() => goto('/login')}
+              class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Log In
+            </button>
+            <button
+              onclick={() => goto('/signup')}
+              class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              Sign Up
+            </button>
+          </div>
         </div>
       {:else if userReplicas.length === 0}
         <div class="text-center py-8">
@@ -173,9 +244,10 @@
             Create Your First Replica
           </button>
         </div>
-      {:else}
+      {:else if isAuthenticated}
+        <!-- Show user's actual replicas when authenticated -->
         <div class="space-y-4">
-          {#each userReplicas as replica}
+          {#each userReplicas as replica (replica.replicaId)}
             <button
               onclick={() => selectReplica(replica)}
               class="w-full p-4 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left
@@ -213,10 +285,52 @@
             </button>
           {/each}
         </div>
+      {:else}
+        <!-- Show demo replicas for non-authenticated users -->
+        <div class="space-y-4">
+          <div class="text-center py-4">
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Demo Replicas - Click to see what Sensay AI can do!
+            </p>
+          </div>
+          {#each demoReplicas as replica (replica.replicaId)}
+            <button
+              onclick={() => selectReplica(replica)}
+              class="w-full p-4 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left relative
+                {selectedReplica?.replicaId === replica.replicaId ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : ''}"
+            >
+              <!-- Demo overlay -->
+              <div class="absolute top-2 right-2">
+                <span class="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 text-xs rounded-full">
+                  Demo
+                </span>
+              </div>
+              
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-600 flex-shrink-0">
+                  <div class="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                  </div>
+                </div>
+                <div class="flex-1 min-w-0 pr-8">
+                  <h4 class="font-medium text-gray-900 dark:text-gray-100 truncate">{replica.name}</h4>
+                  <p class="text-sm text-gray-600 dark:text-gray-400 truncate">{replica.description}</p>
+                  <div class="flex items-center gap-2 mt-1">
+                    <span class="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded">
+                      {replica.coverageScore}% trained
+                    </span>
+                    <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                  </div>
+                </div>
+              </div>
+            </button>
+          {/each}
+        </div>
       {/if}
 
-      <!-- Generic Chat Option -->
-      {#if userReplicas.length > 0}
+      {#if (isAuthenticated && userReplicas.length > 0) || (!isAuthenticated && demoReplicas.length > 0)}
         <div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
           <button
             onclick={startGenericChat}
@@ -312,7 +426,7 @@
         </div>
       {:else}
         <div class="space-y-4">
-          {#each chatMessages as message}
+          {#each chatMessages as message (message.id)}
             <div class="flex {message.sender === 'user' ? 'justify-end' : 'justify-start'}">
               <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg {
                 message.sender === 'user' 
@@ -340,7 +454,7 @@
 
     <!-- Message Input -->
     <div class="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-      <MessageInput on:sendMessage={handleSendMessage} disabled={isSendingMessage} />
+  <MessageInput on:send={handleSendMessage} disabled={isSendingMessage} />
     </div>
   </div>
 </div>

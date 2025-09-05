@@ -6,66 +6,64 @@ import nodemailer from 'nodemailer';
 class EmailService {
   constructor() {
     this.transporter = null;
-    this.fromEmail = process.env.EMAIL_FROM || 'noreply@sensay.ai';
+    // Prefer explicit EMAIL_FROM; if absent fall back to SMTP user so it matches the authenticated account
+    this.fromEmail = process.env.EMAIL_FROM && process.env.EMAIL_FROM.trim() !== ''
+      ? process.env.EMAIL_FROM.trim()
+      : (process.env.EMAIL_SMTP_USER || 'noreply@sensay.ai');
+    console.log('📧 Initializing EmailService with real SMTP...');
     this.setupTransporter();
   }
 
   /**
-   * Setup email transporter based on environment
+   * Setup email transporter using real SMTP configuration
    */
   setupTransporter() {
-    // For development, use Ethereal Email (test email service)
-    // For production, use your actual SMTP service (Gmail, SendGrid, etc.)
-    
-    if (process.env.NODE_ENV === 'production') {
-      // Production configuration (Gmail example)
-      this.transporter = nodemailer.createTransporter({
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_SMTP_USER,
-          pass: process.env.EMAIL_SMTP_PASS // Use App Password for Gmail
-        }
-      });
-    } else {
-      // Development configuration - Ethereal Email for testing
-      this.setupEtherealEmail();
-    }
-  }
+  const host = process.env.EMAIL_SMTP_HOST;
+    const port = process.env.EMAIL_SMTP_PORT ? parseInt(process.env.EMAIL_SMTP_PORT, 10) : undefined;
+    const user = process.env.EMAIL_SMTP_USER;
+    const pass = process.env.EMAIL_SMTP_PASS;
+    const from = process.env.EMAIL_FROM || this.fromEmail;
 
-  /**
-   * Setup Ethereal Email for development testing
-   */
-  async setupEtherealEmail() {
-    try {
-      // Create a test account
-      const testAccount = await nodemailer.createTestAccount();
+    if (!user || !pass) {
+  console.warn('⚠️ EMAIL_SMTP_USER and EMAIL_SMTP_PASS not set. Email features will be disabled. (From will be mocked)');
       
-      this.transporter = nodemailer.createTransporter({
-        host: 'smtp.ethereal.email',
-        port: 587,
-        secure: false, // true for 465, false for other ports
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass
-        }
-      });
-
-      console.log('📧 Ethereal Email configured for development');
-      console.log('📧 Test emails will be available at: https://ethereal.email');
-    } catch (error) {
-      console.error('❌ Failed to setup Ethereal Email:', error.message);
-      
-      // Fallback to a simple transporter that logs emails
+      // Create a mock transporter for development
       this.transporter = {
         sendMail: async (mailOptions) => {
-          console.log('📧 [EMAIL SIMULATION]');
+          console.log('📧 [EMAIL MOCK - SMTP not configured]');
           console.log('To:', mailOptions.to);
           console.log('Subject:', mailOptions.subject);
-          console.log('Body:', mailOptions.text || mailOptions.html);
+          console.log('From:', mailOptions.from);
           console.log('---');
-          return { messageId: 'simulated-' + Date.now() };
+          return { messageId: 'mock-' + Date.now() };
+        },
+        verify: async () => {
+          throw new Error('SMTP not configured');
         }
       };
+      return;
+    }
+
+    // Prefer explicit host/port; fall back to Gmail service if host not provided
+    try {
+      if (host) {
+        this.transporter = nodemailer.createTransport({
+          host,
+          port: port || 587,
+            secure: (port === 465),
+          auth: { user, pass }
+        });
+      } else {
+        this.transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: { user, pass }
+        });
+      }
+  console.log(`📧 Email service configured (${host ? host : 'gmail service'})`);
+  console.log(`   From: ${this.fromEmail}`);
+  console.log(`   Auth user: ${user}`);
+    } catch (err) {
+      console.error('❌ Failed to create SMTP transporter:', err.message);
     }
   }
 
@@ -96,18 +94,9 @@ class EmailService {
 
       const result = await this.transporter.sendMail(mailOptions);
       
-      // For Ethereal Email, log the preview URL
-      if (process.env.NODE_ENV !== 'production') {
-        const previewURL = nodemailer.getTestMessageUrl(result);
-        if (previewURL) {
-          console.log('📧 Email preview URL:', previewURL);
-        }
-      }
-
       return {
         success: true,
-        messageId: result.messageId,
-        previewURL: process.env.NODE_ENV !== 'production' ? nodemailer.getTestMessageUrl(result) : null
+        messageId: result.messageId
       };
     } catch (error) {
       console.error('❌ Failed to send OTP email:', error);

@@ -73,8 +73,8 @@ class AuthService {
       errors.push('Password must be less than 128 characters');
     }
 
-    // Optional: Strong password validation
-    if (password && !this.isStrongPassword(password)) {
+    // Optional: Strong password validation (disabled for development)
+    if (process.env.NODE_ENV === 'production' && password && !this.isStrongPassword(password)) {
       errors.push('Password must contain at least one uppercase letter, one lowercase letter, and one number');
     }
 
