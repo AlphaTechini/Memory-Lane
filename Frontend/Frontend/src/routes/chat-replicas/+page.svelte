@@ -600,6 +600,13 @@
 
   async function endTrainingSession() {
     if (!trainingSession || !selectedReplica) return;
+    
+    // Prevent multiple submissions
+    if (isSubmittingTraining) {
+      console.log('Training submission already in progress, ignoring duplicate call');
+      return;
+    }
+    
     isSubmittingTraining = true;
     
     try {
@@ -610,7 +617,7 @@
       
       if (trainingBuffer.length === 0) {
         alert('No training data collected. Start a conversation first!');
-        return;
+        return; // Exit early
       }
       
       const token = getAuthToken();
@@ -668,9 +675,9 @@
   }
 
   async function pollStatusOnce() {
-    if (!trainingSession?.entryId) return;
+    if (!trainingSession?.entryId || !selectedReplica?.replicaId) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/api/kb/${trainingSession.entryId}/status`);
+      const res = await fetch(`${API_BASE_URL}/api/replicas/${selectedReplica.replicaId}/kb/${trainingSession.entryId}/status`);
       if (res.ok) {
         const data = await res.json();
         if (data.status?.status) {

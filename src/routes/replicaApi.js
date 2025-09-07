@@ -724,10 +724,10 @@ async function replicaRoutes(fastify, options) {
   /**
    * Get training status
    */
-  fastify.get('/api/kb/:entryId/status', async (request, reply) => {
+  fastify.get('/api/replicas/:replicaId/kb/:entryId/status', async (request, reply) => {
     try {
-      const { entryId } = request.params;
-      const status = await getKnowledgeBaseEntryStatus(entryId);
+      const { replicaId, entryId } = request.params;
+      const status = await getKnowledgeBaseEntryStatus(replicaId, entryId);
       
       return { 
         success: true, 
@@ -828,11 +828,11 @@ async function replicaRoutes(fastify, options) {
     }
   });
 
-  fastify.get('/api/kb/:entryId', { preHandler: authenticateToken }, async (request, reply) => {
+  fastify.get('/api/replicas/:replicaId/kb/:entryId', { preHandler: authenticateToken }, async (request, reply) => {
     try {
-      const { entryId } = request.params;
+      const { replicaId, entryId } = request.params;
       const { getKnowledgeBaseEntry } = await import('../services/sensayService.js');
-      const entry = await getKnowledgeBaseEntry(entryId);
+      const entry = await getKnowledgeBaseEntry(replicaId, entryId);
       return { success:true, entry };
     } catch (err) {
       request.log.error(err, 'Get KB entry failed');
@@ -841,11 +841,11 @@ async function replicaRoutes(fastify, options) {
     }
   });
 
-  fastify.delete('/api/kb/:entryId', { preHandler: authenticateToken }, async (request, reply) => {
+  fastify.delete('/api/replicas/:replicaId/kb/:entryId', { preHandler: authenticateToken }, async (request, reply) => {
     try {
-      const { entryId } = request.params;
+      const { replicaId, entryId } = request.params;
       const { deleteKnowledgeBaseEntry } = await import('../services/sensayService.js');
-      const resp = await deleteKnowledgeBaseEntry(entryId);
+      const resp = await deleteKnowledgeBaseEntry(replicaId, entryId);
       return { success:true, result: resp };
     } catch (err) {
       request.log.error(err, 'Delete KB entry failed');
