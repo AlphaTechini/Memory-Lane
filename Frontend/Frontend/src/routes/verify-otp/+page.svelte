@@ -146,7 +146,7 @@
 </script>
 
 <svelte:head>
-  <title>Verify Email - Sensay AI</title>
+  <title>Verify Email - Memory Lane</title>
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
@@ -154,7 +154,7 @@
   <nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Sensay AI</h1>
+        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Memory Lane</h1>
       </div>
       <ThemeToggle />
     </div>

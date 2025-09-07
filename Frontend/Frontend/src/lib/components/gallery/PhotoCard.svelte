@@ -1,10 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   
-  export let photo;
-  export let albums = [];
-  export let showControls = true;
-  export let showAlbumSelector = false;
+  const { photo, albums = [], showControls = true, showAlbumSelector = false, showDownload = true, isCover = false } = $props();
   
   const dispatch = createEventDispatcher();
   
@@ -62,6 +59,25 @@
   function formatDate(dateString) {
     return new Date(dateString).toLocaleDateString();
   }
+
+  function handleDownload(e) {
+    e.stopPropagation();
+    try {
+      const link = document.createElement('a');
+      link.href = photo.imageUrl;
+      link.download = photo.originalName || 'photo.jpg';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.warn('Download failed', err);
+    }
+  }
+
+  function handleImgError(event) {
+    event.target.onerror = null;
+    event.target.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%23333"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23bbb" font-family="Arial" font-size="14">Image unavailable</text></svg>`);
+  }
 </script>
 
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow group">
@@ -72,6 +88,7 @@
       class="w-full h-full object-cover cursor-pointer"
       onclick={handleView}
       loading="lazy"
+      onerror={handleImgError}
     />
     
     {#if showControls}
@@ -95,13 +112,24 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
           </svg>
         </button>
+        {#if showDownload}
+          <button
+            onclick={handleDownload}
+            class="p-1.5 bg-gray-700/70 text-white rounded-full hover:bg-gray-800 transition-colors"
+            title="Download photo"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
+            </svg>
+          </button>
+        {/if}
       </div>
     {/if}
     
-    {#if photo.albumId}
+  {#if photo.albumId || isCover}
       <div class="absolute bottom-2 left-2">
         <span class="px-2 py-1 bg-black/50 text-white text-xs rounded-full">
-          {getAlbumName(photo.albumId)}
+      {isCover ? 'Cover' : getAlbumName(photo.albumId)}
         </span>
       </div>
     {/if}

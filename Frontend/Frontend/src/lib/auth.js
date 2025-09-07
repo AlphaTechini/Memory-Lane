@@ -107,8 +107,9 @@ export async function verifyAuth() {
 
 /**
  * Protect a route - redirect to login if not authenticated
+ * @param {boolean} requireVerification - Whether to require email verification (default: true)
  */
-export async function protectRoute() {
+export async function protectRoute(requireVerification = true) {
   if (!browser) return false;
   
   const user = await verifyAuth();
@@ -118,7 +119,7 @@ export async function protectRoute() {
     return false;
   }
   
-  if (!user.isVerified) {
+  if (requireVerification && !user.isVerified) {
     localStorage.setItem('userEmail', user.email);
     goto('/verify-otp');
     return false;

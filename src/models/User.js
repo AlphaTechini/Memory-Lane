@@ -16,6 +16,12 @@ const userSchema = new mongoose.Schema({
       message: 'Please enter a valid email address'
     }
   },
+  // Associated Sensay user ID (per-user ownership in Sensay)
+  sensayUserId: {
+    type: String,
+    trim: true,
+    index: true
+  },
   password: {
     type: String,
     required: [true, 'Password is required'],
@@ -151,6 +157,16 @@ const userSchema = new mongoose.Schema({
     },
     lastTrained: {
       type: Date
+    },
+    status: {
+      type: String,
+      default: 'CREATED'
+    },
+    lastSyncAt: {
+      type: Date
+    },
+    errorMessage: {
+      type: String
     }
   }]
 }, {

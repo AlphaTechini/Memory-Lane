@@ -2,7 +2,7 @@
 <script>
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
-  import { isAuthenticated, verifyAuth, logout, requireAuthForAction } from '$lib/auth.js';
+    import { isAuthenticated, verifyAuth, logout, requireAuthForAction } from '$lib/auth.js';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 
   let isAuth = $state(false);
@@ -31,7 +31,7 @@
     {
       id: 'chatbot',
       title: 'Chat with Replicas',
-      description: 'Start conversations with AI replicas or chat with the generic Sensay AI',
+      description: 'Start conversations with AI replicas or chat with the generic Memory Lane AI',
       icon: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
       </svg>`,
@@ -68,20 +68,6 @@
       color: 'bg-purple-500 hover:bg-purple-600',
       textColor: 'text-purple-600',
       requiresAuth: true
-    },
-    {
-      id: 'train-models',
-      title: 'Train Models',
-      description: 'Continue training your replicas with additional questions and data',
-      icon: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-        <path d="M2 17l10 5 10-5"/>
-        <path d="M2 12l10 5 10-5"/>
-      </svg>`,
-      route: '/train-models',
-      color: 'bg-emerald-500 hover:bg-emerald-600',
-      textColor: 'text-emerald-600',
-      requiresAuth: true
     }
   ];
 
@@ -95,7 +81,7 @@
 </script>
 
 <svelte:head>
-  <title>Dashboard - Sensay AI</title>
+  <title>Dashboard - Memory Lane</title>
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
@@ -113,7 +99,7 @@
               </svg>
             </div>
             <div>
-              <h1 class="text-xl font-bold text-gray-900 dark:text-white">Sensay AI</h1>
+              <h1 class="text-xl font-bold text-gray-900 dark:text-white">Memory Lane</h1>
               <p class="text-sm text-gray-600 dark:text-gray-400">AI Replica Platform</p>
             </div>
           </div>
@@ -163,16 +149,16 @@
     <div class="text-center mb-12">
       <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">
         {#if isAuthenticated}
-          Welcome back to Sensay AI
+          Welcome back to Memory Lane
         {:else}
-          Welcome to Sensay AI
+          Welcome to Memory Lane
         {/if}
       </h2>
       <p class="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
         {#if isAuthenticated}
           Create, train, and interact with AI replicas. Manage your conversations, organize your memories, and build personalized AI assistants.
         {:else}
-          Explore AI replicas and chat with Sensay AI. Sign up to create your own personalized AI assistants and manage your memories.
+          Explore AI replicas and chat with Memory Lane AI. Sign up to create your own personalized AI assistants and manage your memories.
         {/if}
       </p>
       {#if !isAuthenticated}

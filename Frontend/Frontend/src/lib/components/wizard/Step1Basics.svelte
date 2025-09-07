@@ -2,17 +2,24 @@
   import { onMount } from 'svelte';
   import { wizardStore } from '$lib/stores/wizardStore.js';
 
-  let state = $state({
-    name: '',
-    description: '',
-    consent: false
-  });
+  let name = $state('');
+  let description = $state('');
+  let consent = $state(false);
   
-  // Subscribe to wizard store
+  // Subscribe to wizard store and initialize with current values
   let unsubscribe;
   onMount(() => {
+    const currentState = wizardStore.getState();
+    name = currentState.basics?.name || '';
+    description = currentState.basics?.description || '';
+    consent = currentState.basics?.consent || false;
+    
     unsubscribe = wizardStore.subscribe(value => {
-      state = value;
+      if (value.basics) {
+        if (value.basics.name !== undefined) name = value.basics.name;
+        if (value.basics.description !== undefined) description = value.basics.description;
+        if (value.basics.consent !== undefined) consent = value.basics.consent;
+      }
     });
     
     return () => {
@@ -21,14 +28,17 @@
   });
 
   function updateName(value) {
+    name = value;
     wizardStore.updateBasics({ name: value });
   }
 
   function updateDescription(value) {
+    description = value;
     wizardStore.updateBasics({ description: value });
   }
 
   function updateConsent(value) {
+    consent = value;
     wizardStore.updateBasics({ consent: value });
   }
 </script>
@@ -48,7 +58,7 @@
       <input
         type="text"
         id="replicaName"
-        value={state?.basics?.name || ''}
+        bind:value={name}
         oninput={(e) => updateName(e.target.value)}
         required
         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
@@ -66,7 +76,7 @@
       </label>
       <textarea
         id="description"
-        value={state?.basics?.description || ''}
+        bind:value={description}
         oninput={(e) => updateDescription(e.target.value)}
         required
         maxlength="50"
@@ -79,10 +89,10 @@
           Brief description for your replica
         </p>
         <p class="text-xs text-gray-500 dark:text-gray-400">
-          {(state?.basics?.description || '').length}/50 characters
+          {description.length}/50 characters
         </p>
       </div>
-      {#if (state?.basics?.description || '').length > 50}
+      {#if description.length > 50}
         <p class="mt-1 text-sm text-red-600 dark:text-red-400">
           Description must be 50 characters or less
         </p>
@@ -95,7 +105,7 @@
         <input
           type="checkbox"
           id="consent"
-          checked={state?.basics?.consent || false}
+          bind:checked={consent}
           onchange={(e) => updateConsent(e.target.checked)}
           class="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
         />

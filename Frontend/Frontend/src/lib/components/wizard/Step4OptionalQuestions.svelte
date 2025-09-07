@@ -234,21 +234,20 @@
     <h3 class="font-medium text-gray-900 dark:text-gray-100 mb-4">Progress by Category</h3>
     <div class="space-y-3">
       {#each (state?.selectedSegments || []) as segmentKey}
-        {@const stats = getSegmentStats(segmentKey)}
         <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
           <div>
             <div class="font-medium text-gray-900 dark:text-gray-100">
               {getSegmentName(segmentKey)}
             </div>
             <div class="text-sm text-gray-600 dark:text-gray-400">
-              {stats.answered} of {stats.total} answered
+              {getSegmentStats(segmentKey).answered} of {getSegmentStats(segmentKey).total} answered
             </div>
           </div>
           <div class="flex items-center gap-2">
             <div class="w-20 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
               <div 
                 class="bg-blue-600 h-2 rounded-full"
-                style="width: {stats.total > 0 ? (stats.answered / stats.total) * 100 : 0}%"
+                style="width: {getSegmentStats(segmentKey).total > 0 ? (getSegmentStats(segmentKey).answered / getSegmentStats(segmentKey).total) * 100 : 0}%"
               ></div>
             </div>
             <button

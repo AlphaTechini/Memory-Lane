@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 import { writable, derived } from 'svelte/store';
-import { REQUIRED_QUESTIONS, getAllOptionalQuestions } from '../questionBank.js';
+import { REQUIRED_QUESTIONS, getAllOptionalQuestions, getRequiredQuestionsByTemplate } from '../questionBank.js';
 
 // Storage key
 const STORAGE_KEY = 'replica_wizard_state';
@@ -9,7 +9,11 @@ const STORAGE_KEY = 'replica_wizard_state';
 function createInitialState() {
   return {
     // Current step
-    currentStep: 1,
+    currentStep: 0,
+    
+    // Template info
+    template: null,
+    relationship: null,
     
     // Basic info
     basics: {
@@ -75,8 +79,11 @@ state.subscribe((value) => {
 
 // Derived stores for computed properties
 export const coverageScore = derived(state, ($state) => {
+  const template = $state.template;
+  const requiredQuestions = template ? getRequiredQuestionsByTemplate(template) : REQUIRED_QUESTIONS;
+  
   const requiredCount = Object.keys($state.requiredAnswers).length;
-  const requiredTotal = REQUIRED_QUESTIONS.length;
+  const requiredTotal = requiredQuestions.length;
   const requiredScore = (requiredCount / requiredTotal) * 70; // 70% weight for required
   
   const optionalCount = Object.keys($state.optionalAnswers).length;
@@ -90,6 +97,15 @@ export const coverageScore = derived(state, ($state) => {
 export const wizardStore = {
   subscribe: state.subscribe,
   
+  // Get current state synchronously
+  getState: () => {
+    let currentState;
+    state.subscribe(value => {
+      currentState = value;
+    })();
+    return currentState;
+  },
+  
   // Helper functions
   canProceedToStep: (step, $state) => {
     switch (step) {
@@ -98,8 +114,11 @@ export const wizardStore = {
                $state.basics?.description?.trim() && 
                $state.basics?.description?.trim().length <= 50 && 
                $state.basics?.consent;
-      case 3:
-        return Object.keys($state.requiredAnswers).length === REQUIRED_QUESTIONS.length;
+      case 3: {
+        const template = $state.template;
+        const requiredQuestions = template ? getRequiredQuestionsByTemplate(template) : REQUIRED_QUESTIONS;
+        return Object.keys($state.requiredAnswers).length === requiredQuestions.length;
+      }
       case 4:
         return $state.selectedSegments.length > 0;
       case 5:
@@ -118,12 +137,15 @@ export const wizardStore = {
                $state.basics?.description?.trim() && 
                $state.basics?.description?.trim().length <= 50 && 
                $state.basics?.consent;
-      case 2:
-        return Object.keys($state.requiredAnswers).length === REQUIRED_QUESTIONS.length &&
-               REQUIRED_QUESTIONS.every(q => {
+      case 2: {
+        const template = $state.template;
+        const requiredQuestions = template ? getRequiredQuestionsByTemplate(template) : REQUIRED_QUESTIONS;
+        return Object.keys($state.requiredAnswers).length === requiredQuestions.length &&
+               requiredQuestions.every(q => {
                  const answer = $state.requiredAnswers[q.id];
                  return answer && answer.trim().length >= q.minLength;
                });
+      }
       case 3:
         return $state.selectedSegments.length > 0;
       case 4:
@@ -134,8 +156,10 @@ export const wizardStore = {
       case 5:
         return $state.profileImage;
       case 6: {
+        const template = $state.template;
+        const requiredQuestions = template ? getRequiredQuestionsByTemplate(template) : REQUIRED_QUESTIONS;
         const requiredCount = Object.keys($state.requiredAnswers).length;
-        const requiredTotal = REQUIRED_QUESTIONS.length;
+        const requiredTotal = requiredQuestions.length;
         const requiredScore = (requiredCount / requiredTotal) * 70;
         const optionalCount = Object.keys($state.optionalAnswers).length;
         const minOptionalRequired = 40;
@@ -158,6 +182,15 @@ export const wizardStore = {
         description: data.description !== undefined ? data.description : s.basics.description,
         consent: data.consent !== undefined ? data.consent : s.basics.consent
       }
+    }));
+  },
+
+  // Template actions
+  updateTemplate: (template, relationship) => {
+    state.update(s => ({
+      ...s,
+      template,
+      relationship
     }));
   },
   

@@ -81,7 +81,7 @@
 </script>
 
 <svelte:head>
-  <title>Login - Sensay AI</title>
+  <title>Login - Memory Lane</title>
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
@@ -89,7 +89,7 @@
   <nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Sensay AI</h1>
+        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Memory Lane</h1>
       </div>
       <ThemeToggle />
     </div>
@@ -101,7 +101,7 @@
       <!-- Header -->
       <div class="text-center mb-8">
         <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Welcome Back</h2>
-        <p class="text-gray-600 dark:text-gray-400">Sign in to your Sensay AI account</p>
+        <p class="text-gray-600 dark:text-gray-400">Sign in to your Memory Lane account</p>
       </div>
 
       <!-- Login Form -->

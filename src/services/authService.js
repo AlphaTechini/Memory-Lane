@@ -2,6 +2,8 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import validator from 'validator';
 import emailService from './emailService.js';
+import { createSensayUser } from './sensayService.js';
+import logger from '../utils/logger.js';
 
 // JWT secret - in production, use environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
@@ -141,6 +143,7 @@ class AuthService {
       // Validate input data
       const validation = this.validateSignupData(userData);
       if (!validation.isValid) {
+        console.warn(`[signup] validation failed for ${email}:`, validation.errors);
         return {
           success: false,
           message: 'Validation failed',
@@ -151,6 +154,20 @@ class AuthService {
       // Check if user already exists
       const existingUser = await User.findByEmail(email);
       if (existingUser) {
+        if (!existingUser.isVerified) {
+          // Resend OTP for unverified user instead of hard failing
+            const resend = await this.generateAndSendOTP(existingUser.email);
+            const baseMsg = 'Account already exists but is not verified.';
+            return {
+              success: true,
+              message: resend.success ? `${baseMsg} New verification code sent.` : baseMsg,
+              user: existingUser.toJSON(),
+              otpSent: resend.success,
+              emailPreviewURL: resend.emailPreviewURL,
+              unverified: true
+            };
+        }
+        console.warn(`[signup] duplicate verified email attempt: ${email}`);
         return {
           success: false,
           message: 'User with this email already exists',
@@ -158,7 +175,7 @@ class AuthService {
         };
       }
 
-      // Create new user
+  // Create new user
       const newUser = new User({
         email: email.toLowerCase().trim(),
         password,
@@ -167,10 +184,26 @@ class AuthService {
         isVerified: false // Default to false, will need email verification
       });
 
-      const savedUser = await newUser.save();
+  const savedUser = await newUser.save();
+  console.log(`[signup] created new user ${savedUser._id} (${savedUser.email})`);
+
+      // Attempt to create corresponding Sensay user (non-blocking failure)
+      try {
+        const fullName = (firstName || lastName) ? `${firstName || ''} ${lastName || ''}`.trim() : email.split('@')[0];
+        const sensayResp = await createSensayUser({ email: savedUser.email, name: fullName });
+        if (sensayResp && sensayResp.id) {
+          savedUser.sensayUserId = sensayResp.id;
+          await savedUser.save();
+          logger?.info?.(`Linked Sensay user ${sensayResp.id} to local user ${savedUser._id}`) || console.log('Linked Sensay user', sensayResp.id);
+        } else if (sensayResp?.conflict) {
+          logger?.warn?.(`Sensay user conflict for ${savedUser.email}; consider backfill.`) || console.warn('Sensay user conflict');
+        }
+      } catch (sensayErr) {
+        logger?.warn?.(`Non-blocking: failed to create Sensay user for signup ${email}: ${sensayErr.message}`) || console.warn('Failed Sensay user creation', sensayErr.message);
+      }
 
       // Generate and send OTP for email verification
-      const otpResult = await this.generateAndSendOTP(savedUser.email);
+  const otpResult = await this.generateAndSendOTP(savedUser.email);
       
       if (!otpResult.success) {
         // User was created but OTP failed - they can resend later
@@ -188,6 +221,7 @@ class AuthService {
     } catch (error) {
       // Handle MongoDB duplicate key error
       if (error.code === 11000) {
+        console.warn(`[signup] duplicate key error for ${userData.email}`, error.keyValue);
         return {
           success: false,
           message: 'User with this email already exists',

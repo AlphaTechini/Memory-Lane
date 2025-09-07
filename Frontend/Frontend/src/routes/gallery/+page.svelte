@@ -24,10 +24,23 @@
   let currentView = $state('overview'); // 'overview', 'albums', 'photos'
   let selectedAlbum = $state(null);
 
-  // Protect this route
+  // Search / filter / sort state
+  let searchQuery = $state('');
+  let sortOption = $state('recent'); // recent | oldest | name-asc | name-desc
+  let showFilters = $state(false);
+
+  // Simple debounce mechanism for search (avoid recompute on every keystroke)
+  let debouncedSearch = $state('');
+  let searchTimeout;
+  $effect(() => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => { debouncedSearch = searchQuery.trim().toLowerCase(); }, 200);
+  });
+
+  // Protect this route - allow access for authenticated users, verification not required for gallery
   $effect(() => {
     if (browser) {
-      protectRoute().then(isAuthorized => {
+      protectRoute(false).then(isAuthorized => {
         if (isAuthorized) {
           loadGallery();
         }
@@ -47,6 +60,16 @@
         if (data.success) {
           albums = data.data.albums || [];
           photos = data.data.photos || [];
+
+          // Auto assign local coverImageUrl from first photo if missing (non-destructive; no backend write)
+          albums.forEach(album => {
+            if (!album.coverImageUrl) {
+              const first = photos.find(p => p.albumId === album._id);
+              if (first) {
+                album.coverImageUrl = first.url || first.secure_url || first.imageUrl; // best-effort field names
+              }
+            }
+          });
           
           // For backward compatibility, also include legacy images as photos
           const legacyImages = data.data.images || [];
@@ -349,6 +372,57 @@
     return photos.filter(photo => photo.albumId === albumId);
   }
 
+  // Filter & sort helpers
+  function sortItems(list, type) {
+    switch (type) {
+      case 'oldest':
+        return [...list].sort((a,b) => new Date(a.uploadedAt || a.createdAt || 0) - new Date(b.uploadedAt || b.createdAt || 0));
+      case 'name-asc':
+        return [...list].sort((a,b) => (a.name||a.originalName||'').localeCompare(b.name||b.originalName||''));
+      case 'name-desc':
+        return [...list].sort((a,b) => (b.name||b.originalName||'').localeCompare(a.name||a.originalName||''));
+      case 'recent':
+      default:
+        return [...list].sort((a,b) => new Date(b.uploadedAt || b.createdAt || 0) - new Date(a.uploadedAt || a.createdAt || 0));
+    }
+  }
+
+  function albumMatches(album) {
+    if (!debouncedSearch) return true;
+    const q = debouncedSearch;
+    return (
+      (album.name && album.name.toLowerCase().includes(q)) ||
+      (album.description && album.description.toLowerCase().includes(q))
+    );
+  }
+
+  function photoMatches(photo) {
+    if (!debouncedSearch) return true;
+    const q = debouncedSearch;
+    return (
+      (photo.originalName && photo.originalName.toLowerCase().includes(q)) ||
+      (photo.description && photo.description.toLowerCase().includes(q))
+    );
+  }
+
+  function getFilteredAlbums(limit = null) {
+    let list = albums.filter(albumMatches);
+    list = sortItems(list, sortOption);
+    if (limit) return list.slice(0, limit);
+    return list;
+  }
+
+  function getFilteredStandalonePhotos(limit = null) {
+    let list = getStandalonePhotos().filter(photoMatches);
+    list = sortItems(list, sortOption);
+    if (limit) return list.slice(0, limit);
+    return list;
+  }
+
+  function getFilteredAllPhotos() {
+    return sortItems(photos.filter(photoMatches), sortOption);
+  }
+
   function clearMessages() {
     error = '';
     success = '';
@@ -356,7 +430,7 @@
 </script>
 
 <svelte:head>
-  <title>Gallery - Sensay AI</title>
+  <title>Gallery - Memory Lane</title>
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
@@ -364,7 +438,7 @@
   <nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-6">
-        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Sensay AI</h1>
+        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Memory Lane</h1>
         <div class="flex items-center gap-4">
           <a href="/dashboard" class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">Dashboard</a>
           <a href="/gallery" class="text-blue-600 dark:text-blue-400 font-medium">Gallery</a>
@@ -459,6 +533,43 @@
           >
             All Photos ({photos.length})
           </button>
+        </div>
+      {/if}
+      {#if currentView !== 'album-detail'}
+        <div class="mt-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
+          <div class="flex items-center gap-2 flex-1">
+            <div class="relative flex-1">
+              <input
+                type="text"
+                placeholder="Search albums & photos..."
+                bind:value={searchQuery}
+                class="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-label="Search gallery"
+              />
+              {#if searchQuery}
+                <button
+                  class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  onclick={() => searchQuery = ''}
+                  aria-label="Clear search"
+                >
+                  ✕
+                </button>
+              {/if}
+            </div>
+            <select
+              bind:value={sortOption}
+              class="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Sort items"
+            >
+              <option value="recent">Newest</option>
+              <option value="oldest">Oldest</option>
+              <option value="name-asc">Name A–Z</option>
+              <option value="name-desc">Name Z–A</option>
+            </select>
+          </div>
+          {#if debouncedSearch}
+            <p class="text-xs text-gray-500 dark:text-gray-400">Filtered results for "{searchQuery}"</p>
+          {/if}
         </div>
       {/if}
     </div>
@@ -565,7 +676,7 @@
               </button>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {#each albums.slice(0, 4) as album (album._id)}
+              {#each getFilteredAlbums(4) as album (album._id)}
                 <AlbumCard 
                   {album} 
                   on:edit={(e) => handleEditAlbum(e.detail)}
@@ -578,9 +689,8 @@
           </div>
         {/if}
 
-        <!-- Recent photos section -->
-        {@const standalonePhotos = getStandalonePhotos()}
-        {#if standalonePhotos.length > 0}
+  <!-- Recent photos section -->
+  {#if getStandalonePhotos().length > 0}
           <div>
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Recent Photos</h3>
@@ -592,7 +702,7 @@
               </button>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {#each standalonePhotos.slice(0, 8) as photo (photo._id)}
+              {#each getFilteredStandalonePhotos(8) as photo (photo._id)}
                 <PhotoCard
                   {photo}
                   {albums}
@@ -635,7 +745,7 @@
         </div>
       {:else}
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {#each albums as album (album._id)}
+          {#each getFilteredAlbums() as album (album._id)}
             <AlbumCard 
               {album} 
               on:edit={(e) => handleEditAlbum(e.detail)}
@@ -658,7 +768,7 @@
         </div>
       {:else}
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {#each photos as photo (photo._id)}
+          {#each getFilteredAllPhotos() as photo (photo._id)}
             <PhotoCard
               {photo}
               {albums}
@@ -672,7 +782,6 @@
       {/if}
     {:else if currentView === 'album-detail' && selectedAlbum}
       <!-- Album detail view -->
-      {@const albumPhotos = getAlbumPhotos(selectedAlbum._id)}
       <div class="mb-6">
         <button
           onclick={() => handleAddPhotosToAlbum(selectedAlbum)}
@@ -685,7 +794,7 @@
         </button>
       </div>
 
-      {#if albumPhotos.length === 0}
+  {#if getAlbumPhotos(selectedAlbum._id).length === 0}
         <div class="text-center py-12">
           <svg class="mx-auto h-16 w-16 text-gray-300 dark:text-gray-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -701,7 +810,7 @@
         </div>
       {:else}
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {#each albumPhotos as photo (photo._id)}
+          {#each getAlbumPhotos(selectedAlbum._id) as photo (photo._id)}
             <PhotoCard
               {photo}
               {albums}

@@ -1,5 +1,7 @@
-// Question bank for replica creation
-export const REQUIRED_QUESTIONS = [
+// Question bank for replica creation - Template-specific required questions
+
+// Required questions for Self template (default/original)
+export const REQUIRED_QUESTIONS_SELF = [
   {
     id: 'rq1',
     segment: 'required',
@@ -39,48 +41,342 @@ export const REQUIRED_QUESTIONS = [
     type: 'textarea',
     required: true,
     minLength: 150
-  },
+  }
+];
+
+// Required questions for Dad template
+export const REQUIRED_QUESTIONS_DAD = [
   {
-    id: 'rq6',
+    id: 'rq1',
     segment: 'required',
-    text: 'What do you believe happens after death? How does this belief influence how you live your life?',
+    text: 'What life lessons does your dad always share with you? What wisdom has he passed down that shapes how he sees the world?',
     type: 'textarea',
     required: true,
     minLength: 150
   },
   {
-    id: 'rq7',
+    id: 'rq2',
     segment: 'required',
-    text: 'Describe a moment when you felt most proud of yourself. What did you accomplish and why was it meaningful?',
+    text: 'How does your dad handle stress and difficult situations? Describe his approach to problem-solving and decision-making.',
     type: 'textarea',
     required: true,
     minLength: 150
   },
   {
-    id: 'rq8',
+    id: 'rq3',
     segment: 'required',
-    text: 'How do you define success? Has this definition changed over time, and if so, how?',
+    text: 'What are your dad\'s core values and beliefs? How do these show up in his daily life and interactions with family?',
     type: 'textarea',
     required: true,
     minLength: 150
   },
   {
-    id: 'rq9',
+    id: 'rq4',
     segment: 'required',
-    text: 'What\'s your biggest regret, and what have you learned from it? How has it shaped who you are today?',
+    text: 'What does your dad worry about most? What concerns keep him up at night or drive his protective instincts?',
     type: 'textarea',
     required: true,
     minLength: 150
   },
   {
-    id: 'rq10',
+    id: 'rq5',
     segment: 'required',
-    text: 'If you had unlimited resources and time, what would you dedicate your life to? What legacy would you want to leave?',
+    text: 'What makes your dad most proud? Describe moments when you\'ve seen him genuinely happy and fulfilled.',
     type: 'textarea',
     required: true,
     minLength: 150
   }
 ];
+
+// Required questions for Mom template
+export const REQUIRED_QUESTIONS_MOM = [
+  {
+    id: 'rq1',
+    segment: 'required',
+    text: 'How does your mom show love and care for her family? What are her unique ways of nurturing and supporting others?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq2',
+    segment: 'required',
+    text: 'What does your mom worry about most when it comes to family? How does she express concern or protection?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq3',
+    segment: 'required',
+    text: 'What are your mom\'s daily rituals and routines? How does she organize her life and create structure for the family?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq4',
+    segment: 'required',
+    text: 'What brings your mom the most joy? Describe the activities, moments, or achievements that light up her face.',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq5',
+    segment: 'required',
+    text: 'How does your mom handle conflicts or difficult conversations? What\'s her communication style when things get emotional?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  }
+];
+
+// Required questions for Brother template
+export const REQUIRED_QUESTIONS_BROTHER = [
+  {
+    id: 'rq1',
+    segment: 'required',
+    text: 'What is your brother passionate about? What activities, interests, or goals drive his enthusiasm and energy?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq2',
+    segment: 'required',
+    text: 'How does your brother handle competition and challenges? Describe his attitude toward winning, losing, and pushing himself.',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq3',
+    segment: 'required',
+    text: 'What kind of humor does your brother have? How does he make others laugh, and what makes him laugh?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq4',
+    segment: 'required',
+    text: 'What does your brother struggle with or find frustrating? How does he deal with setbacks or things that don\'t go his way?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq5',
+    segment: 'required',
+    text: 'How does your brother show loyalty and friendship? What does being a good friend or brother mean to him?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  }
+];
+
+// Required questions for Sister template  
+export const REQUIRED_QUESTIONS_SISTER = [
+  {
+    id: 'rq1',
+    segment: 'required',
+    text: 'What makes your sister feel most confident and empowered? Describe the situations where she truly shines.',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq2',
+    segment: 'required',
+    text: 'How does your sister express emotions and process feelings? What\'s her style of communication when she\'s happy, sad, or upset?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq3',
+    segment: 'required',
+    text: 'What are your sister\'s dreams and aspirations? What does she hope to achieve or experience in her life?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq4',
+    segment: 'required',
+    text: 'How does your sister navigate friendships and relationships? What qualities does she value in the people closest to her?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq5',
+    segment: 'required',
+    text: 'What challenges has your sister faced and how has she grown from them? What makes her resilient?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  }
+];
+
+// Required questions for Lover template
+export const REQUIRED_QUESTIONS_LOVER = [
+  {
+    id: 'rq1',
+    segment: 'required',
+    text: 'How does your partner express love and affection? What are their unique ways of showing they care about you?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq2',
+    segment: 'required',
+    text: 'What does your partner need to feel secure and loved in the relationship? How do they communicate their needs?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq3',
+    segment: 'required',
+    text: 'How does your partner handle conflict and disagreements? What\'s their style of working through relationship challenges?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq4',
+    segment: 'required',
+    text: 'What are your partner\'s hopes and dreams for your relationship? What future do they envision together?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq5',
+    segment: 'required',
+    text: 'What makes your partner feel most understood and appreciated? How do they like to be supported during difficult times?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  }
+];
+
+// Required questions for Best Friend template
+export const REQUIRED_QUESTIONS_BEST_FRIEND = [
+  {
+    id: 'rq1',
+    segment: 'required',
+    text: 'What is the foundation of your friendship? How did you become so close and what keeps your bond strong?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq2',
+    segment: 'required',
+    text: 'How does your best friend support you during tough times? What\'s their approach to being there for people they care about?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq3',
+    segment: 'required',
+    text: 'What adventures and experiences define your friendship? What memories capture who they are and your connection?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq4',
+    segment: 'required',
+    text: 'What does your best friend value most in life? What drives their decisions and what do they stand for?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq5',
+    segment: 'required',
+    text: 'How has your best friend changed and grown over the years? What have you learned from each other?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  }
+];
+
+// Required questions for Close Relation template
+export const REQUIRED_QUESTIONS_CLOSE_RELATION = [
+  {
+    id: 'rq1',
+    segment: 'required',
+    text: 'Describe the nature of your relationship with this person. How did you become close and what makes this relationship special?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq2',
+    segment: 'required',
+    text: 'What are this person\'s defining characteristics and personality traits? How would you describe their essence to someone who\'s never met them?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq3',
+    segment: 'required',
+    text: 'What role does this person play in your life? How do they influence, support, or challenge you?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq4',
+    segment: 'required',
+    text: 'What are the most meaningful experiences you\'ve shared together? What moments best capture who they are?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  },
+  {
+    id: 'rq5',
+    segment: 'required',
+    text: 'What do you hope to preserve or remember most about this person? What would you want their digital replica to capture?',
+    type: 'textarea',
+    required: true,
+    minLength: 150
+  }
+];
+
+// Default export for backward compatibility (Self template)
+export const REQUIRED_QUESTIONS = REQUIRED_QUESTIONS_SELF;
+
+// Function to get required questions by template
+export function getRequiredQuestionsByTemplate(template) {
+  switch (template) {
+    case 'dad':
+      return REQUIRED_QUESTIONS_DAD;
+    case 'mom':
+      return REQUIRED_QUESTIONS_MOM;
+    case 'brother':
+      return REQUIRED_QUESTIONS_BROTHER;
+    case 'sister':
+      return REQUIRED_QUESTIONS_SISTER;
+    case 'lover':
+      return REQUIRED_QUESTIONS_LOVER;
+    case 'best_friend':
+      return REQUIRED_QUESTIONS_BEST_FRIEND;
+    case 'close_relation':
+      return REQUIRED_QUESTIONS_CLOSE_RELATION;
+    case 'self':
+    default:
+      return REQUIRED_QUESTIONS_SELF;
+  }
+}
 
 export const OPTIONAL_SEGMENTS = {
   occupation: {

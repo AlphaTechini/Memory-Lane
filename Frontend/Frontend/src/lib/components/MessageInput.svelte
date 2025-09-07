@@ -3,8 +3,7 @@
   import WebSearchButton from './WebSearchButton.svelte';
 
   let { 
-    webSearchActive = false,
-    onsend 
+    webSearchActive = false
   } = $props();
 
   const dispatch = createEventDispatcher();
@@ -29,8 +28,8 @@
     
     isSubmitting = true;
     
-    // Dispatch the send event
-    onsend?.({ detail: { text: trimmedValue } });
+  // Dispatch the send event using standard Svelte event
+  dispatch('send', { text: trimmedValue });
     
     // Clear input
     value = '';

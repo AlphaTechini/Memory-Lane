@@ -15,6 +15,15 @@
   let showPassword = $state(false);
   let showConfirmPassword = $state(false);
 
+  // Validation patterns
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const namePattern = /^[A-Za-z\s'-]+$/;
+
+  // Derived validity flags
+  const emailValid = $derived(emailPattern.test(email));
+  const firstNameValid = $derived(!!firstName && namePattern.test(firstName));
+  const lastNameValid = $derived(!lastName || namePattern.test(lastName));
+
   // Check if already logged in
   $effect(() => {
     if (browser) {
@@ -29,11 +38,12 @@
   const passwordValid = $derived(password.length >= 6);
   const passwordsMatch = $derived(password === confirmPassword);
   const formValid = $derived(
-    email && 
-    password && 
-    confirmPassword && 
-    firstName && 
-    passwordValid && 
+    emailValid &&
+    password &&
+    confirmPassword &&
+    firstNameValid &&
+    lastNameValid &&
+    passwordValid &&
     passwordsMatch
   );
 
@@ -41,8 +51,14 @@
     event.preventDefault();
     
     if (!formValid) {
-      error = 'Please fill in all fields correctly';
-      return;
+      // Set a descriptive error (do not send request)
+      if (!emailValid) error = 'Please enter a valid email address';
+      else if (!firstNameValid) error = 'First name can only contain letters, spaces, apostrophes and hyphens';
+      else if (!lastNameValid) error = 'Last name can only contain letters, spaces, apostrophes and hyphens';
+      else if (!passwordValid) error = 'Password must be at least 6 characters';
+      else if (!passwordsMatch) error = 'Passwords do not match';
+      else error = 'Please correct the highlighted errors';
+      return; // Prevent network call
     }
 
     loading = true;
@@ -90,7 +106,7 @@
 </script>
 
 <svelte:head>
-  <title>Sign Up - Sensay AI</title>
+  <title>Sign Up - Memory Lane</title>
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
@@ -98,7 +114,7 @@
   <nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Sensay AI</h1>
+        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Memory Lane</h1>
       </div>
       <ThemeToggle />
     </div>
@@ -110,7 +126,7 @@
       <!-- Header -->
       <div class="text-center mb-8">
         <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Create Account</h2>
-        <p class="text-gray-600 dark:text-gray-400">Join Sensay AI and start building your digital replica</p>
+        <p class="text-gray-600 dark:text-gray-400">Join Memory Lane and start building your digital replica</p>
       </div>
 
       <!-- Signup Form -->
@@ -142,6 +158,9 @@
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 placeholder="Last name"
               />
+              {#if lastName && !lastNameValid}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">Only letters, spaces, ' and - allowed</p>
+              {/if}
             </div>
           </div>
 
@@ -158,6 +177,9 @@
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               placeholder="Enter your email"
             />
+            {#if email && !emailValid}
+              <p class="mt-1 text-sm text-red-600 dark:text-red-400">Invalid email format</p>
+            {/if}
           </div>
 
           <!-- Password Field -->

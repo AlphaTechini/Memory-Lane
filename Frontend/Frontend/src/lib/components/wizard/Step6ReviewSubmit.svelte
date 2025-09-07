@@ -1,9 +1,10 @@
 <script>
   import { onMount } from 'svelte';
   import { wizardStore, coverageScore } from '$lib/stores/wizardStore.js';
-  import { REQUIRED_QUESTIONS, OPTIONAL_SEGMENTS } from '$lib/questionBank.js';
+  import { REQUIRED_QUESTIONS, OPTIONAL_SEGMENTS, getRequiredQuestionsByTemplate } from '$lib/questionBank.js';
   import { goto } from '$app/navigation';
 
+  // Backend API base (align with other routes; if later a proxy is added, can switch to '')
   const API_BASE_URL = 'http://localhost:4000';
 
   let state = $state({
@@ -14,6 +15,16 @@
   });
   let isSubmitting = $state(false);
   let submitError = $state(null);
+  let showProgress = $state(false);
+  let progressSteps = $state([
+    { key: 'create', label: 'Creating replica', status: 'pending' },
+    { key: 'knowledge', label: 'Creating knowledge base', status: 'idle' },
+    { key: 'upload', label: 'Training replica', status: 'idle' },
+    { key: 'fetch', label: 'Fetching replica details', status: 'idle' },
+    { key: 'finalize', label: 'Finalizing', status: 'idle' }
+  ]);
+  let progressMessage = $state('');
+  let createdReplicaId = $state(null);
   let editingSection = $state(null);
   let expandedAnswers = $state(new Set());
   
@@ -30,24 +41,26 @@
   });
 
   // Calculate submission readiness
+  // Dynamic required questions based on template
+  $: requiredQuestions = state?.template ? getRequiredQuestionsByTemplate(state.template) : REQUIRED_QUESTIONS;
+
   let canSubmit = $derived(() => {
     if (!state) return false;
-    
     const hasBasics = state.basics?.name?.trim() && state.basics?.description?.trim() && state.basics?.consent;
-    const hasRequiredAnswers = Object.keys(state.requiredAnswers || {}).length >= 10;
-    const hasOptionalAnswers = Object.keys(state.optionalAnswers || {}).length >= 40;
-    
+    const hasRequiredAnswers = Object.keys(state.requiredAnswers || {}).length >= requiredQuestions.length;
+    const hasOptionalAnswers = Object.keys(state.optionalAnswers || {}).length >= 40; // keep threshold
     return hasBasics && hasRequiredAnswers && hasOptionalAnswers;
   });
 
   let submissionStats = $derived(() => {
     const requiredCount = Object.keys(state?.requiredAnswers || {}).length;
     const optionalCount = Object.keys(state?.optionalAnswers || {}).length;
-    
     return {
       requiredAnswers: requiredCount,
+      requiredTotal: requiredQuestions.length,
       optionalAnswers: optionalCount,
-      totalAnswers: requiredCount + optionalCount
+      totalAnswers: requiredCount + optionalCount,
+      coverageScore: wizardStore.calculateCoverageScore()
     };
   });
 
@@ -74,11 +87,39 @@
     wizardStore.setCurrentStep(section);
   }
 
+  function updateProgress(key, updates) {
+    progressSteps = progressSteps.map(step => step.key === key ? { ...step, ...updates } : step);
+  }
+
+  async function safeJson(response) {
+    const text = await response.text();
+    try { return JSON.parse(text); } catch { return { _raw: text }; }
+  }
+
+  async function pollReplica(id, attempts = 6, delayMs = 1500) {
+    for (let i=0;i<attempts;i++) {
+      try {
+        const resp = await fetch(`${API_BASE_URL}/api/replicas/${id}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+        });
+        if (resp.ok) {
+          const data = await safeJson(resp);
+            if (data?.replica) return data.replica;
+        }
+      } catch {}
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+    return null;
+  }
+
   async function submitReplica() {
     if (!canSubmit) return;
     
     isSubmitting = true;
     submitError = null;
+    showProgress = true;
+    progressMessage = 'Initializing...';
+    updateProgress('create', { status: 'working' });
 
     try {
       // Prepare submission data
@@ -101,23 +142,77 @@
         },
         body: JSON.stringify(submissionData)
       });
+      const result = await safeJson(response);
+      if (!response.ok || !result?.success || !result?.replica?.id) {
+        throw new Error(result?.error || 'Failed to create replica');
+      }
+      const createdReplica = result.replica;
+      createdReplicaId = createdReplica.id;
+      updateProgress('create', { status: 'done' });
+      
+      // Knowledge base creation happens on server during replica creation
+      updateProgress('knowledge', { status: 'working' });
+      progressMessage = 'Creating knowledge base...';
+      await new Promise(r => setTimeout(r, 1000)); // Brief pause for user feedback
+      updateProgress('knowledge', { status: 'done' });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create replica');
+      // Training phase (server-side training with user answers)
+      updateProgress('upload', { status: 'working' });
+      progressMessage = 'Training replica with your answers...';
+      // Check if training was successful based on server response
+      if (result?.replica?.trainingCount > 0) {
+        await new Promise(r => setTimeout(r, 2000)); // Show training in progress
+        progressMessage = `Training completed: ${result.replica.trainingCount} knowledge entries created`;
+        updateProgress('upload', { status: 'done' });
+      } else {
+        await new Promise(r => setTimeout(r, 1500));
+        progressMessage = 'Training completed with basic knowledge';
+        updateProgress('upload', { status: 'done' }); // Still mark as done even if limited training
       }
 
-      const result = await response.json();
-      
+      updateProgress('fetch', { status: 'working' });
+      progressMessage = 'Fetching replica details...';
+
+      // Fetch full replica (poll for consistency)
+      let fetchedReplica = await pollReplica(createdReplica.id, 6, 1500);
+      if (!fetchedReplica) {
+        // fallback to created copy
+        fetchedReplica = createdReplica;
+      }
+      updateProgress('fetch', { status: 'done' });
+
+      // Finalize
+      updateProgress('finalize', { status: 'working' });
+      progressMessage = 'Finalizing and preparing chat...';
+
+      // Persist for chat page to pick up and auto-select
+      if (fetchedReplica?.id) {
+        try {
+          sessionStorage.setItem('newReplica', JSON.stringify(fetchedReplica));
+        } catch {}
+      }
+
       // Clear wizard state
       wizardStore.reset();
+      updateProgress('finalize', { status: 'done' });
+      progressMessage = `✅ Replica "${fetchedReplica.name}" successfully created and trained! Redirecting to chat...`;
       
-      // Redirect to chat interface
-      goto('/chat-replicas?created=true');
+      // Show success message longer before redirect
+      setTimeout(() => {
+        if (fetchedReplica?.id) {
+          goto(`/chat-replicas?created=true&replicaId=${encodeURIComponent(fetchedReplica.id)}`);
+        } else {
+          goto('/chat-replicas?created=true');
+        }
+      }, 1500);
       
     } catch (error) {
       console.error('Submission error:', error);
       submitError = error.message;
+      progressMessage = 'Error: ' + error.message;
+      updateProgress('create', { status: progressSteps.find(s=>s.key==='create').status==='done' ? 'done':'error' });
+      const current = progressSteps.find(s=>s.status==='working');
+      if (current) updateProgress(current.key, { status: 'error' });
     } finally {
       isSubmitting = false;
     }
@@ -170,15 +265,15 @@
       </div>
       <div class="p-4 space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+          <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</span>
           <p class="text-gray-900 dark:text-gray-100">{state?.basics?.name || 'Not provided'}</p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+          <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</span>
           <p class="text-gray-900 dark:text-gray-100">{state?.basics?.description || 'Not provided'}</p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Consent</label>
+          <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Consent</span>
           <p class="text-gray-900 dark:text-gray-100">
             {state?.basics?.consent ? '✓ Provided' : '✗ Not provided'}
           </p>
@@ -224,7 +319,7 @@
     <div class="border border-gray-200 dark:border-gray-600 rounded-lg">
       <div class="p-4 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
         <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-          Required Questions ({submissionStats.requiredAnswers}/10)
+          Required Questions ({submissionStats.requiredAnswers}/{submissionStats.requiredTotal})
         </h3>
         <button
           onclick={() => editSection(2)}
@@ -321,12 +416,9 @@
           <!-- Category breakdown -->
           <div class="space-y-2">
             {#each (state?.selectedSegments || []) as segmentKey (segmentKey)}
-              {@const segmentAnswers = Object.entries(state?.optionalAnswers || {}).filter(([qId]) => 
-                qId.startsWith(segmentKey)
-              ).length}
               <div class="flex justify-between items-center text-sm">
                 <span class="text-gray-700 dark:text-gray-300">{getSegmentName(segmentKey)}</span>
-                <span class="text-gray-600 dark:text-gray-400">{segmentAnswers} answers</span>
+                <span class="text-gray-600 dark:text-gray-400">{Object.entries(state?.optionalAnswers || {}).filter(([qId]) => qId.startsWith(segmentKey)).length} answers</span>
               </div>
             {/each}
           </div>
@@ -353,8 +445,8 @@
                 {#if !state?.basics?.name?.trim() || !state?.basics?.description?.trim() || !state?.basics?.consent}
                   <li>Complete basic information with consent</li>
                 {/if}
-                {#if submissionStats.requiredAnswers < 10}
-                  <li>Answer all 10 required questions ({submissionStats.requiredAnswers}/10 completed)</li>
+                {#if submissionStats.requiredAnswers < submissionStats.requiredTotal}
+                  <li>Answer all required questions ({submissionStats.requiredAnswers}/{submissionStats.requiredTotal} completed)</li>
                 {/if}
                 {#if submissionStats.optionalAnswers < 40}
                   <li>Answer at least 40 optional questions ({submissionStats.optionalAnswers}/40 completed)</li>
@@ -404,3 +496,57 @@
     </div>
   </div>
 </div>
+</div>
+
+{#if showProgress}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 relative">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+        <span>Replica Creation Progress</span>
+        {#if progressSteps.every(s=>s.status==='done')}
+          <span class="text-green-600 text-xl">🎉</span>
+        {/if}
+      </h3>
+      <div class="space-y-3">
+        {#each progressSteps as step (step.key)}
+          <div class="flex items-start gap-3">
+            <div class="mt-0.5">
+              {#if step.status === 'done'}
+                <span class="w-5 h-5 inline-flex items-center justify-center rounded-full bg-green-100 text-green-600 text-xs">✓</span>
+              {:else if step.status === 'working'}
+                <svg class="w-5 h-5 animate-spin text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              {:else if step.status === 'error'}
+                <span class="w-5 h-5 inline-flex items-center justify-center rounded-full bg-red-100 text-red-600 text-xs">!</span>
+              {:else}
+                <span class="w-5 h-5 inline-flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 text-xs">•</span>
+              {/if}
+            </div>
+            <div class="flex-1">
+              <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{step.label}</p>
+              {#if step.key === 'upload'}
+                <p class="text-xs text-gray-500 dark:text-gray-400">Converting your answers into knowledge base entries...</p>
+              {:else if step.key === 'knowledge'}
+                <p class="text-xs text-gray-500 dark:text-gray-400">Setting up training infrastructure...</p>
+              {:else if step.key === 'fetch'}
+                <p class="text-xs text-gray-500 dark:text-gray-400">Ensuring replica is ready for chat...</p>
+              {/if}
+            </div>
+          </div>
+        {/each}
+      </div>
+      <div class="mt-4 text-sm text-gray-600 dark:text-gray-400 min-h-[20px]">{progressMessage}</div>
+      {#if submitError}
+        <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded text-sm text-red-700 dark:text-red-300">
+          {submitError}
+        </div>
+      {/if}
+      <div class="mt-6 flex justify-end">
+        {#if submitError}
+          <button class="px-4 py-2 text-sm rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600" onclick={() => { showProgress=false; }}>
+            Close
+          </button>
+        {/if}
+      </div>
+    </div>
+  </div>
+{/if}

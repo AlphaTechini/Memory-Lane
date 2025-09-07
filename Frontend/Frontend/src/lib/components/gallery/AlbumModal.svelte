@@ -1,9 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   
-  export let isOpen = false;
-  export let title = 'Create Album';
-  export let album = null; // For editing existing album
+  const { isOpen = false, title = 'Create Album', album = null } = $props();
   
   const dispatch = createEventDispatcher();
   
@@ -100,7 +98,7 @@
       </div>
       
       <!-- Form -->
-      <form onsubmit|preventDefault={handleSubmit} class="p-6 space-y-4">
+  <form onsubmit={(e)=>{e.preventDefault();handleSubmit();}} class="p-6 space-y-4">
         <div>
           <label for="album-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Album Name *

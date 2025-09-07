@@ -6,7 +6,9 @@ const rawOrgSecret = process.env.SENSAY_ORGANIZATION_SECRET;
 const PLACEHOLDERS = new Set(['placeholder-secret', 'your-sensay-organization-secret', '']);
 const allowPlaceholder = process.env.SENSAY_ALLOW_PLACEHOLDER === 'true';
 let organizationSecret = rawOrgSecret && (!PLACEHOLDERS.has(rawOrgSecret) || allowPlaceholder) ? rawOrgSecret : null;
-const apiVersion = process.env.SENSAY_API_VERSION || '2024-01-01';
+// Per latest Sensay user endpoints docs default version is 2025-03-25
+const apiVersion = process.env.SENSAY_API_VERSION || '2025-03-25';
+const ownerID = process.env.SENSAY_OWNER_ID;
 
 if (!organizationSecret) {
   console.warn('⚠️ SENSAY_ORGANIZATION_SECRET not properly configured (value is missing or placeholder). Sensay features will be limited.');
@@ -25,11 +27,11 @@ export const sensayConfig = {
   organizationSecret,
   isConfigured: Boolean(organizationSecret),
   apiVersion,
+  ownerID,
   baseUrl: "https://api.sensay.io", // Updated to actual Sensay API endpoint
   endpoints: {
     replicas: "/v1/replicas",
-    knowledgeBase: "/v1/kb",
-    chat: "/v1/replicas/{replicaId}/chat",
+    chat: "/v1/replicas/{replicaId}/chat/completions",
     upload: "/v1/uploads",
   },
   headers: {

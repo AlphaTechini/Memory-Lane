@@ -20,7 +20,7 @@
 <nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
   <div class="max-w-6xl mx-auto flex items-center justify-between">
     <div class="flex items-center gap-8">
-      <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Sensay AI</h1>
+      <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Memory Lane</h1>
       
       <div class="flex items-center gap-4">
         <button
@@ -46,17 +46,6 @@
           {/if}
         </button>
         
-        {#if isAuthenticated}
-          <button
-            onclick={() => goto('/train-models')}
-            class="px-3 py-2 text-sm font-medium rounded-md transition-colors
-              {currentPath.startsWith('/train-models') 
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-                : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'}"
-          >
-            Train Models
-          </button>
-        {/if}
         
         <button
           onclick={() => goto('/gallery')}

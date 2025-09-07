@@ -1,12 +1,15 @@
 <script>
   import { onMount } from 'svelte';
   import { wizardStore } from '$lib/stores/wizardStore.js';
-  import { REQUIRED_QUESTIONS } from '$lib/questionBank.js';
+  import { REQUIRED_QUESTIONS, getRequiredQuestionsByTemplate } from '$lib/questionBank.js';
 
   let state = $state({
     requiredAnswers: {}
   });
   let expandedQuestion = $state(null);
+  
+  // Get template-specific questions using $derived
+  let questions = $derived(state.template ? getRequiredQuestionsByTemplate(state.template) : REQUIRED_QUESTIONS);
   
   // Subscribe to wizard store
   let unsubscribe;
@@ -47,8 +50,8 @@
   }
 
   function getCompletionStats() {
-    const total = REQUIRED_QUESTIONS.length;
-    const completed = REQUIRED_QUESTIONS.filter(q => isQuestionValid(q)).length;
+    const total = questions.length;
+    const completed = questions.filter(q => isQuestionValid(q)).length;
     return { completed, total };
   }
 </script>
@@ -56,14 +59,26 @@
 <div class="p-6">
   <div class="mb-6">
     <div class="flex items-center justify-between mb-2">
-      <h2 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Required Questions</h2>
+      <h2 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+        Required Questions
+        {#if state.template && state.relationship}
+          <span class="text-lg font-normal text-gray-600 dark:text-gray-400">
+            for {state.relationship}
+          </span>
+        {/if}
+      </h2>
       <div class="text-sm text-gray-600 dark:text-gray-400">
         {getCompletionStats().completed} of {getCompletionStats().total} completed
       </div>
     </div>
     <p class="text-gray-600 dark:text-gray-400">
-      These deep, existential questions help capture your core personality and worldview. 
-      Each answer should be at least 150 characters to provide meaningful insights.
+      {#if state.template}
+        These questions are specifically designed to capture the essence and personality of your {state.relationship ? state.relationship.toLowerCase() : 'replica'}. 
+        Each answer should be detailed and thoughtful to create an authentic digital representation.
+      {:else}
+        These deep, existential questions help capture your core personality and worldview. 
+        Each answer should be at least 150 characters to provide meaningful insights.
+      {/if}
     </p>
   </div>
 
@@ -83,7 +98,7 @@
 
   <!-- Questions -->
   <div class="space-y-6">
-    {#each REQUIRED_QUESTIONS as question, index (question.id)}
+    {#each questions as question, index (question.id)}
       <div class="border border-gray-200 dark:border-gray-600 rounded-lg 
         {isQuestionValid(question) ? 'border-green-300 dark:border-green-600' : ''}">
         
@@ -125,9 +140,9 @@
               <textarea
                 value={state?.requiredAnswers?.[question.id] || ''}
                 oninput={(e) => updateAnswer(question.id, e.target.value)}
-                rows="6"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                placeholder="Share your thoughts deeply and authentically..."
+                rows="8"
+                class="w-full min-h-[160px] px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 resize-y transition-colors"
+                placeholder="Share your thoughts deeply and authentically... Take your time to provide a detailed, meaningful response."
               ></textarea>
               
               <div class="flex justify-between items-center text-sm">
