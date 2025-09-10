@@ -337,27 +337,108 @@ async function galleryRoutes(fastify, options) {
    * Upload photos (can be added to an album or standalone)
    */
   fastify.post('/gallery/photos', {
-    schema: uploadSchema,
     preHandler: authenticateToken
   }, async (request, reply) => {
     try {
-      const files = await request.saveRequestFiles();
-      const albumId = request.body?.albumId?.value; // Get albumId from form data if provided
-      const description = request.body?.description?.value; // Get description from form data if provided
+      fastify.log.info('Starting photo upload process');
       
-      if (!files || files.length === 0) {
+      // Check if request is multipart
+      if (!request.isMultipart()) {
+        fastify.log.error('Request is not multipart');
         return reply.code(400).send({
           success: false,
-          message: 'No files provided',
-          errors: ['At least one image file is required']
+          message: 'Request must be multipart/form-data',
+          errors: ['Invalid content type']
         });
       }
 
       const user = await User.findById(request.user.id);
       if (!user) {
+        fastify.log.error(`User not found: ${request.user.id}`);
         return reply.code(404).send({
           success: false,
           message: 'User not found'
+        });
+      }
+
+      let albumId = null;
+      let description = '';
+      const files = [];
+
+      // Process multipart data
+      for await (const part of request.parts()) {
+        fastify.log.info(`Processing part: ${part.fieldname}, type: ${part.type}`);
+        
+        if (part.type === 'file') {
+          // This is a file upload
+          if (part.fieldname === 'images') {
+            fastify.log.info(`Processing file: ${part.filename}, mimetype: ${part.mimetype}`);
+            
+            if (!part.filename) {
+              fastify.log.warn('File part has no filename, skipping');
+              continue;
+            }
+
+            // Validate file before processing
+            try {
+              validateImageFile({
+                filename: part.filename,
+                mimetype: part.mimetype
+              });
+            } catch (validationError) {
+              fastify.log.error(validationError, `File validation failed for ${part.filename}`);
+              continue;
+            }
+
+            // Read file data into buffer
+            const chunks = [];
+            let totalSize = 0;
+            const maxSize = 10 * 1024 * 1024; // 10MB
+
+            for await (const chunk of part.file) {
+              totalSize += chunk.length;
+              if (totalSize > maxSize) {
+                fastify.log.error(`File ${part.filename} exceeds maximum size of 10MB`);
+                throw new Error(`File ${part.filename} is too large (max 10MB)`);
+              }
+              chunks.push(chunk);
+            }
+
+            if (chunks.length === 0) {
+              fastify.log.warn(`File ${part.filename} has no data, skipping`);
+              continue;
+            }
+
+            const fileBuffer = Buffer.concat(chunks);
+            fastify.log.info(`File ${part.filename} loaded: ${fileBuffer.length} bytes`);
+
+            files.push({
+              filename: part.filename,
+              mimetype: part.mimetype,
+              buffer: fileBuffer
+            });
+          }
+        } else {
+          // This is a field value
+          const value = part.value;
+          fastify.log.info(`Processing field: ${part.fieldname} = ${value}`);
+          
+          if (part.fieldname === 'albumId' && value) {
+            albumId = value;
+          } else if (part.fieldname === 'description' && value) {
+            description = value;
+          }
+        }
+      }
+
+      fastify.log.info(`Processed ${files.length} files, albumId: ${albumId}, description: ${description}`);
+
+      if (files.length === 0) {
+        fastify.log.error('No valid files found in request');
+        return reply.code(400).send({
+          success: false,
+          message: 'No valid files provided',
+          errors: ['At least one image file is required']
         });
       }
 
@@ -366,34 +447,35 @@ async function galleryRoutes(fastify, options) {
       if (albumId) {
         album = user.albums.id(albumId);
         if (!album) {
+          fastify.log.error(`Album not found: ${albumId}`);
           return reply.code(404).send({
             success: false,
             message: 'Album not found'
           });
         }
+        fastify.log.info(`Album found: ${album.name}`);
       }
 
-      // Validate each file
+      // Process each file
       const uploadResults = [];
       const errors = [];
 
       for (const file of files) {
         try {
-          validateImageFile(file);
-          
-          // Read file buffer
-          const fileBuffer = await file.toBuffer();
+          fastify.log.info(`Uploading file: ${file.filename}`);
           
           // Upload to Cloudinary
-          const cloudinaryResult = await uploadImage(fileBuffer, {
+          const cloudinaryResult = await uploadImage(file.buffer, {
             folder: `users/${request.user.id}/photos`
           });
+
+          fastify.log.info(`Cloudinary upload successful for ${file.filename}: ${cloudinaryResult.public_id}`);
 
           const photoData = {
             imageUrl: cloudinaryResult.url,
             imageId: cloudinaryResult.public_id,
             originalName: file.filename,
-            description: description,
+            description: description || '',
             albumId: albumId || undefined,
             uploadedAt: new Date()
           };
@@ -404,24 +486,28 @@ async function galleryRoutes(fastify, options) {
           // Add photo to album if specified
           if (album) {
             album.photos.push(newPhoto._id);
+            fastify.log.info(`Added photo ${newPhoto._id} to album ${album.name}`);
           }
 
           uploadResults.push(newPhoto);
 
         } catch (error) {
+          fastify.log.error(error, `Failed to upload ${file.filename}`);
           errors.push(`${file.filename}: ${error.message}`);
         }
       }
 
       if (uploadResults.length === 0) {
+        fastify.log.error('All file uploads failed');
         return reply.code(400).send({
           success: false,
-          message: 'No valid images to upload',
+          message: 'No valid images could be uploaded',
           errors
         });
       }
 
       await user.save();
+      fastify.log.info(`Successfully uploaded ${uploadResults.length} photos`);
 
       reply.send({
         success: true,
@@ -833,44 +919,110 @@ async function galleryRoutes(fastify, options) {
    * Upload images as standalone photos
    */
   fastify.post('/gallery/upload', {
-    schema: uploadSchema,
     preHandler: authenticateToken
   }, async (request, reply) => {
     try {
-      // Forward to the new photos endpoint
-      const files = await request.saveRequestFiles();
+      fastify.log.info('Starting legacy gallery upload process');
       
-      if (!files || files.length === 0) {
+      // Check if request is multipart
+      if (!request.isMultipart()) {
+        fastify.log.error('Request is not multipart');
         return reply.code(400).send({
           success: false,
-          message: 'No files provided',
-          errors: ['At least one image file is required']
+          message: 'Request must be multipart/form-data',
+          errors: ['Invalid content type']
         });
       }
 
       const user = await User.findById(request.user.id);
       if (!user) {
+        fastify.log.error(`User not found: ${request.user.id}`);
         return reply.code(404).send({
           success: false,
           message: 'User not found'
         });
       }
 
-      // Validate each file
+      const files = [];
+
+      // Process multipart data
+      for await (const part of request.parts()) {
+        fastify.log.info(`Processing part: ${part.fieldname}, type: ${part.type}`);
+        
+        if (part.type === 'file' && part.fieldname === 'images') {
+          fastify.log.info(`Processing file: ${part.filename}, mimetype: ${part.mimetype}`);
+          
+          if (!part.filename) {
+            fastify.log.warn('File part has no filename, skipping');
+            continue;
+          }
+
+          // Validate file before processing
+          try {
+            validateImageFile({
+              filename: part.filename,
+              mimetype: part.mimetype
+            });
+          } catch (validationError) {
+            fastify.log.error(validationError, `File validation failed for ${part.filename}`);
+            continue;
+          }
+
+          // Read file data into buffer
+          const chunks = [];
+          let totalSize = 0;
+          const maxSize = 10 * 1024 * 1024; // 10MB
+
+          for await (const chunk of part.file) {
+            totalSize += chunk.length;
+            if (totalSize > maxSize) {
+              fastify.log.error(`File ${part.filename} exceeds maximum size of 10MB`);
+              throw new Error(`File ${part.filename} is too large (max 10MB)`);
+            }
+            chunks.push(chunk);
+          }
+
+          if (chunks.length === 0) {
+            fastify.log.warn(`File ${part.filename} has no data, skipping`);
+            continue;
+          }
+
+          const fileBuffer = Buffer.concat(chunks);
+          fastify.log.info(`File ${part.filename} loaded: ${fileBuffer.length} bytes`);
+
+          files.push({
+            filename: part.filename,
+            mimetype: part.mimetype,
+            buffer: fileBuffer
+          });
+        }
+      }
+
+      fastify.log.info(`Processed ${files.length} files for legacy upload`);
+
+      if (files.length === 0) {
+        fastify.log.error('No valid files found in legacy upload request');
+        return reply.code(400).send({
+          success: false,
+          message: 'No valid files provided',
+          errors: ['At least one image file is required']
+        });
+      }
+
+      // Process each file
       const uploadResults = [];
       const errors = [];
 
       for (const file of files) {
         try {
-          validateImageFile(file);
-          
-          // Read file buffer
-          const fileBuffer = await file.toBuffer();
+          fastify.log.info(`Uploading file: ${file.filename}`);
           
           // Upload to Cloudinary
-          const cloudinaryResult = await uploadImage(fileBuffer, {
+          const cloudinaryResult = await uploadImage(file.buffer, {
             folder: `users/${request.user.id}/photos`
           });
+
+          fastify.log.info(`Cloudinary upload successful for ${file.filename}: ${cloudinaryResult.public_id}`);
 
           const photoData = {
             imageUrl: cloudinaryResult.url,
@@ -883,19 +1035,22 @@ async function galleryRoutes(fastify, options) {
           uploadResults.push(user.photos[user.photos.length - 1]);
 
         } catch (error) {
+          fastify.log.error(error, `Failed to upload ${file.filename}`);
           errors.push(`${file.filename}: ${error.message}`);
         }
       }
 
       if (uploadResults.length === 0) {
+        fastify.log.error('All legacy file uploads failed');
         return reply.code(400).send({
           success: false,
-          message: 'No valid images to upload',
+          message: 'No valid images could be uploaded',
           errors
         });
       }
 
       await user.save();
+      fastify.log.info(`Successfully uploaded ${uploadResults.length} photos via legacy endpoint`);
 
       // Return in legacy format for backward compatibility
       reply.send({

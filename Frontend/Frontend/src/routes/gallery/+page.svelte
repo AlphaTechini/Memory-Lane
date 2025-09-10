@@ -121,8 +121,7 @@
 
       const response = await apiCall('/gallery/photos', {
         method: 'POST',
-        body: formData,
-        headers: {} // Remove Content-Type to let browser set it for FormData
+        body: formData
       });
 
       if (response && response.ok) {
