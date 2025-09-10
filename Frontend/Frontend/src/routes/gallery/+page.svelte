@@ -347,11 +347,8 @@
   function handleFileInput(event) {
     const files = Array.from(event.target.files || []);
     uploadForm.files = files;
-    // Immediately start upload for better UX (uploads as soon as user picks files)
-    if (files.length > 0) {
-      // Keep current description/album/date values and upload
-      uploadImages(files, uploadForm.selectedAlbumId || null, uploadForm.description, uploadForm.dateOfMemory);
-    }
+  // Do not auto-upload here. User will click the "Upload Photos" button to start upload.
+  // This preserves the user's ability to set description/date/album before uploading.
   }
 
   function handleFileSelect() {
@@ -380,7 +377,8 @@
     event.preventDefault();
     const files = Array.from(event.dataTransfer.files).filter(file => file.type.startsWith('image/'));
     if (files.length > 0) {
-      uploadImages(files);
+      // Store dropped files in the form; user must click Upload Photos to send them.
+      uploadForm.files = files;
     }
   }
 
