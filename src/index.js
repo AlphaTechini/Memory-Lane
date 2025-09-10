@@ -6,7 +6,7 @@ import jwt from '@fastify/jwt';
 import multipart from '@fastify/multipart';
 import replicaRoutes from './routes/replicaApi.js';
 import authRoutes from './routes/authRoutes.js';
-import galleryRoutes from './routes/galleryRoutes.js';
+import galleryRoutes from './routes/gallery/index.js';
 import replicaImageRoutes from './routes/replicaImageRoutes.js';
 import genericChatRoutes from './routes/genericChatRoutes.js';
 import databaseConfig from './config/database.js';
@@ -27,14 +27,62 @@ const server = fastify({
 });
 
 // Register CORS plugin
+// Build CORS allowedOrigins set from environment variables for flexible dev setups.
+// FRONTEND_URLS (comma-separated) or FRONTEND_URL (single) populate the initial list.
+// We also expose a protected endpoint that allows the frontend (or a dev script) to
+// register its current exposed origin at runtime (useful when running with `--host`).
+const defaultFrontendOrigins = ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'];
+const rawFrontend = process.env.FRONTEND_URLS || process.env.FRONTEND_URL || '';
+const envOrigins = rawFrontend.split(',').map(s => s.trim()).filter(Boolean);
+const allowedOrigins = new Set([...envOrigins, ...defaultFrontendOrigins]);
+
+// CORS origin as function: allow if no origin (curl/servers) or if origin is in allowedOrigins
 await server.register(cors, {
-  origin: [
-    'http://localhost:5173', // Vite dev server
-    'http://localhost:3000', // Alternative dev server
-    process.env.FRONTEND_URL || 'http://localhost:5173'
-  ],
+  origin: (origin, cb) => {
+    // When origin is undefined (for same-origin or tools like curl), allow.
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.has(origin)) return cb(null, true);
+    // Not allowed
+    return cb(new Error('CORS origin not allowed'), false);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+});
+
+// Internal admin endpoints to manage origins at runtime.
+// Protect these with ORIGIN_REGISTRATION_SECRET to avoid open registration.
+const originRegistrationSecret = process.env.ORIGIN_REGISTRATION_SECRET || '';
+
+server.post('/internal/register-origin', async (request, reply) => {
+  try {
+    const token = request.headers['x-origin-secret'] || '';
+    if (!originRegistrationSecret || token !== originRegistrationSecret) {
+      return reply.code(401).send({ success: false, message: 'Unauthorized' });
+    }
+    const { origin } = request.body || {};
+    if (!origin || typeof origin !== 'string') {
+      return reply.code(400).send({ success: false, message: 'Invalid origin' });
+    }
+    allowedOrigins.add(origin);
+    request.log.info({ origin }, 'Registered new allowed CORS origin');
+    return reply.send({ success: true, message: 'Origin registered', origin });
+  } catch (err) {
+    request.log.error(err, 'Failed to register origin');
+    reply.code(500).send({ success: false, message: 'Internal error' });
+  }
+});
+
+server.get('/internal/allowed-origins', async (request, reply) => {
+  try {
+    const token = request.headers['x-origin-secret'] || '';
+    if (!originRegistrationSecret || token !== originRegistrationSecret) {
+      return reply.code(401).send({ success: false, message: 'Unauthorized' });
+    }
+    return reply.send({ success: true, origins: Array.from(allowedOrigins) });
+  } catch (err) {
+    request.log.error(err, 'Failed to read allowed origins');
+    reply.code(500).send({ success: false, message: 'Internal error' });
+  }
 });
 
 // Register JWT plugin

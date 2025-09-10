@@ -24,6 +24,15 @@
   let currentView = $state('overview'); // 'overview', 'albums', 'photos'
   let selectedAlbum = $state(null);
 
+  // Upload form state
+  let uploadForm = $state({
+    files: [],
+    description: '',
+    dateOfMemory: '',
+    selectedAlbumId: ''
+  });
+  let fileInput = $state(null);
+
   // Search / filter / sort state
   let searchQuery = $state('');
   let sortOption = $state('recent'); // recent | oldest | name-asc | name-desc
@@ -97,7 +106,7 @@
     }
   }
 
-  async function uploadImages(files, albumId = null, description = '') {
+  async function uploadImages(files, albumId = null, description = '', dateOfMemory = '') {
     if (!files || files.length === 0) return;
 
     uploading = true;
@@ -119,6 +128,10 @@
         formData.append('description', description);
       }
 
+      if (dateOfMemory) {
+        formData.append('dateOfMemory', dateOfMemory);
+      }
+
       const response = await apiCall('/gallery/photos', {
         method: 'POST',
         body: formData
@@ -129,6 +142,13 @@
         if (data.success) {
           success = data.message;
           await loadGallery(); // Refresh the gallery
+          
+          // Clear upload form
+          uploadForm.files = [];
+          uploadForm.description = '';
+          uploadForm.dateOfMemory = '';
+          uploadForm.selectedAlbumId = '';
+          if (fileInput) fileInput.value = '';
           
           // Clear success message after 3 seconds
           setTimeout(() => {
@@ -326,9 +346,34 @@
 
   function handleFileInput(event) {
     const files = Array.from(event.target.files || []);
+    uploadForm.files = files;
+    // Immediately start upload for better UX (uploads as soon as user picks files)
     if (files.length > 0) {
-      uploadImages(files);
+      // Keep current description/album/date values and upload
+      uploadImages(files, uploadForm.selectedAlbumId || null, uploadForm.description, uploadForm.dateOfMemory);
     }
+  }
+
+  function handleFileSelect() {
+    fileInput?.click();
+  }
+
+  function removeFile(index) {
+    uploadForm.files = uploadForm.files.filter((_, i) => i !== index);
+    if (fileInput) fileInput.value = '';
+  }
+
+  function handleUploadSubmit() {
+    if (uploadForm.files.length === 0) {
+      error = 'Please select at least one file to upload';
+      return;
+    }
+    uploadImages(
+      uploadForm.files, 
+      uploadForm.selectedAlbumId || null, 
+      uploadForm.description, 
+      uploadForm.dateOfMemory
+    );
   }
 
   function handleDrop(event) {
@@ -573,40 +618,126 @@
       {/if}
     </div>
 
-    <!-- Upload Section -->
+    <!-- Enhanced Upload Card -->
     {#if currentView !== 'album-detail'}
       <div class="mb-8">
-        <div
-          class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
-          ondrop={handleDrop}
-          ondragover={handleDragOver}
-          role="button"
-          tabindex="0"
-          aria-label="Drag and drop images here or click to choose files"
-        >
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Add New Photos</h3>
+          
+          <!-- File Selection -->
           <div class="mb-4">
-            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-              <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </div>
-          <div class="mb-4">
-            <p class="text-gray-600 dark:text-gray-400 mb-2">
-              Drag and drop images here, or
-            </p>
-            <label class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer transition-colors">
-              <span>Choose Files</span>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Select Files
+            </label>
+            <div class="flex items-center gap-3">
+              <button
+                onclick={handleFileSelect}
+                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Choose Files
+              </button>
               <input
+                bind:this={fileInput}
                 type="file"
                 multiple
                 accept="image/*"
                 onchange={handleFileInput}
                 class="hidden"
               />
-            </label>
+              <span class="text-sm text-gray-600 dark:text-gray-400">
+                {uploadForm.files.length > 0 ? `${uploadForm.files.length} file(s) selected` : 'No files selected'}
+              </span>
+            </div>
+            
+            <!-- Selected Files Display -->
+            {#if uploadForm.files.length > 0}
+              <div class="mt-3 space-y-2">
+                {#each uploadForm.files as file, index}
+                  <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-2 rounded">
+                    <span class="text-sm text-gray-700 dark:text-gray-300 truncate">{file.name}</span>
+                    <button
+                      onclick={() => removeFile(index)}
+                      class="text-red-500 hover:text-red-700 dark:hover:text-red-400"
+                      aria-label="Remove file"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>
+                    </button>
+                  </div>
+                {/each}
+              </div>
+            {/if}
           </div>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
-            PNG, JPG, GIF up to 10MB each
-          </p>
+
+          <!-- Description -->
+          <div class="mb-4">
+            <label for="photo-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Description
+            </label>
+            <textarea
+              id="photo-description"
+              bind:value={uploadForm.description}
+              placeholder="Add a description for your photos..."
+              rows="3"
+              class="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            ></textarea>
+          </div>
+
+          <!-- Date of Memory -->
+          <div class="mb-4">
+            <label for="date-of-memory" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Date of Memory
+            </label>
+            <input
+              id="date-of-memory"
+              type="date"
+              bind:value={uploadForm.dateOfMemory}
+              class="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <!-- Album Selection -->
+          <div class="mb-6">
+            <label for="album-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Add to Album (Optional)
+            </label>
+            <select
+              id="album-select"
+              bind:value={uploadForm.selectedAlbumId}
+              class="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select an album...</option>
+              {#each albums as album}
+                <option value={album._id}>{album.name}</option>
+              {/each}
+            </select>
+          </div>
+
+          <!-- Upload Button -->
+          <div class="flex justify-end">
+            <button
+              onclick={handleUploadSubmit}
+              disabled={uploading || uploadForm.files.length === 0}
+              class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            >
+              {#if uploading}
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Uploading...
+              {:else}
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                </svg>
+                Upload Photos
+              {/if}
+            </button>
+          </div>
         </div>
       </div>
     {/if}

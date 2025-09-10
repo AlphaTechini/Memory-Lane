@@ -6,7 +6,7 @@ import { v2 as cloudinary } from 'cloudinary';
  */
 
 // Check if Cloudinary is properly configured
-const isCloudinaryConfigured = Boolean(
+export const isCloudinaryConfigured = Boolean(
   process.env.CLOUDINARY_CLOUD_NAME && 
   process.env.CLOUDINARY_API_KEY && 
   process.env.CLOUDINARY_API_SECRET &&
@@ -35,9 +35,20 @@ if (isCloudinaryConfigured) {
  * @returns {Promise<Object>} - { url, public_id }
  */
 export const uploadImage = async (fileBuffer, options = {}) => {
-  console.log(`📤 Starting image upload, buffer size: ${fileBuffer ? fileBuffer.length : 0} bytes`);
-  
+  const size = fileBuffer ? fileBuffer.length : 0;
+  console.log(`📤 Starting image upload, buffer size: ${size} bytes`, { options });
+  try {
+    // Log a short preview of the buffer (first 16 bytes) for debugging non-sensitive issues
+    if (fileBuffer && fileBuffer.length > 0) {
+      const preview = fileBuffer.slice(0, Math.min(16, fileBuffer.length)).toString('hex');
+      console.debug('📦 Buffer preview (first bytes hex):', preview);
+    }
+  } catch (dbgErr) {
+    console.debug('⚠️ Failed to generate buffer preview', dbgErr && dbgErr.stack ? dbgErr.stack : dbgErr);
+  }
+
   if (!fileBuffer || fileBuffer.length === 0) {
+    console.error('❌ uploadImage called with empty buffer');
     throw new Error('File buffer is empty or invalid');
   }
 
@@ -47,57 +58,75 @@ export const uploadImage = async (fileBuffer, options = {}) => {
     return mockUploadImage(fileBuffer, options);
   }
 
-  try {
-    console.log('🔄 Uploading to Cloudinary...');
-    return new Promise((resolve, reject) => {
-      const uploadOptions = {
-        resource_type: 'image',
-        folder: options.folder || 'sensay-uploads',
-        transformation: options.transformation || [
-          { width: 1000, height: 1000, crop: 'limit' },
-          { quality: 'auto:good' },
-          { format: 'auto' }
-        ],
-        ...options
-      };
+    try {
+      console.log('🔄 Uploading to Cloudinary...');
+      return await new Promise((resolve, reject) => {
+        const uploadOptions = {
+          resource_type: 'image',
+          folder: options.folder || 'sensay-uploads',
+          transformation: options.transformation || [
+            { width: 1000, height: 1000, crop: 'limit' },
+            { quality: 'auto:good' },
+            { format: 'auto' }
+          ],
+          ...options
+        };
 
-      console.log(`📋 Upload options:`, {
-        resource_type: uploadOptions.resource_type,
-        folder: uploadOptions.folder,
-        transformation: uploadOptions.transformation
-      });
+        console.debug('📋 Prepared upload options:', {
+          resource_type: uploadOptions.resource_type,
+          folder: uploadOptions.folder,
+          transformation: uploadOptions.transformation
+        });
 
-      cloudinary.uploader.upload_stream(
-        uploadOptions,
-        (error, result) => {
-          if (error) {
-            console.error('❌ Cloudinary upload failed:', error);
-            reject(new Error(`Cloudinary upload failed: ${error.message}`));
-          } else {
-            console.log('✅ Cloudinary upload successful:', {
-              public_id: result.public_id,
-              url: result.secure_url,
-              width: result.width,
-              height: result.height,
-              format: result.format,
-              bytes: result.bytes
-            });
-            resolve({
-              url: result.secure_url,
-              public_id: result.public_id,
-              width: result.width,
-              height: result.height,
-              format: result.format,
-              bytes: result.bytes
-            });
+        try {
+          const stream = cloudinary.uploader.upload_stream(
+            uploadOptions,
+            (error, result) => {
+              if (error) {
+                // Cloudinary returns rich error objects; log full details for debugging
+                try {
+                  console.error('❌ Cloudinary upload failed (full error):', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+                } catch (stringifyErr) {
+                  console.error('❌ Cloudinary upload failed (non-serializable):', error, stringifyErr);
+                }
+                return reject(new Error(`Cloudinary upload failed: ${error && error.message ? error.message : String(error)}`));
+              }
+
+              console.log('✅ Cloudinary upload successful:', {
+                public_id: result.public_id,
+                url: result.secure_url,
+                width: result.width,
+                height: result.height,
+                format: result.format,
+                bytes: result.bytes
+              });
+              return resolve({
+                url: result.secure_url,
+                public_id: result.public_id,
+                width: result.width,
+                height: result.height,
+                format: result.format,
+                bytes: result.bytes
+              });
+            }
+          );
+
+          // Write buffer to stream and handle synchronous exceptions
+          try {
+            stream.end(fileBuffer);
+          } catch (endErr) {
+            console.error('❌ Failed to end Cloudinary upload stream:', endErr && endErr.stack ? endErr.stack : endErr);
+            return reject(endErr);
           }
+        } catch (streamErr) {
+          console.error('❌ Error while initiating Cloudinary upload stream:', streamErr && streamErr.stack ? streamErr.stack : streamErr);
+          return reject(streamErr);
         }
-      ).end(fileBuffer);
-    });
-  } catch (error) {
-    console.error('❌ Image upload error:', error);
-    throw new Error(`Image upload failed: ${error.message}`);
-  }
+      });
+    } catch (error) {
+      console.error('❌ Image upload error:', error && error.stack ? error.stack : error);
+      throw new Error(`Image upload failed: ${error && error.message ? error.message : String(error)}`);
+    }
 };
 
 /**
@@ -270,27 +299,31 @@ export const validateImageFile = (file) => {
  * @param {Object} options - Upload options
  * @returns {Promise<Object>} - Mock upload result
  */
-const mockUploadImage = async (fileBuffer, options = {}) => {
-  console.log('📸 Mock upload starting...');
-  
-  // Simulate upload delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Generate mock URL and public ID
-  const mockId = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const mockUrl = `https://via.placeholder.com/500x500/4F46E5/FFFFFF?text=Profile+Image`;
-  
-  const result = {
-    url: mockUrl,
-    public_id: mockId,
-    width: 500,
-    height: 500,
-    format: 'png',
-    bytes: fileBuffer.length
-  };
+export const mockUploadImage = async (fileBuffer, options = {}) => {
+  console.log('📸 Mock upload starting...', { options, bufferSize: fileBuffer ? fileBuffer.length : 0 });
+  try {
+    // Simulate upload delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-  console.log('✅ Mock image upload successful:', result);
-  return result;
+    // Generate mock URL and public ID
+    const mockId = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const mockUrl = `https://via.placeholder.com/500x500/4F46E5/FFFFFF?text=Profile+Image`;
+
+    const result = {
+      url: mockUrl,
+      public_id: mockId,
+      width: 500,
+      height: 500,
+      format: 'png',
+      bytes: fileBuffer ? fileBuffer.length : 0
+    };
+
+    console.log('✅ Mock image upload successful:', result);
+    return result;
+  } catch (err) {
+    console.error('❌ Mock upload error:', err && err.stack ? err.stack : err);
+    throw err;
+  }
 };
 
 /**
@@ -298,17 +331,20 @@ const mockUploadImage = async (fileBuffer, options = {}) => {
  * @param {String} publicId - Mock public ID
  * @returns {Promise<Object>} - Mock deletion result
  */
-const mockDeleteImage = async (publicId) => {
+export const mockDeleteImage = async (publicId) => {
   console.log(`🗑️ Mock deletion for: ${publicId}`);
-  
-  const result = {
-    success: true,
-    result: 'ok',
-    public_id: publicId
-  };
-
-  console.log('✅ Mock image deletion successful:', result);
-  return result;
+  try {
+    const result = {
+      success: true,
+      result: 'ok',
+      public_id: publicId
+    };
+    console.log('✅ Mock image deletion successful:', result);
+    return result;
+  } catch (err) {
+    console.error('❌ Mock delete error:', err && err.stack ? err.stack : err);
+    throw err;
+  }
 };
 
 export default {
