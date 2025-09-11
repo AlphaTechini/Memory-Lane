@@ -47,6 +47,13 @@ const userSchema = new mongoose.Schema({
   lastLogin: {
     type: Date
   },
+  // User role: 'caretaker' or 'patient'. Default to 'caretaker' to preserve existing accounts.
+  role: {
+    type: String,
+    enum: ['caretaker', 'patient'],
+    default: 'caretaker',
+    index: true
+  },
   verificationToken: {
     type: String
   },

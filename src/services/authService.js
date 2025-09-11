@@ -24,7 +24,8 @@ class AuthService {
     const payload = {
       id: user._id,
       email: user.email,
-      isVerified: user.isVerified
+  isVerified: user.isVerified,
+  role: user.role || 'caretaker'
     };
     
     return jwt.sign(payload, JWT_SECRET, {
@@ -138,7 +139,7 @@ class AuthService {
    */
   async signUp(userData) {
     try {
-      const { email, password, firstName, lastName } = userData;
+  const { email, password, firstName, lastName, role } = userData;
 
       // Validate input data
       const validation = this.validateSignupData(userData);
@@ -181,6 +182,7 @@ class AuthService {
         password,
         firstName: firstName?.trim(),
         lastName: lastName?.trim(),
+        role: role || 'caretaker', // Preserve existing accounts as caretakers by default
         isVerified: false // Default to false, will need email verification
       });
 
