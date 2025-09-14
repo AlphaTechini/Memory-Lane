@@ -24,7 +24,7 @@
       
       <div class="flex items-center gap-4">
         <button
-          onclick={() => goto('/chat-replicas')}
+          on:click={() => goto('/chat-replicas')}
           class="px-3 py-2 text-sm font-medium rounded-md transition-colors
             {currentPath === '/chat-replicas' || currentPath === '/' 
               ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
@@ -34,7 +34,7 @@
         </button>
         
         <button
-          onclick={() => goto('/create-replicas')}
+          on:click={() => goto('/create-replicas')}
           class="px-3 py-2 text-sm font-medium rounded-md transition-colors relative
             {currentPath.startsWith('/create-replicas') 
               ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
@@ -48,7 +48,7 @@
         
         
         <button
-          onclick={() => goto('/gallery')}
+          on:click={() => goto('/gallery')}
           class="px-3 py-2 text-sm font-medium rounded-md transition-colors relative
             {currentPath.startsWith('/gallery') 
               ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
@@ -65,7 +65,7 @@
     <div class="flex items-center gap-4">
       {#if isAuthenticated}
         <button
-          onclick={logout}
+          on:click={logout}
           class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"
         >
           Logout
@@ -73,13 +73,13 @@
       {:else}
         <div class="flex items-center gap-2">
           <button
-            onclick={() => goto('/login')}
+            on:click={() => goto('/login')}
             class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             Log In
           </button>
           <button
-            onclick={() => goto('/signup')}
+            on:click={() => goto('/signup')}
             class="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
           >
             Sign Up

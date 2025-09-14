@@ -682,3 +682,34 @@ export const deleteKnowledgeBaseEntry = async (replicaId, entryId) => {
     throw handleSensayError(error, 'Failed to delete knowledge base entry');
   }
 };
+
+/**
+ * Updates an existing replica in Sensay
+ * @param {string} replicaUUID - The replica UUID to update
+ * @param {Object} updateData - The updated replica data
+ * @returns {Promise<Object>} Updated replica object
+ */
+export const updateReplica = async (replicaUUID, updateData) => {
+  try {
+    if (!replicaUUID) {
+      throw new Error('Missing required parameter: replicaUUID');
+    }
+
+    const response = await sensayApi.put(`/v1/replicas/${replicaUUID}`, updateData, {
+      headers: {
+        ...sensayConfig.headers.base,
+        'X-API-Version': '2025-03-25'
+      }
+    });
+
+    if (response.status >= 200 && response.status < 300) {
+      logger?.info?.(`Updated Sensay replica ${replicaUUID}`) || console.log('Updated replica', replicaUUID);
+      return response.data;
+    } else {
+      throw new Error(`Update failed with status ${response.status}`);
+    }
+  } catch (error) {
+    console.error('Error updating replica:', error.message);
+    throw handleSensayError(error, 'Failed to update replica');
+  }
+};

@@ -56,8 +56,9 @@
     return album ? album.name : 'Unknown Album';
   }
   
+  import { formatTimestamp } from '$lib/utils/formatDate.js';
   function formatDate(dateString) {
-    return new Date(dateString).toLocaleDateString();
+    return formatTimestamp(dateString);
   }
 
   function handleDownload(e) {

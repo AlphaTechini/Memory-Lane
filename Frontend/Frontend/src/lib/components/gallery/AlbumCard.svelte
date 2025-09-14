@@ -23,12 +23,9 @@
     dispatch('view', album);
   }
   
+  import { formatTimestamp } from '$lib/utils/formatDate.js';
   function formatDate(dateString) {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    return formatTimestamp(dateString);
   }
 </script>
 

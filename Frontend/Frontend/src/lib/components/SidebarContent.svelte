@@ -14,7 +14,7 @@
 <!-- Dashboard Button -->
 <div class="mb-4">
   <button
-    onclick={() => goto('/dashboard')}
+  on:click={() => goto('/dashboard')}
     class="w-full flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md"
   >
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -32,7 +32,7 @@
 
 <div class="flex items-center justify-between mb-2">
   <div class="font-semibold text-gray-900 dark:text-gray-200">Conversations</div>
-  <button class="p-1 rounded-md text-gray-600 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors" onclick={onnew} aria-label="New conversation">
+  <button class="p-1 rounded-md text-gray-600 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors" on:click={onnew} aria-label="New conversation">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
   </button>
 </div>
@@ -41,7 +41,7 @@
   {#each conversationsList as conversation (conversation.id)}
     <button
       class="w-full text-left p-2 rounded-md truncate text-gray-700 dark:text-gray-300 transition-colors {activeId === conversation.id ? 'bg-blue-100 text-blue-800 font-semibold dark:bg-blue-900 dark:text-white' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}"
-      onclick={() => onselect?.({ detail: { id: conversation.id } })}
+  on:click={() => onselect?.({ detail: { id: conversation.id } })}
     >
       {conversation.title}
     </button>
@@ -60,7 +60,7 @@
 
 <div class="mt-auto pt-2 border-t border-gray-200 dark:border-gray-700">
   <button
-    onclick={onclear}
+  on:click={onclear}
     class="w-full text-left p-2 rounded-md hover:bg-red-100 text-red-600 dark:text-red-400 dark:hover:bg-red-900/50 flex items-center gap-2 transition-colors"
   >
     <svg

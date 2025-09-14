@@ -152,3 +152,22 @@ export function requireAuthForAction(redirectAfterLogin = null) {
 export function checkAuthStatus() {
   return isAuthenticated();
 }
+
+/**
+ * Get the current user's role
+ */
+export function getUserRole() {
+  if (!browser) return null;
+  
+  try {
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      const user = JSON.parse(userData);
+      return user.role || 'caretaker';
+    }
+  } catch {
+    // Ignore parsing errors
+  }
+  
+  return null;
+}

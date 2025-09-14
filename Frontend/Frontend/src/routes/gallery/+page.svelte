@@ -418,14 +418,16 @@
   function sortItems(list, type) {
     switch (type) {
       case 'oldest':
-        return [...list].sort((a,b) => new Date(a.uploadedAt || a.createdAt || 0) - new Date(b.uploadedAt || b.createdAt || 0));
+  import { formatTimestamp } from '$lib/utils/formatDate.js';
+  return [...list].sort((a,b) => new Date(formatTimestamp(a.uploadedAt || a.createdAt || 0)) - new Date(formatTimestamp(b.uploadedAt || b.createdAt || 0)));
       case 'name-asc':
         return [...list].sort((a,b) => (a.name||a.originalName||'').localeCompare(b.name||b.originalName||''));
       case 'name-desc':
         return [...list].sort((a,b) => (b.name||b.originalName||'').localeCompare(a.name||a.originalName||''));
       case 'recent':
       default:
-        return [...list].sort((a,b) => new Date(b.uploadedAt || b.createdAt || 0) - new Date(a.uploadedAt || a.createdAt || 0));
+  import { formatTimestamp } from '$lib/utils/formatDate.js';
+  return [...list].sort((a,b) => new Date(formatTimestamp(b.uploadedAt || b.createdAt || 0)) - new Date(formatTimestamp(a.uploadedAt || a.createdAt || 0)));
     }
   }
 
@@ -490,7 +492,7 @@
       <div class="flex items-center gap-3">
         <ThemeToggle />
         <button
-          onclick={logout}
+          on:click={logout}
           class="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
         >
           Logout
@@ -507,7 +509,7 @@
         {#if currentView === 'album-detail'}
           <div>
             <button
-              onclick={() => { currentView = 'overview'; selectedAlbum = null; }}
+              on:click={() => { currentView = 'overview'; selectedAlbum = null; }}
               class="inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mb-2"
             >
               <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -530,7 +532,7 @@
         <div class="flex items-center gap-3">
           {#if currentView !== 'album-detail'}
             <button
-              onclick={handleCreateAlbum}
+              on:click={handleCreateAlbum}
               class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors flex items-center gap-2"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -546,7 +548,7 @@
       {#if currentView !== 'album-detail'}
         <div class="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-fit">
           <button
-            onclick={() => currentView = 'overview'}
+            on:click={() => currentView = 'overview'}
             class="px-4 py-2 rounded-md text-sm font-medium transition-colors {
               currentView === 'overview' 
                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' 
@@ -556,7 +558,7 @@
             Overview
           </button>
           <button
-            onclick={() => currentView = 'albums'}
+            on:click={() => currentView = 'albums'}
             class="px-4 py-2 rounded-md text-sm font-medium transition-colors {
               currentView === 'albums' 
                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' 
@@ -566,7 +568,7 @@
             Albums ({albums.length})
           </button>
           <button
-            onclick={() => currentView = 'photos'}
+            on:click={() => currentView = 'photos'}
             class="px-4 py-2 rounded-md text-sm font-medium transition-colors {
               currentView === 'photos' 
                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' 
@@ -591,7 +593,7 @@
               {#if searchQuery}
                 <button
                   class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  onclick={() => searchQuery = ''}
+                  on:click={() => searchQuery = ''}
                   aria-label="Clear search"
                 >
                   ✕
@@ -629,7 +631,7 @@
             </label>
             <div class="flex items-center gap-3">
               <button
-                onclick={handleFileSelect}
+                on:click={handleFileSelect}
                 class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -657,7 +659,7 @@
                   <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-2 rounded">
                     <span class="text-sm text-gray-700 dark:text-gray-300 truncate">{file.name}</span>
                     <button
-                      onclick={() => removeFile(index)}
+                      on:click={() => removeFile(index)}
                       class="text-red-500 hover:text-red-700 dark:hover:text-red-400"
                       aria-label="Remove file"
                     >
@@ -718,7 +720,7 @@
           <!-- Upload Button -->
           <div class="flex justify-end">
             <button
-              onclick={handleUploadSubmit}
+              on:click={handleUploadSubmit}
               disabled={uploading || uploadForm.files.length === 0}
               class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             >

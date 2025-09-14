@@ -42,7 +42,7 @@
 
   // Calculate submission readiness
   // Dynamic required questions based on template
-  $: requiredQuestions = state?.template ? getRequiredQuestionsByTemplate(state.template) : REQUIRED_QUESTIONS;
+  let requiredQuestions = $derived(state?.template ? getRequiredQuestionsByTemplate(state.template) : REQUIRED_QUESTIONS);
 
   let canSubmit = $derived(() => {
     if (!state) return false;
@@ -495,7 +495,6 @@
       <p class="mt-2 text-blue-600 dark:text-blue-400">💡 After creation, you can continue training your replica with additional questions from the "Train Models" page.</p>
     </div>
   </div>
-</div>
 </div>
 
 {#if showProgress}

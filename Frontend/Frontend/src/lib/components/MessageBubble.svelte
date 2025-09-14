@@ -1,5 +1,6 @@
 <script>
   import { fly } from 'svelte/transition';
+  import { formatTimestamp } from '$lib/utils/formatDate.js';
 
   let { message } = $props();
   
@@ -50,10 +51,9 @@
         class:text-right={isUser}
         class:text-left={!isUser}
       >
-        {new Date(message.timestamp).toLocaleTimeString([], { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        })}
+        {#if message.timestamp}
+          {formatTimestamp(message.timestamp)}
+        {/if}
       </div>
     {/if}
   </div>

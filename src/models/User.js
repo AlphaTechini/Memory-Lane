@@ -174,7 +174,18 @@ const userSchema = new mongoose.Schema({
     },
     errorMessage: {
       type: String
-    }
+    },
+    whitelistEmails: [{
+      type: String,
+      lowercase: true,
+      trim: true,
+      validate: {
+        validator: function(email) {
+          return /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(email);
+        },
+        message: 'Please enter a valid email address'
+      }
+    }]
   }]
 }, {
   timestamps: true, // Adds createdAt and updatedAt automatically

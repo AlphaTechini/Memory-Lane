@@ -7,7 +7,8 @@ import {
   listReplicas,
   createKnowledgeBaseEntry,
   updateKnowledgeBaseWithText,
-  pollKnowledgeBaseEntryStatus
+  pollKnowledgeBaseEntryStatus,
+  updateReplica
 } from '../services/sensayService.js';
 import { authenticateToken, optionalAuth } from '../middleware/auth.js';
 import User from '../models/User.js';
@@ -334,6 +335,53 @@ async function replicaRoutes(fastify, options) {
       return reply.status(500).send({ 
         success: false, 
         error: 'Failed to fetch replicas' 
+      });
+    }
+  });
+
+  /**
+   * Get accessible replicas for patient users (protected route)
+   */
+  fastify.get('/api/user/accessible-replicas', { 
+    preHandler: authenticateToken 
+  }, async (request, reply) => {
+    try {
+      const currentUser = await User.findById(request.user.id).select('email role');
+      
+      // Only patients can access this endpoint
+      if (currentUser.role !== 'patient') {
+        return reply.status(403).send({ 
+          success: false, 
+          error: 'Access denied. This endpoint is for patient users only.' 
+        });
+      }
+
+      // Find all users with replicas that have this patient's email in their whitelist
+      const usersWithAccessibleReplicas = await User.find({
+        'replicas.whitelistEmails': currentUser.email
+      }).select('replicas');
+
+      let accessibleReplicas = [];
+      
+      // Extract replicas that include the patient's email in whitelist
+      for (const user of usersWithAccessibleReplicas) {
+        for (const replica of user.replicas) {
+          if (replica.whitelistEmails && replica.whitelistEmails.includes(currentUser.email)) {
+            accessibleReplicas.push(replica);
+          }
+        }
+      }
+      
+      return { 
+        success: true, 
+        replicas: accessibleReplicas 
+      };
+    } catch (error) {
+      fastify.log.error(error, 'Error fetching accessible replicas');
+      
+      return reply.status(500).send({ 
+        success: false, 
+        error: 'Failed to fetch accessible replicas' 
       });
     }
   });
@@ -943,6 +991,75 @@ async function replicaRoutes(fastify, options) {
       return reply.status(500).send({ 
         success: false, 
         error: 'Failed to fetch conversation messages' 
+      });
+    }
+  });
+
+  /**
+   * Update replica whitelist emails (protected route)
+   */
+  fastify.put('/api/replicas/:replicaId', { 
+    preHandler: authenticateToken 
+  }, async (request, reply) => {
+    try {
+      const { replicaId } = request.params;
+      const { whitelistEmails } = request.body;
+      const userId = request.user.id;
+      
+      // Verify user owns this replica
+      const user = await User.findById(userId);
+      const userReplica = user?.replicas?.find(r => r.replicaId === replicaId);
+      
+      if (!userReplica) {
+        return reply.status(403).send({ 
+          success: false, 
+          error: 'Access denied: Replica not found or not owned by user' 
+        });
+      }
+
+      // Get current replica data from the database
+      const currentReplica = userReplica;
+      
+      // Prepare update data for Sensay API
+      const updateData = {
+        name: currentReplica.name,
+        shortDescription: currentReplica.description,
+        greeting: `Hi! I'm ${currentReplica.name}. ${currentReplica.description}`,
+        slug: `${currentReplica.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
+        ownerID: user.sensayUserId,
+        private: whitelistEmails && whitelistEmails.length > 0,
+        whitelistEmails: whitelistEmails || [],
+        llm: {
+          model: "gpt-4o"
+        }
+      };
+      
+      // Update replica in Sensay
+      const { updateReplica } = await import('../services/sensayService.js');
+      const updatedReplica = await updateReplica(replicaId, updateData);
+      
+      // Also update the local User model
+      userReplica.whitelistEmails = whitelistEmails || [];
+      await user.save();
+      
+      return { 
+        success: true, 
+        message: 'Replica updated successfully',
+        replica: updatedReplica
+      };
+    } catch (error) {
+      fastify.log.error(error, 'Error updating replica');
+      
+      if (error.status) {
+        return reply.status(error.status).send({ 
+          success: false, 
+          error: error.message 
+        });
+      }
+      
+      return reply.status(500).send({ 
+        success: false, 
+        error: 'Failed to update replica' 
       });
     }
   });

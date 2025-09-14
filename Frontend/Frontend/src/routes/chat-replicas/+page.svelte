@@ -7,6 +7,8 @@
 
   const API_BASE_URL = 'http://localhost:4000';
 
+  import { formatTimestamp, relativeTime } from '$lib/utils/formatDate.js';
+
   let userReplicas = $state([]);
   let selectedReplica = $state(null);
   let isLoadingReplicas = $state(false); // Changed default to false for non-auth users
@@ -865,7 +867,12 @@
                     <div class="flex-1 min-w-0">
                       <h4 class="font-medium text-gray-900 dark:text-gray-100 truncate flex items-center gap-2">{replica.name}
                         {#if replica.lastTrained}
-                          <span class="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">Trained</span>
+                          <span class="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">
+                            Trained
+                            {#if formatTimestamp(replica.lastTrained)}
+                              <span class="ml-2 text-[10px] text-gray-600 dark:text-gray-300">{formatTimestamp(replica.lastTrained)}</span>
+                            {/if}
+                          </span>
                         {/if}
                       </h4>
                       <p class="text-sm text-gray-600 dark:text-gray-400 truncate">{replica.description}</p>
@@ -1059,7 +1066,7 @@
                           {conversation.messageCount || 0} messages
                         </span>
                         <span class="text-xs text-gray-500 dark:text-gray-400">
-                          {new Date(conversation.updatedAt || conversation.createdAt).toLocaleDateString()}
+                          {formatTimestamp(conversation.updatedAt || conversation.createdAt)}
                         </span>
                       </div>
                     </div>
