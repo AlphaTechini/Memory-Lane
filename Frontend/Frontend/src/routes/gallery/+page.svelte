@@ -1,11 +1,12 @@
 <script>
   import { browser } from '$app/environment';
-  import { protectRoute, apiCall, logout } from '$lib/auth.js';
+  import { protectRoute, apiCall, logout, verifyAuth } from '$lib/auth.js';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import AlbumCard from '$lib/components/gallery/AlbumCard.svelte';
   import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
   import AlbumModal from '$lib/components/gallery/AlbumModal.svelte';
   import PhotoSelector from '$lib/components/gallery/PhotoSelector.svelte';
+  import { formatTimestamp } from '$lib/utils/formatDate.js';
 
   let albums = $state([]);
   let photos = $state([]);
@@ -13,6 +14,10 @@
   let uploading = $state(false);
   let error = $state('');
   let success = $state('');
+  let user = $state(null);
+  
+  // Determine if user can delete (only caretakers and owners can delete)
+  $: canDelete = user && user.role !== 'patient';
   
   // Modal states
   let showAlbumModal = $state(false);
@@ -49,8 +54,9 @@
   // Protect this route - allow access for authenticated users, verification not required for gallery
   $effect(() => {
     if (browser) {
-      protectRoute(false).then(isAuthorized => {
+      protectRoute(false).then(async isAuthorized => {
         if (isAuthorized) {
+          user = await verifyAuth();
           loadGallery();
         }
       });
@@ -418,16 +424,14 @@
   function sortItems(list, type) {
     switch (type) {
       case 'oldest':
-  import { formatTimestamp } from '$lib/utils/formatDate.js';
-  return [...list].sort((a,b) => new Date(formatTimestamp(a.uploadedAt || a.createdAt || 0)) - new Date(formatTimestamp(b.uploadedAt || b.createdAt || 0)));
+        return [...list].sort((a,b) => new Date(formatTimestamp(a.uploadedAt || a.createdAt || 0)) - new Date(formatTimestamp(b.uploadedAt || b.createdAt || 0)));
       case 'name-asc':
         return [...list].sort((a,b) => (a.name||a.originalName||'').localeCompare(b.name||b.originalName||''));
       case 'name-desc':
         return [...list].sort((a,b) => (b.name||b.originalName||'').localeCompare(a.name||a.originalName||''));
       case 'recent':
       default:
-  import { formatTimestamp } from '$lib/utils/formatDate.js';
-  return [...list].sort((a,b) => new Date(formatTimestamp(b.uploadedAt || b.createdAt || 0)) - new Date(formatTimestamp(a.uploadedAt || a.createdAt || 0)));
+        return [...list].sort((a,b) => new Date(formatTimestamp(b.uploadedAt || b.createdAt || 0)) - new Date(formatTimestamp(a.uploadedAt || a.createdAt || 0)));
     }
   }
 
@@ -489,15 +493,15 @@
           <a href="/create-replicas" class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">Create Replicas</a>
         </div>
       </div>
-      <div class="flex items-center gap-3">
-        <ThemeToggle />
-        <button
-          on:click={logout}
+        <div class="flex items-center gap-3">
+          <ThemeToggle />
+          <button
+          onclick={logout}
           class="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
         >
           Logout
         </button>
-      </div>
+        </div>
     </div>
   </nav>
 
@@ -509,7 +513,7 @@
         {#if currentView === 'album-detail'}
           <div>
             <button
-              on:click={() => { currentView = 'overview'; selectedAlbum = null; }}
+              onclick={() => { currentView = 'overview'; selectedAlbum = null; }}
               class="inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mb-2"
             >
               <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -532,7 +536,7 @@
         <div class="flex items-center gap-3">
           {#if currentView !== 'album-detail'}
             <button
-              on:click={handleCreateAlbum}
+              onclick={handleCreateAlbum}
               class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors flex items-center gap-2"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -548,7 +552,7 @@
       {#if currentView !== 'album-detail'}
         <div class="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-fit">
           <button
-            on:click={() => currentView = 'overview'}
+            onclick={() => currentView = 'overview'}
             class="px-4 py-2 rounded-md text-sm font-medium transition-colors {
               currentView === 'overview' 
                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' 
@@ -558,7 +562,7 @@
             Overview
           </button>
           <button
-            on:click={() => currentView = 'albums'}
+            onclick={() => currentView = 'albums'}
             class="px-4 py-2 rounded-md text-sm font-medium transition-colors {
               currentView === 'albums' 
                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' 
@@ -568,7 +572,7 @@
             Albums ({albums.length})
           </button>
           <button
-            on:click={() => currentView = 'photos'}
+            onclick={() => currentView = 'photos'}
             class="px-4 py-2 rounded-md text-sm font-medium transition-colors {
               currentView === 'photos' 
                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' 
@@ -593,7 +597,7 @@
               {#if searchQuery}
                 <button
                   class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  on:click={() => searchQuery = ''}
+                  onclick={() => searchQuery = ''}
                   aria-label="Clear search"
                 >
                   ✕
@@ -631,7 +635,7 @@
             </label>
             <div class="flex items-center gap-3">
               <button
-                on:click={handleFileSelect}
+                onclick={handleFileSelect}
                 class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -659,7 +663,7 @@
                   <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-2 rounded">
                     <span class="text-sm text-gray-700 dark:text-gray-300 truncate">{file.name}</span>
                     <button
-                      on:click={() => removeFile(index)}
+                      onclick={() => removeFile(index)}
                       class="text-red-500 hover:text-red-700 dark:hover:text-red-400"
                       aria-label="Remove file"
                     >
@@ -720,7 +724,7 @@
           <!-- Upload Button -->
           <div class="flex justify-end">
             <button
-              on:click={handleUploadSubmit}
+              onclick={handleUploadSubmit}
               disabled={uploading || uploadForm.files.length === 0}
               class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             >
@@ -808,7 +812,8 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {#each getFilteredAlbums(4) as album (album._id)}
                 <AlbumCard 
-                  {album} 
+                  {album}
+                  {canDelete}
                   on:edit={(e) => handleEditAlbum(e.detail)}
                   on:delete={(e) => deleteAlbum(e.detail)}
                   on:addPhotos={(e) => handleAddPhotosToAlbum(e.detail)}
@@ -836,6 +841,7 @@
                 <PhotoCard
                   {photo}
                   {albums}
+                  {canDelete}
                   showAlbumSelector={true}
                   on:update={(e) => updatePhoto(e.detail.photo, e.detail.updates)}
                   on:delete={(e) => deletePhoto(e.detail)}
@@ -877,7 +883,8 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {#each getFilteredAlbums() as album (album._id)}
             <AlbumCard 
-              {album} 
+              {album}
+              {canDelete}
               on:edit={(e) => handleEditAlbum(e.detail)}
               on:delete={(e) => deleteAlbum(e.detail)}
               on:addPhotos={(e) => handleAddPhotosToAlbum(e.detail)}
@@ -902,6 +909,7 @@
             <PhotoCard
               {photo}
               {albums}
+              {canDelete}
               showAlbumSelector={true}
               on:update={(e) => updatePhoto(e.detail.photo, e.detail.updates)}
               on:delete={(e) => deletePhoto(e.detail)}
@@ -944,6 +952,7 @@
             <PhotoCard
               {photo}
               {albums}
+              {canDelete}
               showAlbumSelector={true}
               on:update={(e) => updatePhoto(e.detail.photo, e.detail.updates)}
               on:delete={(e) => deletePhoto(e.detail)}

@@ -1,4 +1,5 @@
 import { authenticateToken } from '../../middleware/auth.js';
+import { requireGalleryAccess } from '../../middleware/galleryAuth.js';
 import User from '../../models/User.js';
 
 export default async function albumsRoutes(fastify, options) {
@@ -82,7 +83,7 @@ export default async function albumsRoutes(fastify, options) {
 
   // Delete album -> DELETE /gallery/albums/:albumId
   fastify.delete('/:albumId', {
-    preHandler: authenticateToken,
+    preHandler: [authenticateToken, requireGalleryAccess(true)],
     schema: {
       params: { type: 'object', properties: { albumId: { type: 'string' } }, required: ['albumId'] },
       querystring: { type: 'object', properties: { deletePhotos: { type: 'boolean', default: false } } }
@@ -91,7 +92,10 @@ export default async function albumsRoutes(fastify, options) {
     try {
       const { albumId } = request.params;
       const { deletePhotos = false } = request.query;
-      const user = await User.findById(request.user.id);
+      const access = request.galleryAccess;
+      
+      // Use the owner from gallery access
+      const user = await User.findById(access.owner._id);
       if (!user) return reply.code(404).send({ success: false, message: 'User not found' });
       const album = user.albums.id(albumId);
       if (!album) return reply.code(404).send({ success: false, message: 'Album not found' });

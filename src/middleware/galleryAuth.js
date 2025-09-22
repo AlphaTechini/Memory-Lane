@@ -1,0 +1,94 @@
+import User from '../models/User.js';
+
+/**
+ * Helper function to check if a user can access another user's gallery
+ * @param {string} requestUserId - The ID of the user making the request
+ * @param {string} ownerUserId - The ID of the gallery owner
+ * @returns {Promise<{canRead: boolean, canWrite: boolean, canDelete: boolean, user: Object, owner: Object}>}
+ */
+export async function checkGalleryAccess(requestUserId, ownerUserId = null) {
+  const requestUser = await User.findById(requestUserId).select('email role');
+  if (!requestUser) {
+    throw new Error('Request user not found');
+  }
+
+  // If no owner specified or same user, check their own gallery
+  if (!ownerUserId || requestUserId === ownerUserId) {
+    return {
+      canRead: true,
+      canWrite: true,
+      canDelete: true,
+      user: requestUser,
+      owner: requestUser,
+      isOwner: true
+    };
+  }
+
+  const ownerUser = await User.findById(ownerUserId).select('email role whitelistedPatients');
+  if (!ownerUser) {
+    throw new Error('Gallery owner not found');
+  }
+
+  // Check if the request user's email is whitelisted by the owner
+  const isWhitelisted = ownerUser.whitelistedPatients && 
+    ownerUser.whitelistedPatients.includes(requestUser.email.toLowerCase());
+
+  // Allow whitelisted users to access gallery regardless of role (they become patients when whitelisted)
+  if (isWhitelisted) {
+    return {
+      canRead: true,
+      canWrite: true, // Can edit/update photos and albums
+      canDelete: false, // Cannot delete anything
+      user: requestUser,
+      owner: ownerUser,
+      isOwner: false,
+      isWhitelisted: true
+    };
+  }
+
+  // No access
+  return {
+    canRead: false,
+    canWrite: false,
+    canDelete: false,
+    user: requestUser,
+    owner: ownerUser,
+    isOwner: false,
+    isWhitelisted: false
+  };
+}
+
+/**
+ * Middleware to check gallery access for routes
+ * @param {boolean} requiresDelete - Whether the route requires delete permissions
+ */
+export function requireGalleryAccess(requiresDelete = false) {
+  return async (request, reply) => {
+    try {
+      const ownerUserId = request.params.userId || request.body.userId || request.user.id;
+      const access = await checkGalleryAccess(request.user.id, ownerUserId);
+
+      if (!access.canRead) {
+        return reply.code(403).send({
+          success: false,
+          message: 'Access denied to this gallery'
+        });
+      }
+
+      if (requiresDelete && !access.canDelete) {
+        return reply.code(403).send({
+          success: false,
+          message: 'Delete permission denied. Patients cannot delete content.'
+        });
+      }
+
+      // Store access info in request for use in handlers
+      request.galleryAccess = access;
+    } catch (error) {
+      return reply.code(500).send({
+        success: false,
+        message: 'Error checking gallery access'
+      });
+    }
+  };
+}

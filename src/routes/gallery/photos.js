@@ -1,4 +1,5 @@
 import { authenticateToken } from '../../middleware/auth.js';
+import { requireGalleryAccess } from '../../middleware/galleryAuth.js';
 import { uploadImage, validateImageFile } from '../../services/cloudinaryService.js';
 import User from '../../models/User.js';
 
@@ -272,20 +273,35 @@ export default async function photosRoutes(fastify, options) {
   });
 
   // Delete photo
-  fastify.delete('/photos/:photoId', { preHandler: authenticateToken, schema: { params: { type: 'object', properties: { photoId: { type: 'string' } }, required: ['photoId'] } } }, async (request, reply) => {
+  fastify.delete('/photos/:photoId', { 
+    preHandler: [authenticateToken, requireGalleryAccess(true)], 
+    schema: { params: { type: 'object', properties: { photoId: { type: 'string' } }, required: ['photoId'] } } 
+  }, async (request, reply) => {
     try {
       const { photoId } = request.params;
-      const user = await User.findById(request.user.id);
+      const access = request.galleryAccess;
+      
+      // Use the owner from gallery access (could be different from request.user for whitelisted patients)
+      const user = await User.findById(access.owner._id);
       if (!user) return reply.code(404).send({ success: false, message: 'User not found' });
+      
       const photo = user.photos.id(photoId);
       if (!photo) return reply.code(404).send({ success: false, message: 'Photo not found' });
+      
       if (photo.albumId) {
         const album = user.albums.id(photo.albumId);
         if (album) album.photos.pull(photoId);
       }
-      try { await import('../../services/cloudinaryService.js').then(m => m.deleteImage(photo.imageId)); } catch (cloudinaryError) { fastify.log.warn(cloudinaryError, 'Failed to delete from Cloudinary, continuing with database deletion'); }
+      
+      try { 
+        await import('../../services/cloudinaryService.js').then(m => m.deleteImage(photo.imageId)); 
+      } catch (cloudinaryError) { 
+        fastify.log.warn(cloudinaryError, 'Failed to delete from Cloudinary, continuing with database deletion'); 
+      }
+      
       user.photos.pull(photoId);
       await user.save();
+      
       reply.send({ success: true, message: 'Photo deleted successfully', data: { photos: user.photos, albums: user.albums } });
     } catch (error) {
       fastify.log.error(error, 'Photo deletion error');

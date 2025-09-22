@@ -28,6 +28,7 @@
     await loadUserReplicas();
     if (replicas.length === 0) {
       try {
+        console.debug('train-models reconcile - token present:', !!localStorage.getItem('authToken'));
         const rec = await fetch(`${API_BASE_URL}/api/replicas/reconcile`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }

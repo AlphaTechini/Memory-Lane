@@ -15,7 +15,10 @@ export function getAuthToken() {
  * Check if user is authenticated
  */
 export function isAuthenticated() {
-  return !!getAuthToken();
+  // Require a token to be present for API-authenticated actions. Cached UI data is handled in verifyAuth().
+  if (!browser) return false;
+  const token = getAuthToken();
+  return !!token;
 }
 
 /**
@@ -70,35 +73,53 @@ export async function apiCall(endpoint, options = {}) {
  * Verify token and get user data
  */
 export async function verifyAuth() {
-  if (!isAuthenticated()) {
-    return null;
-  }
-  
-  // Try to get cached user data first
+  if (!browser) return null;
+
+  // If we have cached user data, return it immediately so the UI can render quickly.
+  // If an auth token also exists, kick off a background verification to refresh the cache.
   try {
     const cachedUser = localStorage.getItem('userData');
     if (cachedUser) {
       const user = JSON.parse(cachedUser);
-      // Return cached data immediately - only verify token if there's an actual error
+
+      // Background verification if token exists
+      const token = getAuthToken();
+      if (token) {
+        // Fire-and-forget: verify token and refresh user cache if needed
+        (async () => {
+          try {
+            const resp = await apiCall('/auth/me');
+            if (resp.ok) {
+              const data = await resp.json();
+              if (data.success) {
+                localStorage.setItem('userData', JSON.stringify(data.user));
+              }
+            }
+          } catch (e) {
+            // If verification fails (401), apiCall will handle logout.
+          }
+        })();
+      }
+
       return user;
     }
   } catch {
     localStorage.removeItem('userData');
   }
-  
-  // Only make API call if no cached data exists
+
+  // No cached user: only verify via API if a token is present
+  const token = getAuthToken();
+  if (!token) return null;
+
   try {
     const response = await apiCall('/auth/me');
-    
     if (response.ok) {
       const data = await response.json();
       if (data.success) {
-        // Cache the user data - note: /auth/me returns user directly, not data.user
         localStorage.setItem('userData', JSON.stringify(data.user));
         return data.user;
       }
     }
-    
     return null;
   } catch {
     return null;

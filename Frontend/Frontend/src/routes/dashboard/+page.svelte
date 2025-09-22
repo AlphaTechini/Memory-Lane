@@ -68,6 +68,22 @@
       color: 'bg-purple-500 hover:bg-purple-600',
       textColor: 'text-purple-600',
       requiresAuth: true
+    },
+    {
+      id: 'manage-patients',
+      title: 'Manage Patients',
+      description: 'Add patient email addresses and grant access to specific replicas',
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <line x1="17" x2="22" y1="8" y2="13"/>
+        <line x1="22" x2="17" y1="8" y2="13"/>
+      </svg>`,
+      route: '/manage-patients',
+      color: 'bg-orange-500 hover:bg-orange-600',
+      textColor: 'text-orange-600',
+      requiresAuth: true,
+      caretakerOnly: true
     }
   ];
 
@@ -186,7 +202,12 @@
 
     <!-- Navigation Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-      {#each navigationItems as item (item.id)}
+      {#each navigationItems.filter(item => {
+        // Show item if not caretaker-only
+        if (!item.caretakerOnly) return true;
+        // Show caretaker-only items for any authenticated user (user.role may not be loaded yet)
+        return isAuth;
+      }) as item (item.id)}
         <button
           onclick={() => navigateTo(item.route, item.requiresAuth)}
           class="group relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-transparent focus:outline-none focus:ring-4 focus:ring-blue-500/20 {item.requiresAuth && !isAuthenticated ? 'opacity-75' : ''}"

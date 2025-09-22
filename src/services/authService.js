@@ -212,6 +212,20 @@ class AuthService {
         console.warn('User created but OTP sending failed:', otpResult.message);
       }
 
+      // Link any existing Patient documents (created earlier by caretakers) to this newly created User
+      try {
+        const Patient = (await import('../models/Patient.js')).default;
+        // Update all patient docs with this email that don't already have a userId
+        await Patient.updateMany(
+          { email: savedUser.email.toLowerCase(), $or: [ { userId: { $exists: false } }, { userId: null } ] },
+          { $set: { userId: savedUser._id, updatedAt: new Date() } }
+        );
+        console.log(`[signup] linked Patient docs to new user ${savedUser._id} for email ${savedUser.email}`);
+      } catch (linkErr) {
+        // Non-fatal: log and continue
+        logger?.warn?.(`Failed to link Patient docs for ${savedUser.email}: ${linkErr.message}`) || console.warn('Failed to link Patient docs', linkErr.message);
+      }
+
       return {
         success: true,
         message: 'User registered successfully. Please check your email for verification code.',
@@ -342,13 +356,10 @@ class AuthService {
         };
       }
 
-      if (user.isVerified) {
-        return {
-          success: false,
-          message: 'User already verified',
-          errors: ['This account is already verified']
-        };
-      }
+      // NOTE: Allow sending OTP even if user is already verified.
+      // This supports a passwordless/email-only sign-in flow for patients
+      // who already have an account. We will not flip verification state
+      // here — OTP is used either to verify a new account or to login.
 
       // Generate 6-digit OTP
       const otpCode = emailService.generateOTP();
@@ -429,13 +440,9 @@ class AuthService {
         };
       }
 
-      if (user.isVerified) {
-        return {
-          success: false,
-          message: 'User already verified',
-          errors: ['This account is already verified']
-        };
-      }
+      // If user is already verified we still allow OTP-based login.
+      // This supports passwordless sign-in for patients who already have accounts.
+      const wasAlreadyVerified = Boolean(user.isVerified);
 
       // Check if OTP exists
       if (!user.otpCode) {
@@ -469,21 +476,26 @@ class AuthService {
         };
       }
 
-      // OTP is valid - verify the user
-      user.isVerified = true;
+      // OTP is valid - if not yet verified, mark verified and send welcome email
       user.otpCode = undefined;
       user.otpExpires = undefined;
-      await user.save();
+      if (!wasAlreadyVerified) {
+        user.isVerified = true;
+        try {
+          await emailService.sendWelcomeEmail(user.email, user.firstName);
+        } catch (e) {
+          // non-fatal
+        }
+      }
 
-      // Send welcome email
-      await emailService.sendWelcomeEmail(user.email, user.firstName);
+      await user.save();
 
       // Generate token for immediate login
       const token = this.generateToken(user);
 
       return {
         success: true,
-        message: 'Account verified successfully',
+        message: wasAlreadyVerified ? 'Login successful (OTP verified)' : 'Account verified successfully',
         user: user.toJSON(),
         token
       };

@@ -1,250 +1,270 @@
 import nodemailer from 'nodemailer';
+import logger from '../utils/logger.js';
 
-/**
- * Email Service for sending OTP codes and other notifications
- */
 class EmailService {
   constructor() {
     this.transporter = null;
-    // Prefer explicit EMAIL_FROM; if absent fall back to SMTP user so it matches the authenticated account
-    this.fromEmail = process.env.EMAIL_FROM && process.env.EMAIL_FROM.trim() !== ''
-      ? process.env.EMAIL_FROM.trim()
-      : (process.env.EMAIL_SMTP_USER || 'noreply@sensay.ai');
-    console.log('📧 Initializing EmailService with real SMTP...');
-    this.setupTransporter();
+    this._initialized = false;
+    this.retryConfig = {
+      maxRetries: 3,
+      baseDelay: 1000,
+      maxDelay: 30000
+    };
   }
 
-  /**
-   * Setup email transporter using real SMTP configuration
-   */
-  setupTransporter() {
-  const host = process.env.EMAIL_SMTP_HOST;
-    const port = process.env.EMAIL_SMTP_PORT ? parseInt(process.env.EMAIL_SMTP_PORT, 10) : undefined;
-    const user = process.env.EMAIL_SMTP_USER;
-    const pass = process.env.EMAIL_SMTP_PASS;
-    const from = process.env.EMAIL_FROM || this.fromEmail;
-
-    if (!user || !pass) {
-  console.warn('⚠️ EMAIL_SMTP_USER and EMAIL_SMTP_PASS not set. Email features will be disabled. (From will be mocked)');
-      
-      // Create a mock transporter for development
-      this.transporter = {
-        sendMail: async (mailOptions) => {
-          console.log('📧 [EMAIL MOCK - SMTP not configured]');
-          console.log('To:', mailOptions.to);
-          console.log('Subject:', mailOptions.subject);
-          console.log('From:', mailOptions.from);
-          console.log('---');
-          return { messageId: 'mock-' + Date.now() };
-        },
-        verify: async () => {
-          throw new Error('SMTP not configured');
-        }
-      };
-      return;
-    }
-
-    // Prefer explicit host/port; fall back to Gmail service if host not provided
+  async initialize() {
+    if (this._initialized) return;
+    
     try {
-      if (host) {
-        this.transporter = nodemailer.createTransport({
-          host,
-          port: port || 587,
-            secure: (port === 465),
-          auth: { user, pass }
-        });
-      } else {
-        this.transporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: { user, pass }
-        });
-      }
-  console.log(`📧 Email service configured (${host ? host : 'gmail service'})`);
-  console.log(`   From: ${this.fromEmail}`);
-  console.log(`   Auth user: ${user}`);
-    } catch (err) {
-      console.error('❌ Failed to create SMTP transporter:', err.message);
+      this.transporter = await this.setupTransporter();
+      this._initialized = true;
+      logger.info('Email service initialized successfully with production SMTP');
+    } catch (error) {
+      logger.error('Failed to initialize email service:', error);
+      throw error;
     }
   }
 
-  /**
-   * Generate a 6-digit OTP code
-   * @returns {String} 6-digit numeric OTP
-   */
   generateOTP() {
+    // Generate 6-digit numeric OTP
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  /**
-   * Send OTP email to user
-   * @param {String} email - User's email address
-   * @param {String} otpCode - 6-digit OTP code
-   * @param {String} firstName - User's first name (optional)
-   * @returns {Object} Send result
-   */
-  async sendOTPEmail(email, otpCode, firstName = '') {
-    try {
-      const mailOptions = {
-        from: this.fromEmail,
-        to: email,
-        subject: 'Verify Your Sensay AI Account - OTP Code',
-        text: this.getOTPEmailText(otpCode, firstName),
-        html: this.getOTPEmailHTML(otpCode, firstName)
-      };
+  async setupTransporter() {
+    const smtpConfig = {
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT) || 587,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      },
+      pool: true,
+      maxConnections: 5,
+      connectionTimeout: 60000,
+      socketTimeout: 75000,
+      greetingTimeout: 30000,
+      tls: {
+        rejectUnauthorized: false
+      }
+    };
 
-      const result = await this.transporter.sendMail(mailOptions);
-      
-      return {
-        success: true,
-        messageId: result.messageId
-      };
+    if (!smtpConfig.auth.user || !smtpConfig.auth.pass) {
+      throw new Error('SMTP credentials not configured. Please set SMTP_USER and SMTP_PASS environment variables.');
+    }
+
+    const transporter = nodemailer.createTransporter(smtpConfig);
+    await transporter.verify();
+    logger.info('SMTP connection verified successfully');
+    
+    return transporter;
+  }
+
+  async sendEmail(mailOptions, retryCount = 0) {
+    if (!this._initialized) {
+      await this.initialize();
+    }
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      logger.info('Email sent successfully:', {
+        messageId: info.messageId,
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        retryCount
+      });
+      return info;
     } catch (error) {
-      console.error('❌ Failed to send OTP email:', error);
-      return {
-        success: false,
-        error: error.message
-      };
+      logger.error('Email send failed:', {
+        error: error.message,
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        retryCount
+      });
+
+      if (retryCount < this.retryConfig.maxRetries) {
+        const delay = Math.min(
+          this.retryConfig.baseDelay * Math.pow(2, retryCount),
+          this.retryConfig.maxDelay
+        );
+        
+        logger.info(`Retrying email send in ${delay}ms (attempt ${retryCount + 1}/${this.retryConfig.maxRetries})`);
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.sendEmail(mailOptions, retryCount + 1);
+      }
+
+      throw error;
     }
   }
 
-  /**
-   * Get plain text version of OTP email
-   */
-  getOTPEmailText(otpCode, firstName) {
-    return `
-Hello ${firstName ? firstName : 'there'},
-
-Welcome to Sensay AI! Please verify your email address to activate your account.
-
-Your verification code is: ${otpCode}
-
-This code will expire in 10 minutes for security reasons.
-
-If you didn't request this verification, please ignore this email.
-
-Best regards,
-The Sensay AI Team
-
----
-This is an automated message, please do not reply.
-    `.trim();
-  }
-
-  /**
-   * Get HTML version of OTP email
-   */
-  getOTPEmailHTML(otpCode, firstName) {
-    return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify Your Account</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
-        .otp-code { background: #fff; border: 2px solid #667eea; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; }
-        .otp-number { font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #667eea; }
-        .footer { text-align: center; margin-top: 20px; font-size: 14px; color: #666; }
-        .warning { background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 10px; margin: 20px 0; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🤖 Sensay AI</h1>
-            <p>Account Verification</p>
-        </div>
-        <div class="content">
-            <h2>Hello ${firstName ? firstName : 'there'}! 👋</h2>
-            <p>Welcome to <strong>Sensay AI</strong>! We're excited to have you on board.</p>
-            <p>Please verify your email address to activate your account and start creating amazing AI replicas.</p>
-            
-            <div class="otp-code">
-                <p>Your verification code is:</p>
-                <div class="otp-number">${otpCode}</div>
-            </div>
-            
-            <div class="warning">
-                <strong>⏰ Important:</strong> This code will expire in 10 minutes for security reasons.
-            </div>
-            
-            <p>If you didn't request this verification, please ignore this email.</p>
-            
-            <p>Best regards,<br>
-            The Sensay AI Team</p>
-        </div>
-        <div class="footer">
-            <p>This is an automated message, please do not reply.</p>
-            <p>© 2024 Sensay AI. All rights reserved.</p>
-        </div>
-    </div>
-</body>
-</html>
-    `;
-  }
-
-  /**
-   * Send welcome email after successful verification
-   * @param {String} email - User's email address
-   * @param {String} firstName - User's first name
-   * @returns {Object} Send result
-   */
-  async sendWelcomeEmail(email, firstName = '') {
-    try {
-      const mailOptions = {
-        from: this.fromEmail,
-        to: email,
-        subject: 'Welcome to Sensay AI! 🎉',
-        text: `Hello ${firstName},\n\nWelcome to Sensay AI! Your account has been verified successfully.\n\nYou can now start creating and training your AI replicas.\n\nBest regards,\nThe Sensay AI Team`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Welcome to Sensay AI! 🎉</h2>
-            <p>Hello ${firstName},</p>
-            <p>Congratulations! Your account has been verified successfully.</p>
-            <p>You can now start creating and training your AI replicas.</p>
-            <p>Get started by visiting your dashboard and exploring our features.</p>
-            <p>Best regards,<br>The Sensay AI Team</p>
+  async sendOTPEmail(email, otp, isResend = false) {
+    const subject = isResend ? 'Your New OTP Code - Sensay AI' : 'Your OTP Code - Sensay AI';
+    const actionText = isResend ? 'requested a new' : 'requested an';
+    
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #4A90E2; margin: 0;">Sensay AI</h1>
           </div>
-        `
-      };
+          
+          <h2 style="color: #333; text-align: center; margin-bottom: 20px;">
+            ${isResend ? 'New ' : ''}OTP Verification Code
+          </h2>
+          
+          <p style="color: #666; font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
+            You ${actionText} OTP code for your Sensay AI account. Please use the code below to complete your verification:
+          </p>
+          
+          <div style="background-color: #f0f8ff; border: 2px solid #4A90E2; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
+            <div style="font-size: 32px; font-weight: bold; color: #4A90E2; letter-spacing: 4px; font-family: 'Courier New', monospace;">
+              ${otp}
+            </div>
+          </div>
+          
+          <p style="color: #666; font-size: 14px; line-height: 1.5; margin-bottom: 20px;">
+            This code will expire in <strong>10 minutes</strong>. If you didn't request this code, please ignore this email.
+          </p>
+          
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; color: #999; font-size: 12px; text-align: center;">
+            <p>This email was sent from Sensay AI verification system.</p>
+            <p>If you have any questions, please contact our support team.</p>
+          </div>
+        </div>
+      </div>
+    `;
 
-      const result = await this.transporter.sendMail(mailOptions);
-      return {
-        success: true,
-        messageId: result.messageId
-      };
-    } catch (error) {
-      console.error('❌ Failed to send welcome email:', error);
-      return {
-        success: false,
-        error: error.message
-      };
-    }
+    const mailOptions = {
+      from: `"Sensay AI" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject,
+      html
+    };
+
+    return await this.sendEmail(mailOptions);
   }
 
-  /**
-   * Test email configuration
-   * @returns {Object} Test result
-   */
+  async sendWelcomeEmail(email, userName) {
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #4A90E2; margin: 0;">Welcome to Sensay AI!</h1>
+          </div>
+          
+          <h2 style="color: #333; margin-bottom: 20px;">
+            Hello ${userName || 'there'}!
+          </h2>
+          
+          <p style="color: #666; font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
+            Thank you for joining Sensay AI. Your account has been successfully created and verified.
+          </p>
+          
+          <p style="color: #666; font-size: 16px; line-height: 1.5; margin-bottom: 30px;">
+            You can now access all the features of our platform. If you have any questions, our support team is here to help.
+          </p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" 
+               style="background-color: #4A90E2; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+              Get Started
+            </a>
+          </div>
+          
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; color: #999; font-size: 12px; text-align: center;">
+            <p>Welcome to the Sensay AI community!</p>
+            <p>If you have any questions, please contact our support team.</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: `"Sensay AI" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Welcome to Sensay AI!',
+      html
+    };
+
+    return await this.sendEmail(mailOptions);
+  }
+
+  async sendPatientInviteEmail(patientEmail, caretakerName, replicaNames) {
+    const replicaList = replicaNames.length > 0 
+      ? replicaNames.map(name => `• ${name}`).join('\n') 
+      : '• All available replicas';
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #4A90E2; margin: 0;">Sensay AI</h1>
+          </div>
+          
+          <h2 style="color: #333; margin-bottom: 20px;">
+            You've been granted access to shared replicas
+          </h2>
+          
+          <p style="color: #666; font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
+            ${caretakerName} has shared access to their Sensay AI replicas with you. You can now view the gallery and interact with the following replicas:
+          </p>
+          
+          <div style="background-color: #f0f8ff; border-left: 4px solid #4A90E2; padding: 15px; margin: 20px 0;">
+            <pre style="color: #333; font-size: 14px; margin: 0; white-space: pre-wrap;">${replicaList}</pre>
+          </div>
+          
+          <p style="color: #666; font-size: 16px; line-height: 1.5; margin-bottom: 30px;">
+            To access your shared replicas, please sign up or log in to your Sensay AI account.
+          </p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" 
+               style="background-color: #4A90E2; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-right: 10px;">
+              Log In
+            </a>
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/signup" 
+               style="background-color: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+              Sign Up
+            </a>
+          </div>
+          
+          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px; color: #999; font-size: 12px; text-align: center;">
+            <p>This invitation was sent by ${caretakerName} via Sensay AI.</p>
+            <p>If you have any questions, please contact our support team.</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: `"Sensay AI" <${process.env.SMTP_USER}>`,
+      to: patientEmail,
+      subject: `${caretakerName} shared replicas with you on Sensay AI`,
+      html
+    };
+
+    return await this.sendEmail(mailOptions);
+  }
+
   async testEmailConfig() {
     try {
-      await this.transporter.verify();
-      return {
-        success: true,
-        message: 'Email configuration is valid'
-      };
+      await this.initialize();
+      logger.info('Email configuration test successful');
+      return { success: true, message: 'Email service is properly configured' };
     } catch (error) {
-      return {
-        success: false,
-        message: 'Email configuration failed',
-        error: error.message
-      };
+      logger.error('Email configuration test failed:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async closeConnections() {
+    if (this.transporter && this.transporter.close) {
+      this.transporter.close();
+      logger.info('Email service connections closed');
     }
   }
 }
 
-export default new EmailService();
+const emailService = new EmailService();
+export default emailService;

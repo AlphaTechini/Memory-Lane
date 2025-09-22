@@ -54,7 +54,29 @@
         message = 'A verification code was sent to the email. Redirecting to verification...';
         setTimeout(() => goto('/verify-otp'), 900);
       } else {
-        error = data.message || 'Failed to create patient account';
+        // If user already exists, treat this as a request to send OTP and continue
+        if (data.message && data.message.includes('already exists')) {
+          // Call resend-otp to send a fresh verification code (or login OTP)
+          try {
+            const resendResp = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: patientEmail })
+            });
+            const resendData = await resendResp.json();
+            if (resendResp.ok && resendData.success) {
+              localStorage.setItem('userEmail', patientEmail);
+              message = 'A verification code was (re)sent to the email. Redirecting to verification...';
+              setTimeout(() => goto('/verify-otp'), 700);
+            } else {
+              error = resendData.message || 'Failed to send verification code';
+            }
+          } catch (e) {
+            error = 'Network error when requesting verification code. Please try again.';
+          }
+        } else {
+          error = data.message || 'Failed to create patient account';
+        }
       }
     } catch (err) {
       error = 'Network error. Please try again.';
@@ -80,7 +102,7 @@
         <h2 class="text-lg font-semibold mb-4">Sign in as Caretaker</h2>
         <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Use your existing account to sign in and manage patient replicas.</p>
         <div class="mt-auto">
-          <button on:click={signInAsCaretaker} class="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700">Sign in as Caretaker</button>
+          <button onclick={signInAsCaretaker} class="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700">Sign in as Caretaker</button>
         </div>
       </div>
 
@@ -89,12 +111,12 @@
         <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Patients sign in with email only. We'll send a verification code to their email.</p>
 
         {#if !showPatientCard}
-          <button on:click={signInAsPatientCard} class="w-full py-2 px-4 bg-green-600 text-white rounded-md hover:bg-green-700">Sign in as Patient</button>
+          <button onclick={signInAsPatientCard} class="w-full py-2 px-4 bg-green-600 text-white rounded-md hover:bg-green-700">Sign in as Patient</button>
         {:else}
-          <form on:submit|preventDefault={submitPatientEmail} class="space-y-4">
+          <form onsubmit={submitPatientEmail} class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Patient Email</label>
-              <input type="email" bind:value={patientEmail} required class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="patient@example.com" />
+              <label for="patientEmailInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Patient Email</label>
+              <input id="patientEmailInput" type="email" bind:value={patientEmail} required class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="patient@example.com" />
             </div>
 
             {#if error}
@@ -106,7 +128,7 @@
 
             <div class="flex gap-2">
               <button type="submit" class="flex-1 py-2 px-4 bg-green-600 text-white rounded-md hover:bg-green-700" disabled={loading}>{loading ? 'Sending...' : 'Continue'}</button>
-              <button type="button" class="py-2 px-4 bg-gray-200 dark:bg-gray-700 rounded-md" on:click={() => showPatientCard = false}>Cancel</button>
+              <button type="button" class="py-2 px-4 bg-gray-200 dark:bg-gray-700 rounded-md" onclick={() => showPatientCard = false}>Cancel</button>
             </div>
           </form>
         {/if}

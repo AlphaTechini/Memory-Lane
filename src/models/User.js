@@ -186,6 +186,19 @@ const userSchema = new mongoose.Schema({
         message: 'Please enter a valid email address'
       }
     }]
+  }],
+  
+  // Whitelisted patient emails for gallery access
+  whitelistedPatients: [{
+    type: String,
+    lowercase: true,
+    trim: true,
+    validate: {
+      validator: function(email) {
+        return /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(email);
+      },
+      message: 'Please enter a valid email address'
+    }
   }]
 }, {
   timestamps: true, // Adds createdAt and updatedAt automatically

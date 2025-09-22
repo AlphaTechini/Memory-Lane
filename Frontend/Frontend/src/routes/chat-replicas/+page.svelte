@@ -2,7 +2,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { requireAuthForAction, checkAuthStatus, getAuthToken } from '$lib/auth.js';
+  import { requireAuthForAction, checkAuthStatus, getAuthToken, apiCall } from '$lib/auth.js';
   import MessageInput from '$lib/components/MessageInput.svelte';
 
   const API_BASE_URL = 'http://localhost:4000';
@@ -115,7 +115,12 @@
       try {
         if (!userReplicas.length) {
           const token = getAuthToken();
-          const recRes = await fetch(`${API_BASE_URL}/api/replicas/reconcile`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }});
+          console.debug('Reconcile attempt - token present:', !!token);
+          // Do not set Content-Type when there's no body, Fastify rejects empty JSON bodies
+          const recRes = await fetch(`${API_BASE_URL}/api/replicas/reconcile`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
           if (recRes.ok) {
             const recData = await recRes.json();
             if (recData.added?.length || recData.updated?.length) {
@@ -195,6 +200,19 @@
       } catch (e) {
         console.warn('Auto-select replica failed', e);
       }
+    } else {
+      // No token: try to populate replicas from cached userData
+      try {
+        const cached = localStorage.getItem('userData');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.replicas && parsed.replicas.length) {
+            userReplicas = parsed.replicas;
+          }
+        }
+      } catch {
+        // ignore
+      }
     }
     // Restore any active training session
     try {
@@ -219,12 +237,8 @@
     
     isLoadingReplicas = true;
     try {
-      const token = getAuthToken();
-      const response = await fetch(`${API_BASE_URL}/api/user/replicas`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      console.debug('chat-replicas loadUserReplicas - token present:', !!getAuthToken());
+      const response = await apiCall('/api/user/replicas', { method: 'GET' });
 
       if (response.ok) {
         const data = await response.json();
@@ -241,10 +255,8 @@
 
   async function fetchReplicaById(replicaId) {
     try {
-      const token = getAuthToken();
-      const res = await fetch(`${API_BASE_URL}/api/replicas/${replicaId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      console.debug('fetchReplicaById - token present:', !!getAuthToken(), 'replicaId:', replicaId);
+      const res = await apiCall(`/api/replicas/${replicaId}`, { method: 'GET' });
       if (res.ok) {
         const data = await res.json();
         return data.replica;
@@ -266,11 +278,12 @@
       
       // First call reconcile to sync with remote Sensay API
       console.log('Calling reconcile endpoint...');
+      console.debug('fetchAllReplicas - token present:', !!token);
+      // Do not set Content-Type for an empty POST body (Fastify throws on empty JSON body)
       const reconcileResponse = await fetch(`${API_BASE_URL}/api/replicas/reconcile`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${token}`
         }
       });
       
@@ -741,7 +754,7 @@
                   {#if trainingSession.status === 'PROCESSING'}
                     <svg class="w-4 h-4 animate-spin text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="4" class="opacity-25"></circle><path d="M4 12a8 8 0 018-8" stroke-width="4" class="opacity-75"></path></svg>
                   {/if}
-                  {#if ['PROCESSING','READY'].includes(trainingSession.status)}
+                    {#if ['PROCESSING','READY'].includes(trainingSession.status)}
                     <button onclick={pollStatusOnce} class="text-[10px] px-1.5 py-0.5 border border-indigo-300 dark:border-indigo-600 rounded text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">Refresh</button>
                   {/if}
                 </div>
@@ -767,7 +780,7 @@
         </div>
       {/if}
       <button
-        onclick={() => {
+  onclick={() => {
           if (!requireAuthForAction('create a new replica')) return;
           goto('/create-replicas');
         }}
@@ -776,7 +789,7 @@
         Create New Replica
       </button>
       <button
-        onclick={fetchAllReplicas}
+  onclick={fetchAllReplicas}
         disabled={isFetchingAll}
         class="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
@@ -844,8 +857,11 @@
                 {selectedReplica?.replicaId === replica.replicaId ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : ''}">
                 
                 <!-- Replica Header -->
-                <button
+                <div
+                  role="button"
+                  tabindex="0"
                   onclick={() => selectReplica(replica)}
+                  onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectReplica(replica); } }}
                   class="w-full p-4 text-left"
                 >
                   <div class="flex items-center gap-3">
@@ -885,7 +901,8 @@
                         {/if}
                       </div>
                     </div>
-                    <div
+                    <button type="button"
+                      aria-label="View conversations"
                       onclick={(e) => {
                         e.stopPropagation();
                         openReplicaConversations(replica);
@@ -896,9 +913,9 @@
                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                       </svg>
-                    </div>
+                    </button>
                   </div>
-                </button>
+                </div>
               </div>
             {/each}
           </div>

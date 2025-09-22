@@ -348,12 +348,9 @@ async function replicaRoutes(fastify, options) {
     try {
       const currentUser = await User.findById(request.user.id).select('email role');
       
-      // Only patients can access this endpoint
-      if (currentUser.role !== 'patient') {
-        return reply.status(403).send({ 
-          success: false, 
-          error: 'Access denied. This endpoint is for patient users only.' 
-        });
+      // Allow access if the user is a patient or if they are verified and potentially whitelisted
+      if (currentUser.role !== 'patient' && !currentUser.isVerified) {
+        return reply.status(403).send({ success: false, error: 'Access denied. This endpoint is for patient users only.' });
       }
 
       // Find all users with replicas that have this patient's email in their whitelist
@@ -1061,6 +1058,41 @@ async function replicaRoutes(fastify, options) {
         success: false, 
         error: 'Failed to update replica' 
       });
+    }
+  });
+
+  /**
+   * Bulk add patient email to multiple replicas (protected route - caretakers only)
+   */
+  fastify.post('/api/caretaker/add-patient-email', { 
+    preHandler: authenticateToken 
+  }, async (request, reply) => {
+    try {
+      const { patientEmail, replicaIds } = request.body;
+      const userId = request.user.id;
+
+      // Basic validation
+      if (!patientEmail || !Array.isArray(replicaIds) || replicaIds.length === 0) {
+        return reply.status(400).send({ success: false, error: 'patientEmail and replicaIds array are required' });
+      }
+
+      const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
+      if (!emailRegex.test(patientEmail)) {
+        return reply.status(400).send({ success: false, error: 'Invalid email format' });
+      }
+
+      const user = await User.findById(userId);
+      if (!user || user.role !== 'caretaker') {
+        return reply.status(403).send({ success: false, error: 'Access denied. Only caretakers can perform this action.' });
+      }
+
+      const caretakerService = await import('../services/caretakerService.js');
+      const result = await caretakerService.addPatientEmailToReplicas(user, patientEmail, replicaIds);
+
+      return result;
+    } catch (error) {
+      fastify.log.error(error, 'Error adding patient email');
+      return reply.status(500).send({ success: false, error: 'Failed to add patient email' });
     }
   });
 }

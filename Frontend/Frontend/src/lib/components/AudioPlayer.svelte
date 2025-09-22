@@ -29,7 +29,7 @@
 </script>
 
 <div class="flex items-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-lg p-2">
-  <button on:click={togglePlay} class="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300" aria-label={isPlaying ? 'Pause audio' : 'Play audio'}>
+  <button onclick={togglePlay} class="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300" aria-label={isPlaying ? 'Pause audio' : 'Play audio'}>
     {#if isPlaying}
       <!-- Pause icon -->
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
