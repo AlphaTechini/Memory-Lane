@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import { isAuthenticated, verifyAuth, requireAuthForAction, getAuthToken, apiCall } from '$lib/auth.js';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+  import BackNavigation from '$lib/components/BackNavigation.svelte';
 
   let isAuth = $state(false);
   let user = $state(null);
@@ -158,27 +159,15 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-  <!-- Header -->
-  <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between items-center py-4">
-        <div class="flex items-center space-x-4">
-          <button 
-            onclick={() => goto('/dashboard')}
-            class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center space-x-2"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m12 19-7-7 7-7"/>
-              <path d="M19 12H5"/>
-            </svg>
-            <span>Back to Dashboard</span>
-          </button>
-          <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Manage Patients</h1>
-        </div>
-        <ThemeToggle />
-      </div>
-    </div>
-  </header>
+  <BackNavigation 
+    title="Manage Patients" 
+    subtitle="Add patient email addresses and grant access to specific replicas"
+  />
+  
+  <!-- Theme Toggle - positioned in top right -->
+  <div class="fixed top-4 right-4 z-10">
+    <ThemeToggle />
+  </div>
 
   <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     {#if !authChecked}

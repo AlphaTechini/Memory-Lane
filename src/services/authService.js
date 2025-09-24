@@ -370,19 +370,29 @@ class AuthService {
       user.otpExpires = otpExpires;
       await user.save();
 
-      // Send OTP email
-      const emailResult = await emailService.sendOTPEmail(
-        user.email, 
-        otpCode, 
-        user.firstName
-      );
+      // Send OTP email (non-blocking). If email subsystem fails, return success with otpSent=false
+      let emailResult = { success: false };
+      try {
+        const sendInfo = await emailService.sendOTPEmail(
+          user.email,
+          otpCode,
+          user.firstName
+        );
 
-      if (!emailResult.success) {
-        return {
-          success: false,
-          message: 'Failed to send OTP email',
-          errors: ['Email service temporarily unavailable']
-        };
+        // nodemailer returns an info object on success; normalize to { success: true, info }
+        if (sendInfo && sendInfo.messageId) {
+          emailResult = { success: true, info: sendInfo };
+        } else if (sendInfo && sendInfo.accepted) {
+          emailResult = { success: true, info: sendInfo };
+        } else if (sendInfo && sendInfo.previewURL) {
+          emailResult = { success: true, previewURL: sendInfo.previewURL };
+        } else {
+          // Some other truthy return value
+          emailResult = { success: true, info: sendInfo };
+        }
+      } catch (emailErr) {
+        logger?.warn?.(`Non-blocking: failed to send OTP email to ${user.email}: ${emailErr.message}`) || console.warn('Failed to send OTP email', emailErr.message);
+        emailResult = { success: false, message: emailErr.message };
       }
 
       return {

@@ -14,15 +14,32 @@ class EmailService {
 
   async initialize() {
     if (this._initialized) return;
-    
-    try {
-      this.transporter = await this.setupTransporter();
-      this._initialized = true;
-      logger.info('Email service initialized successfully with production SMTP');
-    } catch (error) {
-      logger.error('Failed to initialize email service:', error);
-      throw error;
+
+    // Try configured port first, then fallback to common working ports (465 then 587)
+    const configuredPort = parseInt(process.env.SMTP_PORT || process.env.EMAIL_SMTP_PORT) || undefined;
+    const tryPorts = [];
+    if (configuredPort) tryPorts.push(configuredPort);
+    // Ensure we try 465 (SMTPS) then 587 (STARTTLS) if not already included
+    if (!tryPorts.includes(465)) tryPorts.push(465);
+    if (!tryPorts.includes(587)) tryPorts.push(587);
+
+    let lastError = null;
+    for (const port of tryPorts) {
+      try {
+        logger.info(`Attempting to initialize email service on port ${port}`);
+        this.transporter = await this.setupTransporter({ portOverride: port });
+        this._initialized = true;
+        logger.info(`Email service initialized successfully on port ${port}`);
+        return;
+      } catch (err) {
+        lastError = err;
+        logger.warn(`Email service initialization failed on port ${port}: ${err && err.message}`);
+        // continue to next port
+      }
     }
+
+    // After attempting all ports, log but do not throw to avoid bringing down signup flow.
+    logger.error('Failed to initialize email service on all tried ports; emails will be queued or retried on demand.', lastError);
   }
 
   generateOTP() {
@@ -30,42 +47,73 @@ class EmailService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  async setupTransporter() {
+  async setupTransporter(options = {}) {
+    // Support multiple env naming conventions: SMTP_USER/SMTP_PASS or EMAIL_SMTP_USER/EMAIL_SMTP_PASS
+    const user = process.env.SMTP_USER || process.env.EMAIL_SMTP_USER;
+    const pass = process.env.SMTP_PASS || process.env.EMAIL_SMTP_PASS;
+    const host = process.env.SMTP_HOST || process.env.EMAIL_SMTP_HOST || 'smtp.gmail.com';
+
+    if (!user || !pass) {
+      throw new Error('SMTP credentials not configured. Please set SMTP_USER/SMTP_PASS or EMAIL_SMTP_USER/EMAIL_SMTP_PASS in your environment.');
+    }
+
+    // Allow caller to override port for probing different protocols
+    const configuredPort = parseInt(process.env.SMTP_PORT || process.env.EMAIL_SMTP_PORT) || undefined;
+    const port = options.portOverride || configuredPort || 465;
+    const secure = port === 465; // SMTPS if 465
+
     const smtpConfig = {
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT) || 587,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      },
+      host,
+      port,
+      secure,
+      auth: { user, pass },
       pool: true,
       maxConnections: 5,
       connectionTimeout: 60000,
       socketTimeout: 75000,
       greetingTimeout: 30000,
-      tls: {
-        rejectUnauthorized: false
-      }
+      tls: { rejectUnauthorized: false }
     };
 
-    if (!smtpConfig.auth.user || !smtpConfig.auth.pass) {
-      throw new Error('SMTP credentials not configured. Please set SMTP_USER and SMTP_PASS environment variables.');
-    }
-
-    const transporter = nodemailer.createTransporter(smtpConfig);
+    const transporter = nodemailer.createTransport(smtpConfig);
+    // verify may throw; caller should handle and we log detailed errors
     await transporter.verify();
-    logger.info('SMTP connection verified successfully');
-    
+    logger.info(`SMTP connection verified successfully (host=${host} port=${port} secure=${secure})`);
     return transporter;
   }
 
   async sendEmail(mailOptions, retryCount = 0) {
-    if (!this._initialized) {
-      await this.initialize();
-    }
+    // Ensure transporter exists; try initialize if needed (initialize is non-throwing)
+    if (!this._initialized || !this.transporter) {
+      try {
+        await this.initialize();
+      } catch (initErr) {
+        // initialize logs errors but shouldn't throw; ensure we still try a last-ditch setup here
+        logger.warn('Email service initialize reported errors; attempting on-demand transporter setup before send');
+      }
+
+      // If transporter still not present, attempt on-demand setup with fallback ports
+      if (!this.transporter) {
+        const configuredPort = parseInt(process.env.SMTP_PORT || process.env.EMAIL_SMTP_PORT) || undefined;
+        const tryPorts = [];
+        if (configuredPort) tryPorts.push(configuredPort);
+        if (!tryPorts.includes(465)) tryPorts.push(465);
+        if (!tryPorts.includes(587)) tryPorts.push(587);
+
+        for (const port of tryPorts) {
+          try {
+            this.transporter = await this.setupTransporter({ portOverride: port });
+            this._initialized = true;
+            break;
+          } catch (err) {
+            logger.warn(`On-demand transporter setup failed on port ${port}: ${err && err.message}`);
+          }
+        }
+        }
+      }
 
     try {
+      if (!this.transporter) throw new Error('No SMTP transporter available');
       const info = await this.transporter.sendMail(mailOptions);
       logger.info('Email sent successfully:', {
         messageId: info.messageId,
@@ -135,8 +183,9 @@ class EmailService {
       </div>
     `;
 
+    const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_SMTP_USER || 'noreply@sensay.ai';
     const mailOptions = {
-      from: `"Sensay AI" <${process.env.SMTP_USER}>`,
+      from: `"Sensay AI" <${fromAddress}>`,
       to: email,
       subject,
       html

@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import { requireAuthForAction, checkAuthStatus, getAuthToken, apiCall } from '$lib/auth.js';
   import MessageInput from '$lib/components/MessageInput.svelte';
+  import BackNavigation from '$lib/components/BackNavigation.svelte';
 
   const API_BASE_URL = 'http://localhost:4000';
 
@@ -723,7 +724,13 @@
   <title>Chat with Your Replicas - Memory Lane</title>
 </svelte:head>
 
-<div class="h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900 flex">
+<div class="bg-gray-50 dark:bg-gray-900">
+  <BackNavigation 
+    title="Chat with Your Replicas" 
+    subtitle="Start conversations with AI replicas or chat with the generic Memory Lane AI"
+  />
+  
+  <div class="h-[calc(100vh-8rem)] flex">
   <!-- Replica Selection Sidebar -->
   <div class="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
     <!-- Header -->
@@ -1199,5 +1206,6 @@
     <div class="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
   <MessageInput on:send={handleSendMessage} disabled={isSendingMessage} />
     </div>
+  </div>
   </div>
 </div>

@@ -3,6 +3,7 @@
   import { wizardStore } from '$lib/stores/wizardStore.js';
   import { replicasStore } from '$lib/stores/replicasStore.js';
   import { requireAuthForAction, checkAuthStatus } from '$lib/auth.js';
+  import BackNavigation from '$lib/components/BackNavigation.svelte';
   
   import Step1Basics from '$lib/components/wizard/Step1Basics.svelte';
   import Step2RequiredQuestions from '$lib/components/wizard/Step2RequiredQuestions.svelte';
@@ -211,45 +212,43 @@
 
   function canProceedToStep(stepNumber) {
     if (stepNumber <= state.currentStep) return true;
-    
+
     switch (stepNumber) {
       case 2:
-        return state?.basics?.name?.trim() && state?.basics?.description?.trim() && state?.basics?.consent;
+        return Boolean(state?.basics?.name?.trim() && state?.basics?.description?.trim() && state?.basics?.consent);
       case 3:
         return Object.keys(state?.requiredAnswers || {}).length >= 10;
       case 4:
         return (state?.selectedSegments || []).length > 0;
       case 5:
-        return true; // Optional questions are now truly optional
+        return true; // Profile image optional
       case 6:
-        return true; // Image is optional
+        return true; // Review step
       default:
         return false;
     }
   }
 
   function getStepStatus(stepNumber) {
-  if (stepNumber < state.currentStep) return 'completed';
+    if (stepNumber < state.currentStep) return 'completed';
     if (stepNumber === state.currentStep) return 'current';
     if (canProceedToStep(stepNumber)) return 'available';
     return 'locked';
   }
+
 </script>
 
 <svelte:head>
   <title>Create Replica - Memory Lane</title>
-</svelte:head>
+    </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+  <BackNavigation 
+    title="Create Your Digital Replica" 
+    subtitle="Build an AI that thinks and responds like you"
+  />
+  
   <div class="max-w-4xl mx-auto px-4 py-8">
-    <!-- Header -->
-    <div class="text-center mb-8">
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-        Create Your Digital Replica
-      </h1>
-      <p class="text-gray-600 dark:text-gray-400">
-        Build an AI that thinks and responds like you
-      </p>
       {#if !isAuthenticated}
         <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
           <p class="text-sm text-blue-700 dark:text-blue-300">
@@ -440,4 +439,3 @@
       {/if}
     </div>
   </div>
-</div>

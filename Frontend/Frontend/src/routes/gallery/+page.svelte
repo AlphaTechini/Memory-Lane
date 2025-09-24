@@ -1,7 +1,9 @@
 <script>
   import { browser } from '$app/environment';
+  import { derived } from 'svelte/store';
   import { protectRoute, apiCall, logout, verifyAuth } from '$lib/auth.js';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+  import BackNavigation from '$lib/components/BackNavigation.svelte';
   import AlbumCard from '$lib/components/gallery/AlbumCard.svelte';
   import PhotoCard from '$lib/components/gallery/PhotoCard.svelte';
   import AlbumModal from '$lib/components/gallery/AlbumModal.svelte';
@@ -17,7 +19,9 @@
   let user = $state(null);
   
   // Determine if user can delete (only caretakers and owners can delete)
-  $: canDelete = user && user.role !== 'patient';
+  function canDelete() {
+    return user && user.role !== 'patient';
+  }
   
   // Modal states
   let showAlbumModal = $state(false);
@@ -482,28 +486,21 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-  <!-- Navigation -->
-  <nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-6">
-        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Memory Lane</h1>
-        <div class="flex items-center gap-4">
-          <a href="/dashboard" class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">Dashboard</a>
-          <a href="/gallery" class="text-blue-600 dark:text-blue-400 font-medium">Gallery</a>
-          <a href="/create-replicas" class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">Create Replicas</a>
-        </div>
-      </div>
-        <div class="flex items-center gap-3">
-          <ThemeToggle />
-          <button
-          onclick={logout}
-          class="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-        >
-          Logout
-        </button>
-        </div>
-    </div>
-  </nav>
+  <BackNavigation 
+    title="Gallery" 
+    subtitle="View and manage your photo collection and create memory albums"
+  />
+  
+  <!-- Theme Toggle and Logout - positioned in top right -->
+  <div class="fixed top-4 right-4 z-10 flex items-center gap-2">
+    <ThemeToggle />
+    <button
+      onclick={logout}
+      class="text-sm bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-700 dark:text-red-300 px-3 py-1 rounded-md transition-colors"
+    >
+      Logout
+    </button>
+  </div>
 
   <!-- Main Content -->
   <main class="max-w-6xl mx-auto px-4 py-8">
@@ -630,7 +627,7 @@
           
           <!-- File Selection -->
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label for="gallery-upload-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Select Files
             </label>
             <div class="flex items-center gap-3">
@@ -644,6 +641,7 @@
                 Choose Files
               </button>
               <input
+                id="gallery-upload-input"
                 bind:this={fileInput}
                 type="file"
                 multiple
