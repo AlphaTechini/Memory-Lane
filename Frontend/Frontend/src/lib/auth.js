@@ -88,7 +88,7 @@ export async function verifyAuth() {
         // Fire-and-forget: verify token and refresh user cache if needed
         (async () => {
           try {
-            const resp = await apiCall('/auth/me');
+            const resp = await apiCall('/api/auth/me');
             if (resp.ok) {
               const data = await resp.json();
               if (data.success) {
@@ -112,7 +112,7 @@ export async function verifyAuth() {
   if (!token) return null;
 
   try {
-    const response = await apiCall('/auth/me');
+    const response = await apiCall('/api/auth/me');
     if (response.ok) {
       const data = await response.json();
       if (data.success) {

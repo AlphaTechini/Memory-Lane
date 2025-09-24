@@ -21,7 +21,17 @@ export async function checkGalleryAccess(requestUserId, ownerUserId = null) {
     }).select('email role whitelistedPatients');
     
     if (!caretaker) {
-      throw new Error('No caretaker found for this patient');
+      // If no caretaker found, return no access rather than throwing error
+      return {
+        canRead: false,
+        canWrite: false,
+        canDelete: false,
+        user: requestUser,
+        owner: null,
+        isOwner: false,
+        isWhitelisted: false,
+        error: 'No caretaker found for this patient'
+      };
     }
     
     return {
@@ -94,7 +104,7 @@ export function requireGalleryAccess(requiresDelete = false) {
       if (!access.canRead) {
         return reply.code(403).send({
           success: false,
-          message: 'Access denied to this gallery'
+          message: access.error || 'Access denied to this gallery'
         });
       }
 
@@ -108,9 +118,11 @@ export function requireGalleryAccess(requiresDelete = false) {
       // Store access info in request for use in handlers
       request.galleryAccess = access;
     } catch (error) {
+      request.log.error(error, 'Gallery access check failed');
       return reply.code(500).send({
         success: false,
-        message: 'Error checking gallery access'
+        message: 'Error checking gallery access',
+        error: error.message
       });
     }
   };

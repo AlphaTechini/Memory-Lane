@@ -48,22 +48,43 @@ export default async function legacyRoutes(fastify, options) {
   });
 
   // GET /gallery - combined gallery endpoint for backward compatibility
-  fastify.get('/gallery', { preHandler: [authenticateToken, requireGalleryAccess(false)] }, async (request, reply) => {
+  fastify.get('/gallery', { preHandler: authenticateToken }, async (request, reply) => {
     try {
-      const access = request.galleryAccess;
-      // Use the owner from gallery access (could be caretaker for patients)
-      const user = await User.findById(access.owner._id).select('albums photos gallery');
-      if (!user) return reply.code(404).send({ success: false, message: 'User not found', errors: ['User account not found'] });
+      const requestUser = await User.findById(request.user.id).select('email role albums photos gallery');
+      if (!requestUser) return reply.code(404).send({ success: false, message: 'User not found', errors: ['User account not found'] });
 
-      const legacyImages = user.gallery || [];
-      const totalCount = (user.albums?.length || 0) + (user.photos?.length || 0) + legacyImages.length;
+      let targetUser = requestUser;
+
+      // If user is a patient, find their caretaker's gallery
+      if (requestUser.role === 'patient') {
+        fastify.log.info(`Patient ${requestUser.email} accessing gallery, looking for caretaker`);
+        
+        const caretaker = await User.findOne({ 
+          whitelistedPatients: requestUser.email.toLowerCase() 
+        }).select('email albums photos gallery');
+        
+        if (!caretaker) {
+          fastify.log.warn(`No caretaker found for patient ${requestUser.email}`);
+          return reply.code(403).send({ 
+            success: false, 
+            message: 'No caretaker found for this patient',
+            errors: ['Patient must be whitelisted by a caretaker to access gallery'] 
+          });
+        }
+        
+        fastify.log.info(`Found caretaker ${caretaker.email} for patient ${requestUser.email}`);
+        targetUser = caretaker;
+      }
+
+      const legacyImages = targetUser.gallery || [];
+      const totalCount = (targetUser.albums?.length || 0) + (targetUser.photos?.length || 0) + legacyImages.length;
 
       reply.send({
         success: true,
         message: 'Gallery retrieved successfully',
         data: {
-          albums: user.albums || [],
-          photos: user.photos || [],
+          albums: targetUser.albums || [],
+          photos: targetUser.photos || [],
           images: legacyImages,
           count: totalCount
         }

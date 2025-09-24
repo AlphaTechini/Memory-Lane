@@ -215,7 +215,7 @@
     </div>
 
     <!-- Navigation Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    <div class="{userRole === 'patient' ? 'grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto justify-items-center' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'}">
       {#each navigationItems.filter(item => {
         // Show item if not caretaker-only
         if (!item.caretakerOnly) return true;
