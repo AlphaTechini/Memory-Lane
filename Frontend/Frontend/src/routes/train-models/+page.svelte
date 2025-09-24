@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { checkAuthStatus } from '$lib/auth.js';
+  import { checkAuthStatus, apiCall } from '$lib/auth.js';
   import { OPTIONAL_SEGMENTS, getAllOptionalQuestions } from '$lib/questionBank.js';
 
   const API_BASE_URL = 'http://localhost:4000';
@@ -23,6 +23,21 @@
     if (!isAuthenticated) {
       goto('/login');
       return;
+    }
+
+    // Check if user is a patient - redirect if they are
+    try {
+      const response = await apiCall('/api/auth/me', { method: 'GET' });
+      if (response.ok) {
+        const userData = await response.json();
+        if (userData.user && userData.user.role === 'patient') {
+          alert('Patients cannot train replicas. You can only view and chat with replicas created by your caretaker.');
+          goto('/dashboard');
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check user role:', error);
     }
 
     await loadUserReplicas();

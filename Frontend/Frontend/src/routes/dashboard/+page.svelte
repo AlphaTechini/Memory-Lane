@@ -2,11 +2,12 @@
 <script>
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
-    import { isAuthenticated, verifyAuth, logout, requireAuthForAction } from '$lib/auth.js';
+    import { isAuthenticated, verifyAuth, logout, requireAuthForAction, apiCall } from '$lib/auth.js';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 
   let isAuth = $state(false);
   let user = $state(null);
+  let userRole = $state(null);
   let authChecked = $state(false);
 
   // Check authentication status only once when page loads
@@ -19,6 +20,18 @@
           if (!user) {
             // Token is invalid, clear it
             isAuth = false;
+          } else {
+            // Load user role
+            try {
+              const response = await apiCall('/api/auth/me', { method: 'GET' });
+              if (response.ok) {
+                const userData = await response.json();
+                userRole = userData.user?.role || 'caretaker';
+              }
+            } catch (error) {
+              console.error('Failed to load user role:', error);
+              userRole = 'caretaker'; // Default to caretaker
+            }
           }
         }
         authChecked = true;
@@ -67,7 +80,8 @@
       route: '/create-replicas',
       color: 'bg-purple-500 hover:bg-purple-600',
       textColor: 'text-purple-600',
-      requiresAuth: true
+      requiresAuth: true,
+      caretakerOnly: true
     },
     {
       id: 'manage-patients',
@@ -205,8 +219,8 @@
       {#each navigationItems.filter(item => {
         // Show item if not caretaker-only
         if (!item.caretakerOnly) return true;
-        // Show caretaker-only items for any authenticated user (user.role may not be loaded yet)
-        return isAuth;
+        // Show caretaker-only items only for authenticated caretakers (not patients)
+        return isAuth && userRole === 'caretaker';
       }) as item (item.id)}
         <button
           onclick={() => navigateTo(item.route, item.requiresAuth)}

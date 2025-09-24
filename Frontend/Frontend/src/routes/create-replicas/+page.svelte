@@ -1,8 +1,9 @@
 <script>
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { wizardStore } from '$lib/stores/wizardStore.js';
   import { replicasStore } from '$lib/stores/replicasStore.js';
-  import { requireAuthForAction, checkAuthStatus } from '$lib/auth.js';
+  import { requireAuthForAction, checkAuthStatus, apiCall } from '$lib/auth.js';
   import BackNavigation from '$lib/components/BackNavigation.svelte';
   
   import Step1Basics from '$lib/components/wizard/Step1Basics.svelte';
@@ -147,8 +148,25 @@
 
   // Subscribe to wizard store
   let unsubscribe;
-  onMount(() => {
+  onMount(async () => {
     isAuthenticated = checkAuthStatus();
+    
+    // Check if user is a patient - redirect if they are
+    if (isAuthenticated) {
+      try {
+        const response = await apiCall('/api/auth/me', { method: 'GET' });
+        if (response.ok) {
+          const userData = await response.json();
+          if (userData.user && userData.user.role === 'patient') {
+            alert('Patients cannot create replicas. You can only view and chat with replicas created by your caretaker.');
+            goto('/dashboard');
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check user role:', error);
+      }
+    }
     
     // Don't override the wizard store with step 0 if it's already loaded from storage
     const currentWizardState = wizardStore.getState();

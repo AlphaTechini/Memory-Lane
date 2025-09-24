@@ -1,15 +1,35 @@
 <script>
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { checkAuthStatus } from '$lib/auth.js';
+  import { checkAuthStatus, getAuthToken, apiCall } from '$lib/auth.js';
   
   let currentPath = $state('');
   let isAuthenticated = $state(false);
+  let userRole = $state(null);
   
   $effect(() => {
     currentPath = $page.url.pathname;
     isAuthenticated = checkAuthStatus();
+    loadUserRole();
   });
+  
+  async function loadUserRole() {
+    if (!isAuthenticated) {
+      userRole = null;
+      return;
+    }
+    
+    try {
+      const response = await apiCall('/api/auth/me', { method: 'GET' });
+      if (response.ok) {
+        const userData = await response.json();
+        userRole = userData.user?.role || 'caretaker';
+      }
+    } catch (error) {
+      console.error('Failed to load user role:', error);
+      userRole = 'caretaker'; // Default to caretaker
+    }
+  }
 
   function logout() {
     localStorage.removeItem('authToken');
@@ -80,18 +100,20 @@
           Chat
         </button>
         
-        <button
-          onclick={() => goto('/create-replicas')}
-          class="px-3 py-2 text-sm font-medium rounded-md transition-colors relative
-            {currentPath.startsWith('/create-replicas') 
-              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-              : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'}"
-        >
-          Create Replica
-          {#if !isAuthenticated}
-            <span class="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full"></span>
-          {/if}
-        </button>
+        {#if userRole !== 'patient'}
+          <button
+            onclick={() => goto('/create-replicas')}
+            class="px-3 py-2 text-sm font-medium rounded-md transition-colors relative
+              {currentPath.startsWith('/create-replicas') 
+                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
+                : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'}"
+          >
+            Create Replica
+            {#if !isAuthenticated}
+              <span class="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full"></span>
+            {/if}
+          </button>
+        {/if}
         
         
         <button

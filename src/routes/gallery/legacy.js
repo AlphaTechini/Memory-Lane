@@ -1,4 +1,5 @@
 import { authenticateToken } from '../../middleware/auth.js';
+import { requireGalleryAccess } from '../../middleware/galleryAuth.js';
 import { uploadImage, validateImageFile } from '../../services/cloudinaryService.js';
 import User from '../../models/User.js';
 
@@ -47,9 +48,11 @@ export default async function legacyRoutes(fastify, options) {
   });
 
   // GET /gallery - combined gallery endpoint for backward compatibility
-  fastify.get('/gallery', { preHandler: authenticateToken }, async (request, reply) => {
+  fastify.get('/gallery', { preHandler: [authenticateToken, requireGalleryAccess(false)] }, async (request, reply) => {
     try {
-      const user = await User.findById(request.user.id).select('albums photos gallery');
+      const access = request.galleryAccess;
+      // Use the owner from gallery access (could be caretaker for patients)
+      const user = await User.findById(access.owner._id).select('albums photos gallery');
       if (!user) return reply.code(404).send({ success: false, message: 'User not found', errors: ['User account not found'] });
 
       const legacyImages = user.gallery || [];

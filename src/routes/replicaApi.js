@@ -261,16 +261,68 @@ async function replicaRoutes(fastify, options) {
    */
   fastify.post('/api/replicas/reconcile', { preHandler: authenticateToken }, async (request, reply) => {
     try {
-      const user = await User.findById(request.user.id);
-      if (!user?.sensayUserId) {
-        return reply.status(400).send({ success:false, error:'Sensay user missing' });
+      const user = await User.findById(request.user.id).select('email role sensayUserId replicas');
+      
+      // For patients, use their caretaker's Sensay user ID
+      let targetUser = user;
+      let targetSensayUserId = user.sensayUserId;
+      
+      if (user.role === 'patient') {
+        // Find caretaker for this patient
+        const caretaker = await User.findOne({ 
+          whitelistedPatients: user.email.toLowerCase() 
+        }).select('sensayUserId replicas');
+        
+        if (!caretaker?.sensayUserId) {
+          return reply.status(400).send({ 
+            success: false, 
+            error: 'Caretaker not found or caretaker has no Sensay user ID' 
+          });
+        }
+        
+        targetUser = caretaker;
+        targetSensayUserId = caretaker.sensayUserId;
+        fastify.log.info(`Patient reconcile: using caretaker's Sensay ID ${targetSensayUserId}`);
+      } else if (!user?.sensayUserId) {
+        return reply.status(400).send({ success: false, error: 'Sensay user missing' });
       }
-      const remote = await listReplicas(user.sensayUserId);
+      
+      const remote = await listReplicas(targetSensayUserId);
       const now = new Date();
       // According to Sensay API docs, replicas have 'uuid' as primary ID field
       const remoteMap = new Map(remote.map(r => [r.uuid || r.id || r.replicaId, r]));
       const added = []; const updated = []; const removed = [];
-      // Update existing
+      
+      // For patients, we don't update their replica list - they use accessible-replicas endpoint
+      if (user.role === 'patient') {
+        // Just return the remote replicas that the patient has access to
+        const patientReplicas = [];
+        for (const replica of remote) {
+          // Find corresponding local replica in caretaker's list to check whitelist
+          const localReplica = targetUser.replicas?.find(r => r.replicaId === (replica.uuid || replica.id));
+          if (localReplica && localReplica.whitelistEmails && localReplica.whitelistEmails.includes(user.email)) {
+            patientReplicas.push({
+              replicaId: replica.uuid || replica.id,
+              name: replica.name,
+              description: replica.shortDescription || replica.short_description || replica.description || '',
+              status: 'AVAILABLE',
+              isActive: true,
+              whitelistEmails: localReplica.whitelistEmails
+            });
+          }
+        }
+        
+        return reply.send({ 
+          success: true, 
+          message: 'Patient replicas reconciled', 
+          replicas: patientReplicas,
+          added: patientReplicas.length,
+          updated: 0,
+          removed: 0 
+        });
+      }
+      
+      // Update existing (for caretakers only)
       user.replicas = user.replicas || [];
       user.replicas.forEach(r => {
         const remoteR = remoteMap.get(r.replicaId);
@@ -294,22 +346,22 @@ async function replicaRoutes(fastify, options) {
         remoteMap.delete(r.replicaId);
       });
       // Remaining remote not in local -> add
-  for (const [id, rr] of remoteMap.entries()) {
+      for (const [id, rr] of remoteMap.entries()) {
         if (!id) continue;
         const replicaId = rr.uuid || rr.id || id;
         const description = rr.shortDescription || rr.short_description || rr.description || '';
         user.replicas.push({
           replicaId: replicaId,
-            name: rr.name || 'Replica',
-            description: description,
-    status: 'CREATED',
-    lastSyncAt: now,
-    selectedSegments: []
+          name: rr.name || 'Replica',
+          description: description,
+          status: 'CREATED',
+          lastSyncAt: now,
+          selectedSegments: []
         });
         added.push(replicaId);
       }
-      await user.save({ validateBeforeSave:false });
-      return { success:true, added, updated, removed, total: user.replicas.length };
+      await user.save({ validateBeforeSave: false });
+      return { success: true, added, updated, removed, total: user.replicas.length };
     } catch (err) {
       request.log.error(err, 'Reconcile error');
       return reply.status(500).send({ success:false, error:'Failed to reconcile' });
@@ -323,8 +375,34 @@ async function replicaRoutes(fastify, options) {
     preHandler: authenticateToken 
   }, async (request, reply) => {
     try {
-      const user = await User.findById(request.user.id).select('replicas');
+      const user = await User.findById(request.user.id).select('email role replicas');
       
+      // For patients, redirect to accessible replicas
+      if (user.role === 'patient') {
+        // Find caretaker and get accessible replicas
+        const caretaker = await User.findOne({ 
+          whitelistedPatients: user.email.toLowerCase() 
+        }).select('replicas');
+        
+        if (!caretaker) {
+          return { 
+            success: true, 
+            replicas: [] 
+          };
+        }
+
+        // Filter caretaker's replicas to only those where patient is whitelisted
+        const accessibleReplicas = caretaker.replicas?.filter(replica => 
+          replica.whitelistEmails && replica.whitelistEmails.includes(user.email)
+        ) || [];
+
+        return { 
+          success: true, 
+          replicas: accessibleReplicas 
+        };
+      }
+      
+      // For caretakers, return their own replicas
       return { 
         success: true, 
         replicas: user?.replicas || [] 
@@ -353,14 +431,77 @@ async function replicaRoutes(fastify, options) {
         return reply.status(403).send({ success: false, error: 'Access denied. This endpoint is for patient users only.' });
       }
 
-      // Find all users with replicas that have this patient's email in their whitelist
+      // For patients, find their caretaker and get replicas using caretaker's Sensay user ID
+      if (currentUser.role === 'patient') {
+        // Find caretaker who has this patient's email in whitelistedPatients
+        const caretaker = await User.findOne({ 
+          whitelistedPatients: currentUser.email.toLowerCase() 
+        }).select('sensayUserId replicas');
+        
+        if (!caretaker) {
+          return reply.status(404).send({ 
+            success: false, 
+            error: 'No caretaker found for this patient' 
+          });
+        }
+
+        // Get replicas from caretaker's local database that have patient whitelisted
+        let accessibleReplicas = [];
+        if (caretaker.replicas) {
+          for (const replica of caretaker.replicas) {
+            if (replica.whitelistEmails && replica.whitelistEmails.includes(currentUser.email)) {
+              accessibleReplicas.push(replica);
+            }
+          }
+        }
+
+        // If caretaker has a Sensay user ID, also sync from Sensay API
+        if (caretaker.sensayUserId) {
+          try {
+            fastify.log.info(`Fetching replicas for patient using caretaker's Sensay ID: ${caretaker.sensayUserId}`);
+            const remote = await listReplicas(caretaker.sensayUserId);
+            
+            // Filter remote replicas based on whitelisted emails
+            const remoteAccessible = remote.filter(replica => {
+              // Find the local replica to check whitelist
+              const localReplica = caretaker.replicas.find(r => r.replicaId === (replica.uuid || replica.id));
+              return localReplica && localReplica.whitelistEmails && localReplica.whitelistEmails.includes(currentUser.email);
+            });
+
+            // Merge or update local replicas with remote data
+            for (const remoteReplica of remoteAccessible) {
+              const replicaId = remoteReplica.uuid || remoteReplica.id;
+              const existingIndex = accessibleReplicas.findIndex(r => r.replicaId === replicaId);
+              
+              if (existingIndex >= 0) {
+                // Update existing replica with fresh remote data
+                accessibleReplicas[existingIndex] = {
+                  ...accessibleReplicas[existingIndex],
+                  name: remoteReplica.name || accessibleReplicas[existingIndex].name,
+                  description: remoteReplica.shortDescription || remoteReplica.short_description || remoteReplica.description || accessibleReplicas[existingIndex].description,
+                  status: 'AVAILABLE'
+                };
+              }
+            }
+          } catch (error) {
+            fastify.log.warn(error, 'Failed to sync replicas from Sensay API for patient');
+            // Continue with local replicas only
+          }
+        }
+        
+        return { 
+          success: true, 
+          replicas: accessibleReplicas 
+        };
+      }
+
+      // For non-patient users, use original logic
       const usersWithAccessibleReplicas = await User.find({
         'replicas.whitelistEmails': currentUser.email
       }).select('replicas');
 
       let accessibleReplicas = [];
       
-      // Extract replicas that include the patient's email in whitelist
       for (const user of usersWithAccessibleReplicas) {
         for (const replica of user.replicas) {
           if (replica.whitelistEmails && replica.whitelistEmails.includes(currentUser.email)) {

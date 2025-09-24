@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import Patient from '../models/Patient.js';
 
 /**
  * Helper function to check if a user can access another user's gallery
@@ -10,6 +11,28 @@ export async function checkGalleryAccess(requestUserId, ownerUserId = null) {
   const requestUser = await User.findById(requestUserId).select('email role');
   if (!requestUser) {
     throw new Error('Request user not found');
+  }
+
+  // If this is a patient user and no owner specified, find their caretaker
+  if (requestUser.role === 'patient' && !ownerUserId) {
+    // Find caretaker who has this user's email in whitelistedPatients
+    const caretaker = await User.findOne({ 
+      whitelistedPatients: requestUser.email.toLowerCase() 
+    }).select('email role whitelistedPatients');
+    
+    if (!caretaker) {
+      throw new Error('No caretaker found for this patient');
+    }
+    
+    return {
+      canRead: true,
+      canWrite: true, // Can edit/update photos and albums
+      canDelete: false, // Cannot delete anything
+      user: requestUser,
+      owner: caretaker,
+      isOwner: false,
+      isWhitelisted: true
+    };
   }
 
   // If no owner specified or same user, check their own gallery

@@ -44,9 +44,11 @@ export default async function albumsRoutes(fastify, options) {
   });
 
   // List albums -> GET /gallery/albums
-  fastify.get('/', { preHandler: authenticateToken }, async (request, reply) => {
+  fastify.get('/', { preHandler: [authenticateToken, requireGalleryAccess(false)] }, async (request, reply) => {
     try {
-      const user = await User.findById(request.user.id).select('albums');
+      const access = request.galleryAccess;
+      // Use the owner from gallery access (could be caretaker for patients)
+      const user = await User.findById(access.owner._id).select('albums');
       if (!user) return reply.code(404).send({ success: false, message: 'User not found', errors: ['User account not found'] });
       reply.send({ success: true, message: 'Albums retrieved successfully', data: { albums: user.albums || [], count: user.albums ? user.albums.length : 0 } });
     } catch (error) {
