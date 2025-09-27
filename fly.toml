@@ -3,14 +3,20 @@
 # Docs: https://fly.io/docs/reference/configuration/
 
 app = "built-with-sensay-api"
-# Preferred region: Frankfurt (fra). If you prefer UK/ London use `lhr` instead.
-primary_region = "fra"  # e.g. fra (Frankfurt) or lhr (London)
+# Primary region: Frankfurt for EU users, with US regions for redundancy
+primary_region = "fra"  # Frankfurt (Europe)
 
 kill_signal = "SIGINT"
 kill_timeout = 5
 
 [build]
   dockerfile = "Dockerfile"
+
+# Multi-region deployment strategy
+# Avoid India regions (sin, bom) due to connectivity issues
+# Deploy across Frankfurt (EU), US East (iad), and US Central (ord)
+[deploy]
+  strategy = "rolling"
 
 [env]
   PORT = "4000"
@@ -22,7 +28,7 @@ kill_timeout = 5
   force_https = true
   auto_stop_machines = false     # Do NOT scale to zero; keep machines running
   auto_start_machines = true
-  min_machines_running = 1       # Keep at least 1 machine running
+  min_machines_running = 2       # Keep at least 2 machines running for redundancy
   processes = ["app"]
 
   [http_service.concurrency]
