@@ -27,6 +27,36 @@ const server = fastify({
   }
 });
 
+// Track request start times for response-time logging
+server.addHook('onRequest', (request, reply, done) => {
+  request.logMeta = { startHrTime: process.hrtime.bigint() };
+  done();
+});
+
+// Emit structured request logs (skip ultra-frequent health/root probes)
+server.addHook('onResponse', (request, reply, done) => {
+  const routePath = request.routeOptions?.url || request.routerPath || request.raw?.url || '';
+  if (routePath === '/health' || routePath === '/') {
+    done();
+    return;
+  }
+
+  let responseTimeMs;
+  if (request.logMeta?.startHrTime) {
+    const diffNs = process.hrtime.bigint() - request.logMeta.startHrTime;
+    responseTimeMs = Number(diffNs) / 1e6;
+  }
+
+  request.log.info({
+    method: request.method,
+    url: routePath,
+    statusCode: reply.statusCode,
+    responseTimeMs
+  }, 'request completed');
+
+  done();
+});
+
 // Global rate limiting
 // Environment variables (optional):
 // RATE_LIMIT_MAX=100  (max requests per window per IP)
@@ -184,12 +214,6 @@ server.get('/health', async (request, reply) => {
     }
     reply.code(503).send({ status: 'unhealthy' });
   }
-});
-
-// Root landing page - helpful when visiting the app URL in a browser
-// Lightweight root responder — keep output small to reduce log noise when probed
-server.get('/', async (request, reply) => {
-  reply.type('text/plain').send('Sensay AI API');
 });
 
 // Global error handler
