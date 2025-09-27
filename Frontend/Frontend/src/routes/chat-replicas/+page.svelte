@@ -5,8 +5,7 @@
   import { requireAuthForAction, checkAuthStatus, getAuthToken, apiCall, getUserRole } from '$lib/auth.js';
   import MessageInput from '$lib/components/MessageInput.svelte';
   import BackNavigation from '$lib/components/BackNavigation.svelte';
-
-  const API_BASE_URL = 'http://localhost:4000';
+  import { apiUrl } from '$lib/utils/api.js';
 
   import { formatTimestamp } from '$lib/utils/formatDate.js';
 
@@ -144,7 +143,7 @@
           const token = getAuthToken();
           console.debug('Reconcile attempt - token present:', !!token);
           // Do not set Content-Type when there's no body, Fastify rejects empty JSON bodies
-          const recRes = await fetch(`${API_BASE_URL}/api/replicas/reconcile`, {
+          const recRes = await fetch(apiUrl('/api/replicas/reconcile'), {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -307,7 +306,7 @@
       console.log('Calling reconcile endpoint...');
       console.debug('fetchAllReplicas - token present:', !!token);
       // Do not set Content-Type for an empty POST body (Fastify throws on empty JSON body)
-      const reconcileResponse = await fetch(`${API_BASE_URL}/api/replicas/reconcile`, {
+      const reconcileResponse = await fetch(apiUrl('/api/replicas/reconcile'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

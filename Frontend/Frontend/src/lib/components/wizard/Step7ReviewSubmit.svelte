@@ -4,9 +4,7 @@
   import { REQUIRED_QUESTIONS, OPTIONAL_SEGMENTS, getRequiredQuestionsByTemplate } from '$lib/questionBank.js';
   import { goto } from '$app/navigation';
   import { apiCall } from '$lib/auth.js';
-
-  // Backend API base (align with other routes; if later a proxy is added, can switch to '')
-  const API_BASE_URL = 'http://localhost:4000';
+  import { apiUrl } from '$lib/utils/api.js';
 
   let state = $state({
     basics: {},

@@ -2,8 +2,7 @@
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
-
-  const API_BASE_URL = 'http://localhost:4000';
+  import { apiUrl } from '$lib/utils/api.js';
 
   let email = $state('');
   let password = $state('');
@@ -66,7 +65,7 @@
     error = '';
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+      const response = await fetch(apiUrl('/auth/signup'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

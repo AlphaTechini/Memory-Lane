@@ -4,9 +4,9 @@
   import { goto } from '$app/navigation';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import { formatTimestamp } from '$lib/utils/formatDate.js';
+  import { apiUrl } from '$lib/utils/api.js';
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
-  const API_BASE_URL = 'http://localhost:4000';
 
   // Get auth token from localStorage
   function getAuthToken() {

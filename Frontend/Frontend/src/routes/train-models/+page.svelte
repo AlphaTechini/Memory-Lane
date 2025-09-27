@@ -3,8 +3,7 @@
   import { goto } from '$app/navigation';
   import { checkAuthStatus, apiCall } from '$lib/auth.js';
   import { OPTIONAL_SEGMENTS, getAllOptionalQuestions } from '$lib/questionBank.js';
-
-  const API_BASE_URL = 'http://localhost:4000';
+  import { apiUrl } from '$lib/utils/api.js';
 
   let isAuthenticated = false;
   let replicas = [];

@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { wizardStore } from '$lib/stores/wizardStore.js';
+  import { apiUrl } from '$lib/utils/api.js';
 
   let fileInput = $state(null);
   let isUploading = $state(false);
@@ -45,7 +46,7 @@
     formData.append('image', file);
     
     try {
-      const response = await fetch('http://localhost:4000/replica/upload', {
+      const response = await fetch(apiUrl('/replica/upload'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`

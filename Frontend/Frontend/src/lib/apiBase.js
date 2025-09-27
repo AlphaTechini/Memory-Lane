@@ -2,8 +2,8 @@
 // Order of precedence:
 // 1. Vite env variable (public) e.g., VITE_API_BASE_URL
 // 2. Window global injected at deploy time (window.__API_BASE__)
-// 3. Relative '/api' (useful when reverse proxying /api -> backend)
-// 4. Fallback to http://localhost:4000 for local dev
+// 3. Relative '/api' (useful when reverse proxying /api → backend)
+// 4. Fallback to production URL for deployment or localhost for dev
 
 export function getApiBase() {
   if (typeof import.meta !== 'undefined' && import.meta.env) {
@@ -18,7 +18,9 @@ export function getApiBase() {
     // Optionally use relative path when a flag is present
     if (import.meta?.env?.VITE_USE_RELATIVE_API === 'true') return '/api';
   }
-  return 'http://localhost:4000';
+  // Check if we're in development mode
+  const isDev = import.meta?.env?.DEV || (typeof window !== 'undefined' && window.location?.hostname === 'localhost');
+  return isDev ? 'http://localhost:4000' : 'https://win-api-sensay.cyberpunk.work';
 }
 
 export async function apiFetch(path, options = {}) {

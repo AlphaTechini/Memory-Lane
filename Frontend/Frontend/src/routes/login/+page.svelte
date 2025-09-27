@@ -2,8 +2,7 @@
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
-
-  const API_BASE_URL = 'http://localhost:4000';
+  import { apiUrl } from '$lib/utils/api.js';
 
   let email = $state('');
   let password = $state('');
@@ -38,7 +37,7 @@
       const endpoint = userType === 'patient' ? '/auth/patient-login' : '/auth/login';
       const requestBody = userType === 'patient' ? { email } : { email, password };
       
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetch(apiUrl(endpoint), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

@@ -5,8 +5,12 @@
   import { page } from '$app/stores';
   import { theme } from '$lib/stores/theme.js';
   import Navigation from '$lib/components/Navigation.svelte';
+  import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 
   let { children } = $props();
+
+  // Initialize Vercel Speed Insights
+  injectSpeedInsights();
 
   $effect(() => {
     if (!browser) return;

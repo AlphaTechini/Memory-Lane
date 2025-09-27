@@ -2,8 +2,7 @@
 <script>
   import { goto } from '$app/navigation';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
-
-  const API_BASE_URL = 'http://localhost:4000';
+  import { apiUrl } from '$lib/utils/api.js';
 
   let showPatientCard = false;
   let patientEmail = '';
@@ -41,7 +40,7 @@
     loading = true;
     try {
       const tempPassword = generateTempPassword();
-      const resp = await fetch(`${API_BASE_URL}/auth/signup`, {
+      const resp = await fetch(apiUrl('/auth/signup'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: patientEmail, password: tempPassword, role: 'patient' })
@@ -71,7 +70,7 @@
         if (data.message && data.message.includes('already exists')) {
           // Call resend-otp to send a fresh verification code (or login OTP)
           try {
-            const resendResp = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
+            const resendResp = await fetch(apiUrl('/auth/resend-otp'), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ email: patientEmail })
@@ -94,7 +93,7 @@
             error = '';
             // Try to send OTP anyway for convenience
             try {
-              const resendResp = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
+              const resendResp = await fetch(apiUrl('/auth/resend-otp'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: patientEmail })

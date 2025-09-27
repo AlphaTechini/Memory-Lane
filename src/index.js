@@ -62,7 +62,12 @@ await server.register(rateLimit, {
 // FRONTEND_URLS (comma-separated) or FRONTEND_URL (single) populate the initial list.
 // We also expose a protected endpoint that allows the frontend (or a dev script) to
 // register its current exposed origin at runtime (useful when running with `--host`).
-const defaultFrontendOrigins = ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'];
+const defaultFrontendOrigins = [
+  'http://localhost:5173', 
+  'http://localhost:5174', 
+  'http://localhost:3000',
+  'https://memorylane.cyberpunk.work'
+];
 const rawFrontend = process.env.FRONTEND_URLS || process.env.FRONTEND_URL || '';
 const envOrigins = rawFrontend.split(',').map(s => s.trim()).filter(Boolean);
 const allowedOrigins = new Set([...envOrigins, ...defaultFrontendOrigins]);

@@ -1,7 +1,7 @@
 import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
 
-const API_BASE_URL = 'http://localhost:4000';
+import { apiUrl } from './utils/api.js';
 
 /**
  * Get the authentication token from localStorage
@@ -54,7 +54,7 @@ export async function apiCall(endpoint, options = {}) {
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const response = await fetch(apiUrl(endpoint), config);
     
     // Handle unauthorized responses
     if (response.status === 401) {
