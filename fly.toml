@@ -1,0 +1,51 @@
+# Fly.io application configuration for backend API
+# Generated for project: built-with-sensay-api
+# Docs: https://fly.io/docs/reference/configuration/
+
+app = "built-with-sensay-api"
+primary_region = "iad"  # Change to closest region (e.g. fra, lax, sjc, sin, syd)
+
+kill_signal = "SIGINT"
+kill_timeout = 5
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "4000"
+  NODE_ENV = "production"
+
+# HTTP service configuration
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = true      # Scale to zero when idle (optional)
+  auto_start_machines = true
+  min_machines_running = 1       # Set to 0 if you want full scale-to-zero
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 100
+    soft_limit = 80
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "3s"
+    grace_period = "20s"
+    method = "GET"
+    path = "/health"
+    protocol = "http"
+    tls_skip_verify = false
+
+# (Optional) VM resources - adjust if needed
+#[[vm]]
+#  size = "shared-cpu-1x"   # Other options: performance-1x, shared-cpu-2x, etc.
+#  memory = "512mb"          # 256mb minimum; raise if memory pressure occurs
+
+# You can add secrets with: flyctl secrets set KEY=value
+# Example:
+# flyctl secrets set JWT_SECRET=super-secret SENSAY_ORGANIZATION_SECRET=abc123
+
+# To deploy:
+# flyctl deploy --image-label $(git rev-parse --short HEAD)
