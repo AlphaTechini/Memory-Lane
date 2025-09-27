@@ -36,14 +36,11 @@ kill_timeout = 5
     hard_limit = 100
     soft_limit = 80
 
-  [[http_service.checks]]
-    interval = "15s"
-    timeout = "3s"
-    grace_period = "20s"
-    method = "GET"
-    path = "/health"
-    protocol = "http"
-    tls_skip_verify = false
+  # No explicit HTTP health checks configured here to avoid continuous
+  # probing during development. Fly will still consider a process healthy
+  # if the underlying VM reports startups successfully. If you prefer
+  # to restore HTTP health checks, re-add a [[http_service.checks]] block
+  # with an appropriate path and relaxed timing values.
 
 # (Optional) VM resources - adjust if needed
 #[[vm]]
