@@ -10,6 +10,7 @@
   let loading = $state(false);
   let error = $state('');
   let showPassword = $state(false);
+  let userType = $state('caretaker'); // 'caretaker' or 'patient'
 
   // Check if already logged in
   $effect(() => {
@@ -24,8 +25,8 @@
   async function handleLogin(event) {
     event.preventDefault();
     
-    if (!email || !password) {
-      error = 'Please fill in all fields';
+    if (!email || (userType === 'caretaker' && !password)) {
+      error = userType === 'caretaker' ? 'Please fill in all fields' : 'Please enter your email address';
       return;
     }
 
@@ -33,25 +34,28 @@
     error = '';
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      // Patient login uses different endpoint and payload
+      const endpoint = userType === 'patient' ? '/auth/patient-login' : '/auth/login';
+      const requestBody = userType === 'patient' ? { email } : { email, password };
+      
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Store token and user data
-        localStorage.setItem('authToken', data.token);
-        if (data.user) {
-          localStorage.setItem('userData', JSON.stringify(data.user));
-        }
-        
-        // Check if user is verified
-        if (data.user.isVerified) {
+        if (userType === 'patient') {
+          // Patient gets direct access - store token and redirect
+          localStorage.setItem('authToken', data.token);
+          if (data.patient) {
+            localStorage.setItem('userData', JSON.stringify(data.patient));
+          }
+          
           // Check for redirect after login
           const redirectTo = localStorage.getItem('redirectAfterLogin');
           if (redirectTo) {
@@ -61,12 +65,30 @@
             goto('/dashboard');
           }
         } else {
-          // Redirect to OTP verification
-          localStorage.setItem('userEmail', email);
-          goto('/verify-otp');
+          // Caretaker login - store token and user data
+          localStorage.setItem('authToken', data.token);
+          if (data.user) {
+            localStorage.setItem('userData', JSON.stringify(data.user));
+          }
+          
+          // Check if user is verified
+          if (data.user.isVerified) {
+            // Check for redirect after login
+            const redirectTo = localStorage.getItem('redirectAfterLogin');
+            if (redirectTo) {
+              localStorage.removeItem('redirectAfterLogin');
+              goto(redirectTo);
+            } else {
+              goto('/dashboard');
+            }
+          } else {
+            // Redirect to OTP verification
+            localStorage.setItem('userEmail', email);
+            goto('/verify-otp');
+          }
         }
       } else {
-        error = data.message || 'Login failed';
+        error = data.message || (userType === 'patient' ? 'Patient login failed' : 'Login failed');
       }
     } catch (err) {
       console.error('Login request failed:', err);
@@ -102,7 +124,33 @@
       <!-- Header -->
       <div class="text-center mb-8">
         <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Welcome Back</h2>
-        <p class="text-gray-600 dark:text-gray-400">Sign in to your Memory Lane account</p>
+        <p class="text-gray-600 dark:text-gray-400">
+          {#if userType === 'caretaker'}
+            Sign in to your Memory Lane account
+          {:else}
+            Access your replicas - enter the email your caretaker used to add you
+          {/if}
+        </p>
+      </div>
+
+      <!-- User Type Selector -->
+      <div class="mb-6">
+        <div class="flex rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-1">
+          <button
+            type="button"
+            onclick={() => userType = 'caretaker'}
+            class="flex-1 text-center py-2 px-3 rounded-md text-sm font-medium transition-colors {userType === 'caretaker' ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+          >
+            Caretaker
+          </button>
+          <button
+            type="button"
+            onclick={() => userType = 'patient'}
+            class="flex-1 text-center py-2 px-3 rounded-md text-sm font-medium transition-colors {userType === 'patient' ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+          >
+            Patient
+          </button>
+        </div>
       </div>
 
       <!-- Login Form -->
@@ -112,6 +160,9 @@
           <div>
             <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Email Address
+              {#if userType === 'patient'}
+                <span class="text-xs text-gray-500 dark:text-gray-400">(Enter the email your caretaker used to add you)</span>
+              {/if}
             </label>
             <input
               type="email"
@@ -123,6 +174,7 @@
             />
           </div>
 
+          {#if userType === 'caretaker'}
           <!-- Password Field -->
           <div>
             <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -156,6 +208,7 @@
               </button>
             </div>
           </div>
+          {/if}
 
           <!-- Error Message -->
           {#if error}
@@ -175,9 +228,9 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Signing in...
+              {userType === 'patient' ? 'Signing in...' : 'Signing in...'}
             {:else}
-              Sign In
+              {userType === 'patient' ? 'Sign In' : 'Sign In'}
             {/if}
           </button>
         </form>

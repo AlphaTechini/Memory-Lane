@@ -51,8 +51,21 @@
       if (resp.ok && data.success) {
         // Save email for OTP verification step and redirect
         localStorage.setItem('userEmail', patientEmail);
-        message = 'A verification code was sent to the email. Redirecting to verification...';
-        setTimeout(() => goto('/verify-otp'), 900);
+
+        const successMessage = data.message
+          || (data.reusedAccount
+            ? 'Welcome back! Check your email for the verification code to continue.'
+            : 'A verification code was sent to the email. Redirecting to verification...');
+
+        message = successMessage;
+        error = '';
+
+        // If OTP could not be sent, inform the user but still keep flow alive
+        if (data.otpSent === false) {
+          error = 'We could not automatically send a verification code. Please try resending from the next screen or contact your caretaker.';
+        }
+
+        setTimeout(() => goto('/verify-otp'), data.otpSent === false ? 1600 : 900);
       } else {
         // If user already exists, treat this as a request to send OTP and continue
         if (data.message && data.message.includes('already exists')) {
@@ -78,7 +91,7 @@
         } else {
           // Handle the specific patient account already exists message from backend
           if (data.accountType === 'patient') {
-            error = 'You already have a patient account. A verification code has been sent to your email to sign in.';
+            error = '';
             // Try to send OTP anyway for convenience
             try {
               const resendResp = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
@@ -89,13 +102,14 @@
               const resendData = await resendResp.json();
               if (resendResp.ok && resendData.success) {
                 localStorage.setItem('userEmail', patientEmail);
-                message = 'A verification code was sent to your email. Redirecting to verification...';
+                message = resendData.message || 'A verification code was sent to your email. Redirecting to verification...';
                 setTimeout(() => goto('/verify-otp'), 700);
                 return;
               }
             } catch (e) {
               console.error('Resending verification code for patient failed:', e);
             }
+            error = data.message || 'We could not automatically send a verification code. Please try again or contact your caretaker.';
           } else {
             error = data.message || 'Unable to sign in at this time. Please contact your caretaker for assistance.';
           }

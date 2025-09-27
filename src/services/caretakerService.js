@@ -51,40 +51,27 @@ export async function addPatientEmailToReplicas(user, patientEmail, replicaIds, 
       results.push({ replicaId, success: true, message: 'Successfully updated' });
       anySuccess = true;
 
-      // Upsert Patient document scoped to this caretaker
+      // Create/update Patient document with caretaker reference
       try {
-        // If a User exists for this email, link it
-        let linkedUser = await findUserByEmail(normalizedEmail);
-        
-        // If no user exists, optionally create one automatically (role='patient')
-        if (!linkedUser && deps.autoCreatePatientUsers !== false) {
-          try {
-            const UserModel = deps.UserModel || (await import('../models/User.js')).default;
-            // Create minimal patient user with temporary password
-            linkedUser = new UserModel({
-              email: normalizedEmail,
-              password: 'temp-password-' + Math.random().toString(36),
-              role: 'patient',
-              isVerified: false,
-              firstName: normalizedEmail.split('@')[0] // Use email prefix as name
-            });
-            await linkedUser.save();
-            // eslint-disable-next-line no-console
-            console.log(`Auto-created patient User for ${normalizedEmail}`);
-          } catch (createErr) {
-            // Non-fatal: if user creation fails, continue without linking
-            // eslint-disable-next-line no-console
-            console.warn(`Failed to auto-create patient User for ${normalizedEmail}:`, createErr.message);
-          }
-        }
-        
         const patientFilter = { email: normalizedEmail, caretaker: user._id };
         const update = {
-          $set: { userId: linkedUser ? linkedUser._id : undefined, updatedAt: new Date() },
+          $set: { 
+            caretakerEmail: user.email,
+            firstName: normalizedEmail.split('@')[0], // Use email prefix as default name
+            updatedAt: new Date(),
+            isActive: true
+          },
           $addToSet: { allowedReplicas: replicaId }
         };
+        
         if (PatientModel && typeof PatientModel.findOneAndUpdate === 'function') {
-          await PatientModel.findOneAndUpdate(patientFilter, update, { upsert: true, new: true, setDefaultsOnInsert: true });
+          const patientDoc = await PatientModel.findOneAndUpdate(
+            patientFilter, 
+            update, 
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+          );
+          // eslint-disable-next-line no-console
+          console.log(`Created/updated Patient record for ${normalizedEmail} under caretaker ${user.email}`);
         }
       } catch (pErr) {
         // Don't fail the whole flow on patient upsert errors
@@ -98,10 +85,16 @@ export async function addPatientEmailToReplicas(user, patientEmail, replicaIds, 
     }
   }
 
-  // Persist user changes only if any Sensay updates succeeded
+  // Update caretaker's patient list only if any Sensay updates succeeded
   if (anySuccess) {
-    if (!user.whitelistedPatients) user.whitelistedPatients = [];
-    if (!user.whitelistedPatients.includes(normalizedEmail)) user.whitelistedPatients.push(normalizedEmail);
+    if (!user.patientWhitelist) user.patientWhitelist = [];
+    const existingPatient = user.patientWhitelist.find(p => p.email === normalizedEmail);
+    if (!existingPatient) {
+      user.patientWhitelist.push({
+        email: normalizedEmail,
+        addedAt: new Date()
+      });
+    }
     if (typeof user.save === 'function') {
       await user.save();
     }

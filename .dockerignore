@@ -1,0 +1,33 @@
+# Dependency directories
+node_modules
+npm-debug.log
+
+# Frontend (excluded from backend image)
+Frontend/
+frontend/
+*.svelte
+
+# Git
+.git
+.gitignore
+
+# Env / secrets (mount at runtime instead)
+.env
+.env.local
+
+# Tests & docs not required for runtime
+/tests
+*.test.js
+coverage
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Logs & temp
+logs
+*.log
+tmp
+.cache

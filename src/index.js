@@ -4,6 +4,7 @@ import fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import multipart from '@fastify/multipart';
+import rateLimit from '@fastify/rate-limit';
 import replicaRoutes from './routes/replicaApi.js';
 import authRoutes from './routes/authRoutes.js';
 import galleryRoutes from './routes/gallery/index.js';
@@ -23,6 +24,36 @@ const server = fastify({
         colorize: true
       }
     }
+  }
+});
+
+// Global rate limiting
+// Environment variables (optional):
+// RATE_LIMIT_MAX=100  (max requests per window per IP)
+// RATE_LIMIT_WINDOW=1 minute  (any ms or human time like '1 minute')
+// RATE_LIMIT_TIMEFRAME (alias of window used by plugin) -> we map if provided
+// RATE_LIMIT_SKIP_LIST=127.0.0.1,::1 (comma-separated IPs to skip)
+// RATE_LIMIT_ALLOW_LIST=login:50,signup:20 (route-specific overrides handled later)
+const rateLimitMax = parseInt(process.env.RATE_LIMIT_MAX || '120', 10); // per window
+const rateLimitWindow = process.env.RATE_LIMIT_WINDOW || process.env.RATE_LIMIT_TIMEFRAME || '1 minute';
+const skipIps = (process.env.RATE_LIMIT_SKIP_LIST || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+await server.register(rateLimit, {
+  max: rateLimitMax,
+  timeWindow: rateLimitWindow,
+  allowList: (req, key) => {
+    // Skip explicit IPs
+    if (skipIps.includes(key)) return true;
+    return false; // Enforce otherwise
+  },
+  addHeadersOnSuccess: true,
+  addHeaders: {
+    'x-ratelimit-limit': true,
+    'x-ratelimit-remaining': true,
+    'x-ratelimit-reset': true
   }
 });
 

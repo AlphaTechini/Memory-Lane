@@ -45,35 +45,67 @@ export const authenticateToken = async (request, reply) => {
     // Verify token
     const decoded = authService.verifyToken(token);
     
-    // Get user details
-    const user = await authService.getUserById(decoded.id);
-    
-    if (!user) {
-      reply.code(401).send({
-        success: false,
-        message: 'User not found',
-        errors: ['Token is valid but user does not exist']
-      });
-      return;
-    }
+    // Check if this is a patient token
+    if (decoded.type === 'patient') {
+      // Handle patient authentication
+      const Patient = (await import('../models/Patient.js')).default;
+      const patient = await Patient.findById(decoded.id);
+      
+      if (!patient || !patient.isActive) {
+        reply.code(401).send({
+          success: false,
+          message: 'Patient not found or inactive',
+          errors: ['Invalid token - patient does not exist or is inactive']
+        });
+        return;
+      }
 
-    if (!user.isVerified) {
-      reply.code(403).send({
-        success: false,
-        message: 'Account not verified',
-        errors: ['Please verify your email before accessing this resource']
-      });
-      return;
-    }
+      // Add patient info to request object
+      request.user = {
+        id: patient._id,
+        email: patient.email,
+        role: 'patient',
+        firstName: patient.firstName,
+        lastName: patient.lastName,
+        caretakerId: patient.caretaker,
+        allowedReplicas: patient.allowedReplicas,
+        isVerified: true // Patients are automatically verified through caretaker
+      };
+      request.isPatient = true;
+      
+    } else {
+      // Handle regular user authentication
+      const user = await authService.getUserById(decoded.id);
+      
+      if (!user) {
+        reply.code(401).send({
+          success: false,
+          message: 'User not found',
+          errors: ['Token is valid but user does not exist']
+        });
+        return;
+      }
 
-    // Add user to request object for use in route handlers
-    request.user = {
-      id: user._id,
-      email: user.email,
-      isVerified: user.isVerified,
-      firstName: user.firstName,
-      lastName: user.lastName
-    };
+      if (!user.isVerified) {
+        reply.code(403).send({
+          success: false,
+          message: 'Account not verified',
+          errors: ['Please verify your email before accessing this resource']
+        });
+        return;
+      }
+
+      // Add user to request object for use in route handlers
+      request.user = {
+        id: user._id,
+        email: user.email,
+        isVerified: user.isVerified,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role || 'caretaker'
+      };
+      request.isPatient = false;
+    }
 
   } catch (error) {
     if (error.message.includes('Invalid or expired token')) {

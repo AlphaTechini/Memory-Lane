@@ -221,18 +221,74 @@ async function authRoutes(fastify, options) {
     }
   };
 
+  // Schema for patient signup (email only - no OTP)
+  const patientSignupSchema = {
+    body: {
+      type: 'object',
+      properties: {
+        email: { 
+          type: 'string',
+          format: 'email',
+          description: 'Patient email address'
+        }
+      },
+      required: ['email']
+    },
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean' },
+          message: { type: 'string' },
+          patient: { type: 'object' },
+          token: { type: 'string' }
+        }
+      }
+    }
+  };
+
+  // Schema for patient login (email only - no OTP)
+  const patientLoginSchema = {
+    body: {
+      type: 'object',
+      properties: {
+        email: { 
+          type: 'string',
+          format: 'email',
+          description: 'Patient email address'
+        }
+      },
+      required: ['email']
+    },
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean' },
+          message: { type: 'string' },
+          patient: { type: 'object' },
+          token: { type: 'string' }
+        }
+      }
+    }
+  };
+
   /**
    * POST /auth/signup
    * Register a new user
    */
-  fastify.post('/auth/signup', { schema: signupSchema }, async (request, reply) => {
+  fastify.post('/auth/signup', { 
+    schema: signupSchema,
+    config: { rateLimit: { max: 20, timeWindow: '10 minutes' } }
+  }, async (request, reply) => {
     try {
       fastify.log.info('Signup request body:', request.body);
       const result = await authService.signUp(request.body);
       fastify.log.info('Signup result:', result);
       
       if (result.success) {
-        reply.code(201).send(result);
+        const status = result.statusCode || 201;
+        reply.code(status).send(result);
       } else {
         reply.code(400).send(result);
       }
@@ -250,7 +306,10 @@ async function authRoutes(fastify, options) {
    * POST /auth/login
    * Login user
    */
-  fastify.post('/auth/login', { schema: loginSchema }, async (request, reply) => {
+  fastify.post('/auth/login', { 
+    schema: loginSchema,
+    config: { rateLimit: { max: 40, timeWindow: '5 minutes' } }
+  }, async (request, reply) => {
     try {
       const result = await authService.login(request.body);
       
@@ -275,10 +334,71 @@ async function authRoutes(fastify, options) {
   });
 
   /**
+   * POST /auth/patient-signup
+   * Patient signup - sends OTP to email for access
+   */
+  fastify.post('/auth/patient-signup', { 
+    schema: patientSignupSchema,
+    config: { rateLimit: { max: 30, timeWindow: '10 minutes' } }
+  }, async (request, reply) => {
+    try {
+      const { email } = request.body;
+      const result = await authService.patientSignup(email);
+      
+      if (result.success) {
+        reply.code(200).send(result);
+      } else {
+        reply.code(400).send(result);
+      }
+    } catch (error) {
+      fastify.log.error('Patient signup error:', error);
+      reply.code(500).send({
+        success: false,
+        message: 'Internal server error during patient signup',
+        errors: ['Server error']
+      });
+    }
+  });
+
+  /**
+   * POST /auth/patient-login
+   * Patient login - sends OTP to email for access
+   */
+  fastify.post('/auth/patient-login', { 
+    schema: patientLoginSchema,
+    config: { rateLimit: { max: 60, timeWindow: '5 minutes' } }
+  }, async (request, reply) => {
+    try {
+      const { email } = request.body;
+      fastify.log.info(`Patient login attempt for: ${email}`);
+      const result = await authService.patientLogin(email);
+      
+      fastify.log.info(`Patient login result for ${email}:`, result);
+      
+      if (result.success) {
+        reply.code(200).send(result);
+      } else {
+        fastify.log.warn(`Patient login failed for ${email}:`, result);
+        reply.code(400).send(result);
+      }
+    } catch (error) {
+      fastify.log.error('Patient login error:', error);
+      reply.code(500).send({
+        success: false,
+        message: 'Internal server error during patient login',
+        errors: ['Server error']
+      });
+    }
+  });
+
+  /**
    * POST /auth/verify-otp
    * Verify OTP code and activate account
    */
-  fastify.post('/auth/verify-otp', { schema: verifyOTPSchema }, async (request, reply) => {
+  fastify.post('/auth/verify-otp', { 
+    schema: verifyOTPSchema,
+    config: { rateLimit: { max: 25, timeWindow: '10 minutes' } }
+  }, async (request, reply) => {
     try {
       const { email, otpCode } = request.body;
       const result = await authService.verifyOTP(email, otpCode);
@@ -302,7 +422,10 @@ async function authRoutes(fastify, options) {
    * POST /auth/resend-otp
    * Resend OTP code to user's email
    */
-  fastify.post('/auth/resend-otp', { schema: resendOTPSchema }, async (request, reply) => {
+  fastify.post('/auth/resend-otp', { 
+    schema: resendOTPSchema,
+    config: { rateLimit: { max: 5, timeWindow: '10 minutes' } }
+  }, async (request, reply) => {
     try {
       const { email } = request.body;
       const result = await authService.resendOTP(email);

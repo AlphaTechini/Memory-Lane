@@ -3,7 +3,8 @@
   import { goto } from '$app/navigation';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 
-  const API_BASE_URL = 'http://localhost:4000';
+  import getApiBase from '$lib/apiBase.js';
+  const API_BASE_URL = getApiBase();
 
   let email = $state('');
   let otpCode = $state('');

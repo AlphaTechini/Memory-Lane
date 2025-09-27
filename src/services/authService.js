@@ -161,9 +161,9 @@ class AuthService {
             const baseMsg = 'Account already exists but is not verified.';
             return {
               success: true,
-              message: resend.success ? `${baseMsg} New verification code sent.` : baseMsg,
+              message: resend.otpSent ? `${baseMsg} New verification code sent.` : baseMsg,
               user: existingUser.toJSON(),
-              otpSent: resend.success,
+              otpSent: resend.otpSent,
               emailPreviewURL: resend.emailPreviewURL,
               unverified: true
             };
@@ -174,12 +174,23 @@ class AuthService {
         const isPatient = existingUser.role === 'patient';
         
         if (isPatient) {
+          // Treat repeat patient signup as passwordless login request.
+          const otpDetails = await this.generateAndSendOTP(existingUser.email);
+          const baseMessage = 'You already have a patient account with this email.';
+          const followUp = otpDetails.otpSent
+            ? ' Check your inbox for the verification code so you can continue.'
+            : ' We tried to send a verification code but ran into an issue. Please request a new code or contact your caretaker.';
+
           return {
-            success: false,
-            message: 'You already have a patient account with this email. Please use the login page to access your account, or contact your caretaker if you need help.',
-            errors: ['Account already exists - please login instead'],
+            success: true,
+            message: `${baseMessage}${followUp}`,
+            user: existingUser.toJSON(),
+            otpSent: otpDetails.otpSent,
+            otpExpires: otpDetails.otpExpires,
             accountType: 'patient',
-            suggestedAction: 'login'
+            suggestedAction: otpDetails.otpSent ? 'verify-otp' : 'resend-otp',
+            reusedAccount: true,
+            statusCode: otpDetails.otpSent ? 200 : 202
           };
         } else {
           return {
@@ -223,7 +234,7 @@ class AuthService {
       // Generate and send OTP for email verification
   const otpResult = await this.generateAndSendOTP(savedUser.email);
       
-      if (!otpResult.success) {
+      if (!otpResult.otpSent) {
         // User was created but OTP failed - they can resend later
         console.warn('User created but OTP sending failed:', otpResult.message);
       }
@@ -246,7 +257,7 @@ class AuthService {
         success: true,
         message: 'User registered successfully. Please check your email for verification code.',
         user: savedUser.toJSON(),
-        otpSent: otpResult.success,
+        otpSent: otpResult.otpSent,
         emailPreviewURL: otpResult.emailPreviewURL // For development
       };
 
@@ -357,20 +368,123 @@ class AuthService {
   }
 
   /**
+   * Patient signup - simplified authentication for memory loss patients
+   * @param {String} email - Patient email
+   * @returns {Object} Response with success status and token
+   */
+  async patientSignup(email) {
+    try {
+      logger.info(`Patient signup attempt for email: ${email}`);
+      
+      // Validate email
+      if (!validator.isEmail(email)) {
+        logger.warn(`Invalid email format for patient signup: ${email}`);
+        return {
+          success: false,
+          message: 'Please provide a valid email address',
+          errors: ['Invalid email format']
+        };
+      }
+
+      // Import Patient model
+      const Patient = (await import('../models/Patient.js')).default;
+      
+      // Check if patient exists in Patient collection
+      const patient = await Patient.findByEmail(email.toLowerCase());
+
+      if (!patient) {
+        logger.warn(`Patient not found in database: ${email}`);
+        return {
+          success: false,
+          message: 'Email not found in our system. Please contact your caretaker to be added.',
+          errors: ['Patient not found']
+        };
+      }
+
+      logger.info(`Found patient record for ${email}, caretaker: ${patient.caretakerEmail}`);
+
+      // Update last login
+      await patient.updateLastLogin();
+
+      // Generate token for patient (simplified payload)
+      const token = this.generatePatientToken(patient);
+
+      return {
+        success: true,
+        message: 'Welcome! You have been successfully signed in.',
+        patient: {
+          _id: patient._id,
+          email: patient.email,
+          firstName: patient.firstName,
+          lastName: patient.lastName,
+          caretakerEmail: patient.caretakerEmail,
+          allowedReplicas: patient.allowedReplicas
+        },
+        token
+      };
+
+    } catch (error) {
+      logger.error('Error in patient signup:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Patient login - same as signup (simplified for memory loss patients)
+   * @param {String} email - Patient email
+   * @returns {Object} Response with success status and token
+   */
+  async patientLogin(email) {
+    try {
+      // Reuse the same logic as patient signup
+      return await this.patientSignup(email);
+    } catch (error) {
+      logger.error('Error in patient login:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate JWT token for patient
+   * @param {Object} patient - Patient object
+   * @returns {String} JWT token
+   */
+  generatePatientToken(patient) {
+    const payload = {
+      id: patient._id,
+      email: patient.email,
+      role: 'patient',
+      caretakerId: patient.caretaker,
+      allowedReplicas: patient.allowedReplicas,
+      type: 'patient' // Distinguish from regular user tokens
+    };
+    
+    return jwt.sign(payload, JWT_SECRET, {
+      expiresIn: JWT_EXPIRES_IN,
+      issuer: 'sensay-api',
+      audience: 'sensay-app'
+    });
+  }
+
+  /**
    * Generate and send OTP to user's email
    * @param {String} email - User's email address
    * @returns {Object} OTP generation result
    */
   async generateAndSendOTP(email) {
     try {
+      logger.info(`Attempting to find user for OTP generation: ${email}`);
       const user = await User.findByEmail(email);
       if (!user) {
+        logger.error(`User not found for OTP generation: ${email}`);
         return {
           success: false,
           message: 'User not found',
           errors: ['No user found with this email address']
         };
       }
+      
+      logger.info(`Found user for OTP generation: ${user.email}, role: ${user.role}, verified: ${user.isVerified}`);
 
       // NOTE: Allow sending OTP even if user is already verified.
       // This supports a passwordless/email-only sign-in flow for patients
@@ -413,8 +527,9 @@ class AuthService {
 
       return {
         success: true,
-        message: 'OTP sent successfully',
+        message: emailResult.success ? 'OTP sent successfully' : 'OTP generated, but email delivery failed. Please try resending shortly.',
         otpExpires: otpExpires.toISOString(),
+        otpSent: Boolean(emailResult.success),
         emailPreviewURL: emailResult.previewURL // For development testing
       };
 
@@ -500,6 +615,42 @@ class AuthService {
           message: 'Invalid OTP',
           errors: ['Incorrect verification code. Please try again.']
         };
+      }
+
+      // Patients must be associated with a caretaker before receiving access
+      const normalizedEmail = user.email.toLowerCase();
+      if (user.role === 'patient') {
+        let caretakerLink = null;
+        try {
+          caretakerLink = await User.findOne({
+            $or: [
+              { whitelistedPatients: normalizedEmail },
+              { 'replicas.whitelistEmails': normalizedEmail }
+            ]
+          }).select('_id role');
+        } catch (lookupErr) {
+          logger?.warn?.(`Failed caretaker lookup for patient ${normalizedEmail}: ${lookupErr.message}`) || console.warn('Caretaker lookup failed', lookupErr.message);
+        }
+
+        if (!caretakerLink) {
+          try {
+            const PatientModel = (await import('../models/Patient.js')).default;
+            caretakerLink = await PatientModel.findOne({ email: normalizedEmail }).select('caretaker');
+          } catch (patientLookupErr) {
+            logger?.warn?.(`Failed patient record lookup for ${normalizedEmail}: ${patientLookupErr.message}`) || console.warn('Patient record lookup failed', patientLookupErr.message);
+          }
+        }
+
+        if (!caretakerLink) {
+          user.otpCode = undefined;
+          user.otpExpires = undefined;
+          await user.save();
+          return {
+            success: false,
+            message: 'We couldn\'t find a caretaker connected to this patient account yet. Please ask your caretaker to grant access before signing in.',
+            errors: ['PATIENT_NOT_LINKED']
+          };
+        }
       }
 
       // OTP is valid - if not yet verified, mark verified and send welcome email

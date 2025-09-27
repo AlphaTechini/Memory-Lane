@@ -615,33 +615,35 @@ async function replicaRoutes(fastify, options) {
     preHandler: authenticateToken 
   }, async (request, reply) => {
     try {
-      const currentUser = await User.findById(request.user.id).select('email role');
-      
-      // Allow access if the user is a patient or if they are verified and potentially whitelisted
-      if (currentUser.role !== 'patient' && !currentUser.isVerified) {
-        return reply.status(403).send({ success: false, error: 'Access denied. This endpoint is for patient users only.' });
-      }
-
-      // For patients, find their caretaker and get replicas using caretaker's Sensay user ID
-      if (currentUser.role === 'patient') {
-        // Find caretaker who has this patient's email in whitelistedPatients
-        const caretaker = await User.findOne({ 
-          whitelistedPatients: currentUser.email.toLowerCase() 
-        }).select('sensayUserId replicas');
-        
-        if (!caretaker) {
+      // Check if this is a patient using the new Patient model
+      if (request.isPatient) {
+        // Get patient record with allowed replicas
+        const patient = await Patient.findByEmail(request.user.email);
+        if (!patient) {
           return reply.status(404).send({ 
             success: false, 
-            error: 'No caretaker found for this patient' 
+            error: 'Patient record not found' 
           });
         }
 
-        // Get replicas from caretaker's local database that have patient whitelisted
+        // Get caretaker's details
+        const caretaker = await User.findById(patient.caretaker).select('sensayUserId replicas');
+        if (!caretaker) {
+          return reply.status(404).send({ 
+            success: false, 
+            error: 'Caretaker not found for this patient' 
+          });
+        }
+
+        // Get replicas from caretaker's local database that match patient's allowed replicas
         let accessibleReplicas = [];
         if (caretaker.replicas) {
           for (const replica of caretaker.replicas) {
-            if (replica.whitelistEmails && replica.whitelistEmails.includes(currentUser.email)) {
-              accessibleReplicas.push(replica);
+            if (patient.allowedReplicas.includes(replica.replicaId)) {
+              accessibleReplicas.push({
+                ...replica.toObject(),
+                isPatientAccess: true
+              });
             }
           }
         }
@@ -649,14 +651,13 @@ async function replicaRoutes(fastify, options) {
         // If caretaker has a Sensay user ID, also sync from Sensay API
         if (caretaker.sensayUserId) {
           try {
-            fastify.log.info(`Fetching replicas for patient using caretaker's Sensay ID: ${caretaker.sensayUserId}`);
+            fastify.log.info(`Fetching replicas for patient ${patient.email} using caretaker's Sensay ID: ${caretaker.sensayUserId}`);
             const remote = await listReplicas(caretaker.sensayUserId);
             
-            // Filter remote replicas based on whitelisted emails
+            // Filter remote replicas based on patient's allowed replicas
             const remoteAccessible = remote.filter(replica => {
-              // Find the local replica to check whitelist
-              const localReplica = caretaker.replicas.find(r => r.replicaId === (replica.uuid || replica.id));
-              return localReplica && localReplica.whitelistEmails && localReplica.whitelistEmails.includes(currentUser.email);
+              const replicaId = replica.uuid || replica.id;
+              return patient.allowedReplicas.includes(replicaId);
             });
 
             // Merge or update local replicas with remote data
@@ -672,6 +673,15 @@ async function replicaRoutes(fastify, options) {
                   description: remoteReplica.shortDescription || remoteReplica.short_description || remoteReplica.description || accessibleReplicas[existingIndex].description,
                   status: 'AVAILABLE'
                 };
+              } else {
+                // Add new replica from remote
+                accessibleReplicas.push({
+                  replicaId: replicaId,
+                  name: remoteReplica.name,
+                  description: remoteReplica.shortDescription || remoteReplica.short_description || remoteReplica.description,
+                  status: 'AVAILABLE',
+                  isPatientAccess: true
+                });
               }
             }
           } catch (error) {

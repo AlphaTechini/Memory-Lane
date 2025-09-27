@@ -13,15 +13,14 @@ export async function checkGalleryAccess(requestUserId, ownerUserId = null) {
     throw new Error('Request user not found');
   }
 
-  // If this is a patient user and no owner specified, find their caretaker
-  if (requestUser.role === 'patient' && !ownerUserId) {
-    // Find caretaker who has this user's email in whitelistedPatients
-    const caretaker = await User.findOne({ 
-      whitelistedPatients: requestUser.email.toLowerCase() 
-    }).select('email role whitelistedPatients');
+  // Handle patient access using the new Patient model
+  // Check if this is a patient trying to access their caretaker's gallery
+  const patientRecord = await Patient.findByEmail(requestUser.email);
+  if (patientRecord && !ownerUserId) {
+    // Find the caretaker for this patient
+    const caretaker = await User.findById(patientRecord.caretaker).select('email role');
     
     if (!caretaker) {
-      // If no caretaker found, return no access rather than throwing error
       return {
         canRead: false,
         canWrite: false,
@@ -30,18 +29,19 @@ export async function checkGalleryAccess(requestUserId, ownerUserId = null) {
         owner: null,
         isOwner: false,
         isWhitelisted: false,
-        error: 'No caretaker found for this patient'
+        error: 'Caretaker not found for this patient'
       };
     }
     
     return {
       canRead: true,
-      canWrite: true, // Can edit/update photos and albums
-      canDelete: false, // Cannot delete anything
+      canWrite: false, // Patients cannot edit galleries 
+      canDelete: false, // Patients cannot delete anything
       user: requestUser,
       owner: caretaker,
       isOwner: false,
-      isWhitelisted: true
+      isWhitelisted: true,
+      patientRecord: patientRecord
     };
   }
 

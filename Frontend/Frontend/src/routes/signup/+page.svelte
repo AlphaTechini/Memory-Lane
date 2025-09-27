@@ -82,18 +82,25 @@
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Store email for OTP verification
-        localStorage.setItem('userEmail', email);
-        
-        // Redirect to OTP verification
-        goto('/verify-otp');
+        if (userType === 'patient') {
+          // Patient gets direct access - store token and redirect
+          localStorage.setItem('authToken', data.token);
+          if (data.patient) {
+            localStorage.setItem('userData', JSON.stringify(data.patient));
+          }
+          goto('/dashboard');
+        } else {
+          // Caretaker needs OTP verification
+          localStorage.setItem('userEmail', email);
+          goto('/verify-otp');
+        }
       } else {
         // Check if this is an existing user error with suggested action
         if (data.suggestedAction === 'login') {
           error = data.message || 'Account already exists';
           showLoginSuggestion = true;
         } else {
-          error = data.message || 'Signup failed';
+          error = data.message || (userType === 'patient' ? 'Patient signup failed' : 'Signup failed');
           showLoginSuggestion = false;
         }
       }
