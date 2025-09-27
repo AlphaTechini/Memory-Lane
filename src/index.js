@@ -175,6 +175,32 @@ server.get('/health', async (request, reply) => {
   });
 });
 
+// Root landing page - helpful when visiting the app URL in a browser
+server.get('/', async (request, reply) => {
+  const html = `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Sensay AI API</title>
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <style>body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;line-height:1.6;padding:2rem}</style>
+      </head>
+      <body>
+        <h1>Sensay AI API</h1>
+        <p>This server hosts the Sensay Memory Care API backend.</p>
+        <ul>
+          <li><a href="/health">Health check</a></li>
+          <li><a href="/documentation">API documentation (if enabled)</a></li>
+        </ul>
+        <p>If you intended to view the frontend app, deploy or host the Svelte frontend separately and configure a reverse proxy to forward API calls to this service (see README).</p>
+      </body>
+    </html>
+  `;
+
+  reply.type('text/html').send(html);
+});
+
 // Global error handler
 server.setErrorHandler((error, request, reply) => {
   server.log.error(error);
