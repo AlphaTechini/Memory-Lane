@@ -910,10 +910,17 @@ async function replicaRoutes(fastify, options) {
       });
       
       console.log('KB entry response:', kbEntry);
-      
-      // Extract entry ID from the response
-      const entryId = kbEntry?.id;
-      console.log('Extracted entry ID:', entryId);
+
+      // Extract entry ID from the response (handles 207 multi-status shapes)
+      const entryId = extractKnowledgeBaseEntryId(kbEntry);
+      const candidateIds = Array.isArray(kbEntry?.entryIds)
+        ? kbEntry.entryIds
+        : Array.isArray(kbEntry?.results)
+          ? kbEntry.results
+              .map(item => item?.knowledgeBaseID ?? item?.knowledgeBaseId ?? item?.id ?? item?.entryId)
+              .filter(Boolean)
+          : [];
+      console.log('Extracted entry ID:', entryId, 'Candidate IDs:', candidateIds);
       
       if (!entryId) {
         console.error('No entry ID found in KB response:', kbEntry);
