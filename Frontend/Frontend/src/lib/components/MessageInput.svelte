@@ -1,6 +1,5 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import WebSearchButton from './WebSearchButton.svelte';
 
   let { 
     webSearchActive = false
@@ -48,10 +47,6 @@
       event.preventDefault();
       handleSubmit(event);
     }
-  }
-
-  function handleWebSearchToggle(event) {
-    // This will be handled by the parent component
   }
 </script>
 

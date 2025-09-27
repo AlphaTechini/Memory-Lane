@@ -26,6 +26,7 @@ if (!organizationSecret) {
 export const sensayConfig = {
   organizationSecret,
   isConfigured: Boolean(organizationSecret),
+  isProperlyConfigured: () => Boolean(organizationSecret),
   apiVersion,
   ownerID,
   baseUrl: "https://api.sensay.io", // Updated to actual Sensay API endpoint

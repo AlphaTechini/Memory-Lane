@@ -2,13 +2,18 @@ import {
   createReplica, 
   trainReplica, 
   getKnowledgeBaseEntryStatus,
+  getKnowledgeBaseEntry,
   sendChatMessage,
   waitForReplicaAvailable,
   listReplicas,
   createKnowledgeBaseEntry,
   updateKnowledgeBaseWithText,
+  updateKnowledgeBaseEntry,
   pollKnowledgeBaseEntryStatus,
-  updateReplica
+  updateReplica,
+  deleteReplica,
+  startTrainingSession,
+  completeTrainingSession
 } from '../services/sensayService.js';
 import { authenticateToken, optionalAuth } from '../middleware/auth.js';
 import User from '../models/User.js';
@@ -27,6 +32,35 @@ async function replicaRoutes(fastify, options) {
     return await createKnowledgeBaseEntry(replicaId, data);
   };
 
+  const extractKnowledgeBaseEntryId = (entry) => {
+    if (!entry) return undefined;
+
+    const directId = entry.id
+      ?? entry.knowledgeBaseID
+      ?? entry.knowledgeBaseId
+      ?? entry.uuid;
+    if (directId) return directId;
+
+    if (Array.isArray(entry.entryIds)) {
+      const first = entry.entryIds.find(Boolean);
+      if (first) return first;
+    }
+
+    if (Array.isArray(entry.results)) {
+      for (const item of entry.results) {
+        const candidate = item?.knowledgeBaseID
+          ?? item?.knowledgeBaseId
+          ?? item?.id
+          ?? item?.entryId;
+        if (candidate) {
+          return candidate;
+        }
+      }
+    }
+
+    return undefined;
+  };
+
   // Schema for replica creation from wizard
   const createReplicaSchema = {
     body: {
@@ -34,6 +68,8 @@ async function replicaRoutes(fastify, options) {
       properties: {
         name: { type: 'string' },
         description: { type: 'string' },
+        template: { type: 'string', nullable: true },
+        relationship: { type: 'string', nullable: true },
         requiredAnswers: { type: 'object' },
         optionalAnswers: { type: 'object' },
         selectedSegments: { 
@@ -41,7 +77,9 @@ async function replicaRoutes(fastify, options) {
           items: { type: 'string' }
         },
         profileImage: { type: 'string' },
-        coverageScore: { type: 'number' }
+        coverageScore: { type: 'number' },
+        greeting: { type: 'string' },
+        preferredQuestion: { type: 'string' }
       },
       required: ['name', 'description', 'requiredAnswers', 'optionalAnswers', 'selectedSegments']
     },
@@ -78,10 +116,14 @@ async function replicaRoutes(fastify, options) {
     preHandler: authenticateToken 
   }, async (request, reply) => {
     try {
-      const { name, description, requiredAnswers, optionalAnswers, selectedSegments, profileImage, coverageScore } = request.body;
+  const { name, description, template, relationship, requiredAnswers, optionalAnswers, selectedSegments, profileImage, coverageScore, greeting: userGreeting, preferredQuestion } = request.body;
       
       // Load user and ensure they have a Sensay user ID
       const user = await User.findById(request.user.id);
+      // Disallow patient role from creating replicas
+      if (user?.role === 'patient') {
+        return reply.status(403).send({ success: false, error: 'Access denied: patients cannot create replicas' });
+      }
       if (!user || !user.sensayUserId) {
         return reply.status(400).send({
           success: false,
@@ -96,8 +138,8 @@ async function replicaRoutes(fastify, options) {
       // Ensure description is within 50 character limit for Sensay API
       const shortDescription = description.length > 50 ? description.substring(0, 50) : description;
       
-      // Create a greeting from the description
-      const greeting = `Hi! I'm ${name}. ${shortDescription}`;
+      // Use user-provided greeting or create default from description
+      const greeting = userGreeting?.trim() || `Hi! I'm ${name}. ${shortDescription}`;
       
       // Prepare Sensay replica data with supported model
       const sensayReplicaData = {
@@ -129,29 +171,146 @@ async function replicaRoutes(fastify, options) {
       }
       
       // Prepare training data from wizard responses
-      const trainingTexts = [];
+  const trainingTexts = [];
+
+  // Baseline persona seed text per template (acts as initial behavioral prior)
+  const BASELINE_PERSONAS = {
+    dad: `Persona Role: Father\nTone: Supportive, steady, pragmatic with occasional gentle humor.\nPrimary Motivations: Protect family well-being, impart life lessons, encourage resilience.\nInteraction Style: Offers guidance through analogies from work or past experiences, listens first then gives structured advice.\nBoundaries: Avoids over-indulgence, prefers fostering independence.\nCore Values: Responsibility, integrity, patience, long-term thinking.`,
+    mom: `Persona Role: Mother\nTone: Warm, nurturing, emotionally perceptive, proactive.\nPrimary Motivations: Emotional security of family, harmony, growth.\nInteraction Style: Affirms feelings first, then suggests practical nurturing actions.\nBoundaries: Dislikes emotional stonewalling; encourages healthy expression.\nCore Values: Empathy, care, stability, unconditional support.`,
+    brother: `Persona Role: Older Brother\nTone: Casual, loyal, sometimes teasing but protective.\nPrimary Motivations: Shared growth, mutual respect, keeping things grounded.\nInteraction Style: Mix of humor and candid advice, challenges you to level up.\nBoundaries: Rejects excessive formality; prefers directness.\nCore Values: Loyalty, honesty, personal improvement, camaraderie.`,
+    sister: `Persona Role: Sister\nTone: Encouraging, emotionally intuitive, playful.\nPrimary Motivations: Mutual emotional validation, shared experiences, empowerment.\nInteraction Style: Balances empathy with motivational nudges.\nBoundaries: Dislikes dismissiveness of feelings.\nCore Values: Expression, growth, trust, encouragement.`,
+    lover: `Persona Role: Romantic Partner\nTone: Affectionate, attentive, emotionally attuned.\nPrimary Motivations: Deep connection, mutual growth, emotional safety.\nInteraction Style: Reflective listening, shared vision framing, reassurance.\nBoundaries: Dislikes avoidance and vague emotional responses.\nCore Values: Trust, intimacy, commitment, mutual evolution.`,
+    self: `Persona Role: Mirror Self (autobiographical AI)\nTone: Authentic, reflective, congruent with source personality.\nPrimary Motivations: Preserve continuity of identity, offer self-aligned reasoning.\nInteraction Style: Internal narrative reconstruction, clarifying motivations & patterns.\nBoundaries: Avoids fabrication outside provided knowledge.\nCore Values: Authenticity, self-awareness, coherence.`
+  };
+
+  // Rephrased questions in informative format for KB entries
+  // Maps question IDs to informative statements expecting answers
+  const REPHRASED_QUESTIONS = {
+    // Required Questions - rephrased as informative statements
+    rq1: (role) => `${role}'s core motivations and values in life are`,
+    rq2: (role) => `${role}'s approach to handling failure and setbacks is`,
+    rq3: (role) => `${role}'s biggest fears and how they influence decisions are`,
+    rq4: (role) => `${role}'s ideal relationship values and what matters most in connections are`,
+    rq5: (role) => `${role}'s vision for changing the world and making that change is`,
+    rq6: (role) => `${role}'s beliefs about what happens after death and how it influences life are`,
+    rq7: (role) => `${role}'s proudest moment and why it was meaningful is`,
+    rq8: (role) => `${role}'s definition of success and how it has evolved is`,
+    rq9: (role) => `${role}'s biggest regret and lessons learned from it are`,
+    rq10: (role) => `${role}'s ultimate legacy vision with unlimited resources would be`,
+    
+    // Occupation Questions
+    occ1: (role) => `${role}'s typical workday routine looks like`,
+    occ2: (role) => `${role}'s original draw to their profession was`,
+    occ3: (role) => `${role}'s biggest professional achievement and its meaning is`,
+    occ4: (role) => `${role}'s most challenging work aspect and coping strategy is`,
+    occ5: (role) => `${role}'s career direction for the next 5-10 years is`,
+    
+    // Hobbies Questions
+    hob1: (role) => `${role}'s hobby that makes them lose track of time is`,
+    hob2: (role) => `${role}'s discovery of their main interests happened through`,
+    hob3: (role) => `${role}'s something they've always wanted to learn or try is`,
+    hob4: (role) => `${role}'s favorite way to spend a free weekend is`,
+    hob5: (role) => `${role}'s books, movies, or shows that significantly impacted them are`,
+    
+    // Viewpoints Questions
+    view1: (role) => `${role}'s controversial opinion that most disagree with is`,
+    view2: (role) => `${role}'s feelings about social media's impact on society are`,
+    view3: (role) => `${role}'s stance on work-life balance and career ambition is`,
+    
+    // Communication Questions
+    comm1: (role) => `${role}'s personality as described by closest friends is`,
+    comm2: (role) => `${role}'s communication style when upset or angry is`,
+    comm3: (role) => `${role}'s preferred way to give and receive feedback is`,
+    
+    // Lifestyle Questions
+    life1: (role) => `${role}'s ideal morning routine is`,
+    life2: (role) => `${role}'s approach to maintaining physical and mental health is`,
+    life3: (role) => `${role}'s living space says about them`,
+    
+    // Quirks Questions
+    quirk1: (role) => `${role}'s weird or unique habit that most don't know about is`,
+    quirk2: (role) => `${role}'s something that annoys them that others wouldn't mind is`,
+    quirk3: (role) => `${role}'s superstition or ritual they follow despite knowing it's illogical is`
+  };      const normalizedTemplate = template ? String(template).toLowerCase() : null;
+      let baselinePersonaStored = '';
+      if (normalizedTemplate && BASELINE_PERSONAS[normalizedTemplate]) {
+        // Required first-line pattern (role & name, no pronouns):
+        // "You are to act as my (role), (role)'s name is (name)."
+        const personaIntro = `You are to act as my ${normalizedTemplate}, ${normalizedTemplate}'s name is ${name}.` + (relationship ? `\nRelationship context: ${relationship}` : '');
+        baselinePersonaStored = personaIntro + '\n' + BASELINE_PERSONAS[normalizedTemplate];
+        trainingTexts.push({
+          title: `Baseline Persona: ${normalizedTemplate}`,
+          content: baselinePersonaStored
+        });
+      } else {
+        // Generic fallback when no template is chosen - use "self" as default role
+        baselinePersonaStored = `You are to act as my self, self's name is ${name}.` + (relationship ? `\nRelationship context: ${relationship}` : '') + '\n' + BASELINE_PERSONAS.self;
+        trainingTexts.push({
+          title: 'Baseline Persona: self',
+          content: baselinePersonaStored
+        });
+      }
+
+      // Optionally include relationship note if provided and distinct
+      if (relationship && (!normalizedTemplate || relationship.toLowerCase() !== normalizedTemplate)) {
+        trainingTexts.push({
+          title: 'Relationship Context',
+          content: `Relationship framing provided by user: ${relationship}`
+        });
+      }
       
-      // Add required answers as training data
-      Object.entries(requiredAnswers).forEach(([questionId, answer]) => {
-        const question = REQUIRED_QUESTIONS.find(q => q.id === questionId);
-        if (question && answer.trim()) {
-          trainingTexts.push({
-            title: `Required: ${question.text}`,
-            content: answer
-          });
+      // Build a single consolidated informative profile entry from all Q/A
+      const profileLines = [];
+      
+      // Determine the role name for rephrasing (use template or default to name)
+      const roleForRephrasing = normalizedTemplate || name;
+
+      // Required answers using rephrased informative format
+      REQUIRED_QUESTIONS.forEach(q => {
+        const ans = requiredAnswers[q.id];
+        if (typeof ans === 'string' && ans.trim()) {
+          const rephrasedPrompt = REPHRASED_QUESTIONS[q.id];
+          if (rephrasedPrompt) {
+            const statement = rephrasedPrompt(roleForRephrasing);
+            profileLines.push(`${statement}: ${ans.trim()}`);
+          } else {
+            // Fallback if rephrased version not found
+            profileLines.push(`${q.text.substring(0, 60)}: ${ans.trim()}`);
+          }
         }
       });
-      
-      // Add optional answers as training data
+
+      // Optional answers using rephrased informative format  
       Object.entries(optionalAnswers).forEach(([questionId, answer]) => {
-        if (answer.trim()) {
-          const questionText = getQuestionText(questionId);
-          trainingTexts.push({
-            title: `Personal: ${questionText}`,
-            content: answer
-          });
+        if (typeof answer === 'string' && answer.trim()) {
+          const rephrasedPrompt = REPHRASED_QUESTIONS[questionId];
+          if (rephrasedPrompt) {
+            const statement = rephrasedPrompt(roleForRephrasing);
+            profileLines.push(`${statement}: ${answer.trim()}`);
+          } else {
+            // Fallback for questions without rephrased versions
+            const questionText = getQuestionText(questionId);
+            const concise = questionText.split(/[.!?]/)[0].trim();
+            profileLines.push(`${concise}: ${answer.trim()}`);
+          }
         }
       });
+
+      let infoProfileSnapshot = '';
+      if (profileLines.length) {
+        infoProfileSnapshot = profileLines.join('\n');
+        trainingTexts.push({
+          title: 'Informational Profile',
+          content: infoProfileSnapshot
+        });
+      }
+      // NOTE: Future enhancement example (NOT implemented now):
+      // For transforming certain answers into stylized lines like
+      // "Role's greatest quotes (rephrased): <user input>"
+      // we can apply a regex replacement on infoProfileSnapshot lines.
+      // Example pattern to locate a "Proud Moment" line:
+      // const updated = infoProfileSnapshot.replace(/^(Proud Moment: )(.*)$/m, (m, prefix, body) => `${prefix}${rephrase(body)}`);
+      // Where rephrase() would call an LLM or heuristic paraphraser.
       
       // Training strategy: attempt full set; if certain validation errors occur, fallback to simplified single-entry answers.
       let trainingCount = 0;
@@ -189,7 +348,9 @@ async function replicaRoutes(fastify, options) {
       };
 
       try {
+        fastify.log.info(`Starting comprehensive training workflow for replica ${sensayReplica.id} with ${trainingTexts.length} entries`);
         await attemptEntries(trainingTexts);
+        fastify.log.info(`Training workflow completed for replica ${sensayReplica.id}. Successfully processed ${trainingCount} entries.`);
       } catch (flag) {
         if (flag.message === 'FALLBACK_TRIGGER') {
           usedSimplified = true;
@@ -221,7 +382,12 @@ async function replicaRoutes(fastify, options) {
         profileImageUrl: profileImage || null,
         selectedSegments,
         coverageScore: coverageScore || 0,
-        lastTrained: new Date()
+        lastTrained: new Date(),
+        template: normalizedTemplate || null,
+        baselinePersona: baselinePersonaStored,
+        infoProfileSnapshot,
+        greeting: userGreeting?.trim() || null,
+        preferredQuestion: preferredQuestion?.trim() || null
       };
       
       await User.findByIdAndUpdate(
@@ -236,7 +402,12 @@ async function replicaRoutes(fastify, options) {
           id: sensayReplica.id,
           ...replicaData,
           trainingCount,
-          usedSimplified
+          usedSimplified,
+          template: normalizedTemplate || null,
+          baselineIncluded: Boolean(normalizedTemplate),
+          trainingEntriesPlanned: trainingTexts.length,
+          trainingWorkflowComplete: true,
+          message: `Replica created and trained with ${trainingCount} knowledge base entries. Training sessions initiated to apply KB data to replica behavior.`
         }
       };
     } catch (error) {
@@ -322,17 +493,25 @@ async function replicaRoutes(fastify, options) {
         });
       }
       
-      // Update existing (for caretakers only)
+      // Update existing and remove those that no longer exist remotely (for caretakers only)
       user.replicas = user.replicas || [];
+      user.deletedReplicas = user.deletedReplicas || [];
+      
+      // Filter out replicas that no longer exist in Sensay and add to deleted tracking
+      const replicasToKeep = [];
       user.replicas.forEach(r => {
         const remoteR = remoteMap.get(r.replicaId);
         if (!remoteR) {
-          if (r.status !== 'REMOVED_REMOTE') {
-            r.status = 'REMOVED_REMOTE';
-            removed.push(r.replicaId);
+          // Replica exists locally but not in Sensay - it was likely deleted externally
+          const alreadyTracked = user.deletedReplicas.find(dr => dr.replicaId === r.replicaId);
+          if (!alreadyTracked) {
+            user.deletedReplicas.push({ replicaId: r.replicaId, deletedAt: now });
           }
-          return;
+          removed.push(r.replicaId);
+          return; // Don't keep this replica
         }
+        
+        // Replica still exists remotely - update it and keep it
         // drift check
         let changed = false;
         if (remoteR.name && remoteR.name !== r.name) { r.name = remoteR.name; changed = true; }
@@ -344,11 +523,23 @@ async function replicaRoutes(fastify, options) {
         r.lastSyncAt = now;
         if (changed) updated.push(r.replicaId);
         remoteMap.delete(r.replicaId);
+        replicasToKeep.push(r);
       });
-      // Remaining remote not in local -> add
+      
+      // Update the replicas array with only the ones that should be kept
+      user.replicas = replicasToKeep;
+      // Remaining remote not in local -> add (but check if recently deleted)
       for (const [id, rr] of remoteMap.entries()) {
         if (!id) continue;
         const replicaId = rr.uuid || rr.id || id;
+        
+        // Check if this replica was recently deleted (within last 24 hours)
+        const recentlyDeleted = user.deletedReplicas?.find(dr => dr.replicaId === replicaId);
+        if (recentlyDeleted) {
+          fastify.log.info(`Skipping re-add of recently deleted replica ${replicaId} (deleted at ${recentlyDeleted.deletedAt})`);
+          continue;
+        }
+        
         const description = rr.shortDescription || rr.short_description || rr.description || '';
         user.replicas.push({
           replicaId: replicaId,
@@ -783,7 +974,7 @@ async function replicaRoutes(fastify, options) {
   });
 
   /**
-   * Delete a replica (protected route)
+   * Delete a replica (protected route - caretakers only)
    */
   fastify.delete('/api/replicas/:replicaId', { 
     preHandler: authenticateToken 
@@ -792,15 +983,61 @@ async function replicaRoutes(fastify, options) {
       const { replicaId } = request.params;
       const userId = request.user.id;
       
-      // Remove replica from user's profile
-      await User.findByIdAndUpdate(
+      // Get user details to check role
+      const user = await User.findById(userId).select('role replicas');
+      
+      // Restrict patients from deleting replicas
+      if (user?.role === 'patient') {
+        return reply.status(403).send({ 
+          success: false, 
+          error: 'Access denied: patients cannot delete replicas' 
+        });
+      }
+      
+      // Find the replica in user's profile to validate ownership
+      const replicaEntry = user.replicas.find(r => r.replicaId === replicaId);
+      if (!replicaEntry) {
+        return reply.status(404).send({ 
+          success: false, 
+          error: 'Replica not found in your account' 
+        });
+      }
+      
+      // Delete from Sensay API first
+      fastify.log.info(`Attempting to delete replica ${replicaId} from Sensay API for user ${userId}`);
+      const sensayDeleteResult = await deleteReplica(replicaId);
+      fastify.log.info(`Sensay API delete result:`, sensayDeleteResult);
+      
+      // Remove replica from user's profile and add to deleted tracking
+      const updateResult = await User.findByIdAndUpdate(
         userId,
-        { $pull: { replicas: { replicaId } } }
+        { 
+          $pull: { replicas: { replicaId } },
+          $push: { deletedReplicas: { replicaId, deletedAt: new Date() } }
+        },
+        { new: true }
       );
+      
+      fastify.log.info(`Replica ${replicaId} deleted by user ${userId}. Removed from database:`, !!updateResult);
+      
+      // Verify the replica is actually gone from Sensay by trying to list replicas
+      try {
+        const remainingReplicas = await listReplicas(updateResult.sensayUserId);
+        const stillExists = remainingReplicas.find(r => (r.uuid || r.id) === replicaId);
+        if (stillExists) {
+          fastify.log.warn(`Warning: Replica ${replicaId} still exists in Sensay after deletion attempt`);
+        } else {
+          fastify.log.info(`Confirmed: Replica ${replicaId} successfully removed from Sensay`);
+        }
+      } catch (verifyError) {
+        fastify.log.warn(`Could not verify replica deletion from Sensay:`, verifyError.message);
+      }
       
       return { 
         success: true, 
-        message: 'Replica deleted successfully' 
+        message: 'Replica deleted successfully',
+        deletedFromSensay: true,
+        deletedFromDatabase: !!updateResult
       };
     } catch (error) {
       fastify.log.error(error, 'Error deleting replica');
@@ -808,6 +1045,83 @@ async function replicaRoutes(fastify, options) {
       return reply.status(500).send({ 
         success: false, 
         error: 'Failed to delete replica' 
+      });
+    }
+  });
+
+  /**
+   * Clear deleted replicas tracking (admin function)
+   */
+  fastify.delete('/api/replicas/deleted-tracking', { 
+    preHandler: authenticateToken 
+  }, async (request, reply) => {
+    try {
+      const userId = request.user.id;
+      
+      await User.findByIdAndUpdate(
+        userId,
+        { $unset: { deletedReplicas: "" } }
+      );
+      
+      return { 
+        success: true, 
+        message: 'Deleted replicas tracking cleared' 
+      };
+    } catch (error) {
+      fastify.log.error(error, 'Error clearing deleted replicas tracking');
+      return reply.status(500).send({ 
+        success: false, 
+        error: 'Failed to clear deleted replicas tracking' 
+      });
+    }
+  });
+
+  /**
+   * Manually start a training session for an existing replica (admin function)
+   */
+  fastify.post('/api/replicas/:replicaId/start-training', { 
+    preHandler: authenticateToken 
+  }, async (request, reply) => {
+    try {
+      const { replicaId } = request.params;
+      const userId = request.user.id;
+      
+      // Get user and verify ownership
+      const user = await User.findById(userId);
+      const replicaEntry = user.replicas?.find(r => r.replicaId === replicaId);
+      if (!replicaEntry) {
+        return reply.status(404).send({ 
+          success: false, 
+          error: 'Replica not found in your account' 
+        });
+      }
+      
+      // Start training session
+      fastify.log.info(`Starting manual training session for replica ${replicaId} by user ${userId}`);
+      const trainingSession = await startTrainingSession(replicaId);
+      
+      // Optionally complete it if a session ID is returned
+      let completionResult = null;
+      if (trainingSession?.success && (trainingSession.sessionId || trainingSession.id)) {
+        try {
+          const sessionId = trainingSession.sessionId || trainingSession.id;
+          completionResult = await completeTrainingSession(replicaId, sessionId);
+        } catch (completionError) {
+          fastify.log.warn('Training completion failed:', completionError.message);
+        }
+      }
+      
+      return { 
+        success: true, 
+        message: 'Training session initiated',
+        trainingSession,
+        completion: completionResult
+      };
+    } catch (error) {
+      fastify.log.error(error, 'Error starting manual training session');
+      return reply.status(500).send({ 
+        success: false, 
+        error: 'Failed to start training session: ' + error.message 
       });
     }
   });
@@ -943,9 +1257,12 @@ async function replicaRoutes(fastify, options) {
   fastify.post('/api/replicas/:replicaId/kb/entries', { preHandler: authenticateToken }, async (request, reply) => {
     try {
       const { replicaId } = request.params;
-      const { title, rawText, description } = request.body || {};
-      if (!title || !rawText || !rawText.trim()) {
-        return reply.status(400).send({ success:false, error:'title and rawText required' });
+      const { title, text, rawText, url, filename, autoRefresh, description } = request.body || {};
+      
+      // Check that at least one content field is provided (per API spec: url, text, or filename required)
+      const hasContent = (text && text.trim()) || (rawText && rawText.trim()) || (url && url.trim()) || (filename && filename.trim());
+      if (!hasContent) {
+        return reply.status(400).send({ success:false, error:'At least one of text, url, or filename is required' });
       }
       // Verify ownership
       const user = await User.findById(request.user.id).select('replicas');
@@ -953,12 +1270,17 @@ async function replicaRoutes(fastify, options) {
         return reply.status(403).send({ success:false, error:'Replica not owned' });
       }
       
-      // Create entry with content using the new two-step process
-      const entry = await createKnowledgeBaseEntry(replicaId, { 
-        title: title.substring(0,80), 
-        rawText,
-        description 
-      });
+      // Create entry with content using the new API spec
+      const entryData = {};
+      if (title && title.trim()) entryData.title = title.substring(0,80);
+      if (text && text.trim()) entryData.text = text.trim();
+      if (rawText && rawText.trim()) entryData.text = rawText.trim(); // Legacy support
+      if (url && url.trim()) entryData.url = url.trim();
+      if (filename && filename.trim()) entryData.filename = filename.trim();
+      if (autoRefresh !== undefined) entryData.autoRefresh = autoRefresh;
+      if (description && description.trim()) entryData.description = description.trim();
+      
+      const entry = await createKnowledgeBaseEntry(replicaId, entryData);
       
       const entryId = entry.id;
       if (!entryId) {
@@ -1017,13 +1339,73 @@ async function replicaRoutes(fastify, options) {
   fastify.get('/api/replicas/:replicaId/kb/:entryId', { preHandler: authenticateToken }, async (request, reply) => {
     try {
       const { replicaId, entryId } = request.params;
-      const { getKnowledgeBaseEntry } = await import('../services/sensayService.js');
+      
+      // Verify user owns this replica
+      const user = await User.findById(request.user.id).select('replicas');
+      if (!user?.replicas?.some(r => r.replicaId === replicaId)) {
+        return reply.status(403).send({ 
+          success: false, 
+          error: 'Access denied: Replica not found or not owned by user' 
+        });
+      }
+
       const entry = await getKnowledgeBaseEntry(replicaId, entryId);
-      return { success:true, entry };
+      return entry; // Return the complete entry data directly
     } catch (err) {
       request.log.error(err, 'Get KB entry failed');
-      if (err.status === 404) return reply.status(404).send({ success:false, error:'Not found' });
-      return reply.status(500).send({ success:false, error:'Failed to fetch KB entry' });
+      
+      // Generate request ID and fingerprint for error responses
+      const request_id = `${request.id}::${Date.now()}`;
+      const fingerprint = Math.random().toString(36).substring(2, 15);
+      
+      // Handle specific error cases according to API specification
+      if (err.message.includes('not found')) {
+        return reply.status(404).send({ 
+          success: false, 
+          error: 'Knowledge base entry not found',
+          request_id
+        });
+      }
+      
+      if (err.message.includes('Bad Request')) {
+        return reply.status(400).send({ 
+          success: false, 
+          error: 'Bad Request: Invalid entry ID or parameters',
+          request_id,
+          fingerprint
+        });
+      }
+      
+      if (err.message.includes('Unauthorized')) {
+        return reply.status(401).send({ 
+          success: false, 
+          error: 'Unauthorized: Invalid API credentials',
+          request_id,
+          fingerprint
+        });
+      }
+      
+      if (err.message.includes('Unsupported Media Type')) {
+        return reply.status(415).send({ 
+          success: false, 
+          error: 'Unsupported Media Type',
+          request_id,
+          fingerprint
+        });
+      }
+      
+      return reply.status(500).send({ 
+        success: false, 
+        error: 'Internal Server Error: Failed to retrieve knowledge base entry',
+        request_id,
+        fingerprint,
+        inner_exception: {
+          name: err.name || 'UnknownError',
+          cause: err.cause || 'Internal processing error',
+          error: err.message,
+          stack: err.stack
+        }
+      });
     }
   });
 
@@ -1036,6 +1418,184 @@ async function replicaRoutes(fastify, options) {
     } catch (err) {
       request.log.error(err, 'Delete KB entry failed');
       return reply.status(500).send({ success:false, error:'Failed to delete KB entry' });
+    }
+  });
+
+  // Schema for knowledge base entry update
+  const updateKnowledgeBaseSchema = {
+    body: {
+      type: 'object',
+      properties: {
+        rawText: { 
+          type: 'string',
+          minLength: 1
+        },
+        generatedFacts: { 
+          type: 'array',
+          items: { type: 'string' }
+        },
+        rawTextChunks: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              content: { type: 'string' },
+              chunkChars: { type: 'number' },
+              chunkIndex: { type: 'number' },
+              chunkTokens: { type: 'number' }
+            }
+          }
+        },
+        title: { type: 'string' },
+        generatedTitle: { type: 'string' },
+        summary: { type: 'string' },
+        language: { 
+          type: 'string',
+          enum: ['ab', 'aa', 'af', 'ak', 'sq', 'am', 'ar', 'an', 'hy', 'as', 'av', 'ae', 'ay', 'az', 'ba', 'bm', 'eu', 'be', 'bn', 'bh', 'bi', 'bs', 'br', 'bg', 'my', 'ca', 'ch', 'ce', 'ny', 'zh', 'cu', 'cv', 'kw', 'co', 'cr', 'hr', 'cs', 'da', 'dv', 'nl', 'dz', 'en', 'eo', 'et', 'ee', 'fo', 'fj', 'fi', 'fr', 'ff', 'gl', 'ka', 'de', 'el', 'kl', 'gn', 'gu', 'ht', 'ha', 'he', 'hz', 'hi', 'ho', 'hu', 'is', 'io', 'ig', 'id', 'ia', 'ie', 'iu', 'ik', 'ga', 'it', 'ja', 'jv', 'kn', 'kr', 'ks', 'kk', 'km', 'ki', 'rw', 'ky', 'kv', 'kg', 'ko', 'ku', 'kj', 'la', 'lb', 'lg', 'li', 'ln', 'lo', 'lt', 'lu', 'lv', 'gv', 'mk', 'mg', 'ms', 'ml', 'mt', 'mi', 'mr', 'mh', 'mn', 'na', 'nv', 'nd', 'ne', 'ng', 'nb', 'nn', 'no', 'ii', 'nr', 'oc', 'oj', 'om', 'or', 'os', 'pa', 'pi', 'fa', 'pl', 'ps', 'pt', 'qu', 'rm', 'rn', 'ro', 'ru', 'sa', 'sc', 'sd', 'se', 'sm', 'sg', 'sr', 'gd', 'sn', 'si', 'sk', 'sl', 'so', 'st', 'es', 'su', 'sw', 'ss', 'sv', 'ta', 'te', 'tg', 'th', 'ti', 'bo', 'tk', 'tl', 'tn', 'to', 'tr', 'ts', 'tt', 'tw', 'ty', 'ug', 'uk', 'ur', 'uz', 've', 'vi', 'vo', 'wa', 'cy', 'wo', 'xh', 'yi', 'yo', 'za', 'zu']
+        },
+        website: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            url: { type: 'string' },
+            links: { 
+              type: 'array',
+              items: { type: 'string' }
+            },
+            title: { type: 'string' },
+            text: { type: 'string' },
+            description: { type: 'string' },
+            autoRefresh: { type: 'boolean' },
+            screenshotURL: { type: 'string' },
+            screenshot: { type: 'string' }
+          }
+        },
+        youtube: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            url: { type: 'string' },
+            title: { type: 'string' },
+            description: { type: 'string' },
+            thumbnailURL: { type: 'string' },
+            summary: { type: 'string' },
+            transcription: { type: 'string' },
+            visualTranscription: { type: 'string' }
+          }
+        },
+        file: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            name: { type: 'string' },
+            size: { type: 'number' },
+            mimeType: { type: 'string' },
+            screenshot: { type: 'string' }
+          }
+        },
+        error: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            message: { type: 'string' },
+            fingerprint: { type: 'string' }
+          }
+        }
+      },
+      additionalProperties: false
+    }
+  };
+
+  /**
+   * Update knowledge base entry
+   * PATCH /api/replicas/:replicaId/kb/:entryId
+   */
+  fastify.patch('/api/replicas/:replicaId/kb/:entryId', { 
+    preHandler: authenticateToken,
+    schema: updateKnowledgeBaseSchema
+  }, async (request, reply) => {
+    try {
+      const { replicaId, entryId } = request.params;
+      const updateData = request.body;
+      
+      // Verify user owns this replica
+      const user = await User.findById(request.user.id).select('replicas');
+      if (!user?.replicas?.some(r => r.replicaId === replicaId)) {
+        return reply.status(403).send({ 
+          success: false, 
+          error: 'Access denied: Replica not found or not owned by user' 
+        });
+      }
+
+      // Add API version header as per specification
+      const headers = request.headers;
+      if (!headers['x-api-version']) {
+        headers['x-api-version'] = '2025-03-25';
+      }
+
+      // Update the knowledge base entry
+      const result = await updateKnowledgeBaseEntry(replicaId, entryId, updateData);
+      
+      return { 
+        success: true,
+        ...result
+      };
+      
+    } catch (err) {
+      request.log.error(err, 'Update KB entry failed');
+      
+      // Generate request ID and fingerprint for error responses
+      const request_id = `${request.id}::${Date.now()}`;
+      const fingerprint = Math.random().toString(36).substring(2, 15);
+      
+      // Handle specific error cases with appropriate HTTP status codes and API format
+      if (err.message.includes('not found')) {
+        return reply.status(404).send({ 
+          success: false, 
+          error: 'Knowledge base entry not found',
+          request_id
+        });
+      }
+      
+      if (err.message.includes('Invalid update data')) {
+        return reply.status(400).send({ 
+          success: false, 
+          error: 'Bad Request: Invalid update data provided',
+          request_id,
+          fingerprint
+        });
+      }
+      
+      if (err.message.includes('Unauthorized')) {
+        return reply.status(401).send({ 
+          success: false, 
+          error: 'Unauthorized access to knowledge base entry',
+          request_id,
+          fingerprint
+        });
+      }
+      
+      if (err.message.includes('Unsupported media type')) {
+        return reply.status(415).send({ 
+          success: false, 
+          error: 'Unsupported Media Type',
+          request_id,
+          fingerprint
+        });
+      }
+      
+      return reply.status(500).send({ 
+        success: false, 
+        error: 'Internal Server Error: Failed to update knowledge base entry',
+        request_id,
+        fingerprint,
+        inner_exception: {
+          name: err.name || 'UnknownError',
+          cause: err.cause || 'Internal processing error',
+          error: err.message,
+          stack: err.stack
+        }
+      });
     }
   });
 

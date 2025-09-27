@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   
-  const { isOpen = false, photos = [], albums = [], selectedAlbum = null } = $props();
+  const { isOpen = false, photos = [], selectedAlbum = null } = $props();
   
   const dispatch = createEventDispatcher();
   

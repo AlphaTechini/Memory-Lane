@@ -2,7 +2,7 @@
   import { browser } from '$app/environment';
   import MessageBubble from './MessageBubble.svelte';
 
-  let { messages = [] } = $props();
+  let { messages = [], suggestedQuestions = [], onQuestionSelect } = $props();
 
   let chatContainer = $state();
 
@@ -45,5 +45,22 @@
     {#each messages as message, i (message.id ?? i)}
       <MessageBubble {message} />
     {/each}
+    
+    <!-- Show suggested questions only if there are very few messages (like just a greeting) -->
+    {#if suggestedQuestions.length > 0 && messages.length <= 2 && onQuestionSelect}
+      <div class="mt-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Suggested questions:</h4>
+        <div class="space-y-2">
+          {#each suggestedQuestions as question (question)}
+            <button
+              onclick={() => onQuestionSelect(question)}
+              class="w-full text-left px-3 py-2 text-sm bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md hover:bg-gray-100 dark:hover:bg-gray-500 transition-colors duration-200 text-gray-700 dark:text-gray-200"
+            >
+              {question}
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
   {/if}
 </div>

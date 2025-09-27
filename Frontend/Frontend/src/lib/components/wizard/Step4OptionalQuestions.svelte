@@ -52,12 +52,6 @@
     return { answered, total, remaining: Math.max(0, 0 - answered) }; // No minimum required
   }
 
-  function goToQuestion(index) {
-    if (index >= 0 && index < filteredQuestions.length) {
-      currentQuestionIndex = index;
-    }
-  }
-
   function nextQuestion() {
     if (currentQuestionIndex < filteredQuestions.length - 1) {
       currentQuestionIndex++;
@@ -233,7 +227,7 @@
   <div class="mt-8">
     <h3 class="font-medium text-gray-900 dark:text-gray-100 mb-4">Progress by Category</h3>
     <div class="space-y-3">
-      {#each (state?.selectedSegments || []) as segmentKey}
+  {#each (state?.selectedSegments || []) as segmentKey (segmentKey)}
         <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
           <div>
             <div class="font-medium text-gray-900 dark:text-gray-100">

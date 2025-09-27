@@ -91,6 +91,7 @@
         error = data.message || 'Verification failed';
       }
     } catch (err) {
+      console.error('OTP verification failed:', err);
       error = 'Network error. Please try again.';
     } finally {
       loading = false;
@@ -126,6 +127,7 @@
         error = data.message || 'Failed to resend code';
       }
     } catch (err) {
+      console.error('OTP resend failed:', err);
       error = 'Network error. Please try again.';
     } finally {
       resendLoading = false;

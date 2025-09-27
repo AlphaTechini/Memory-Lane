@@ -66,19 +66,43 @@
             const resendData = await resendResp.json();
             if (resendResp.ok && resendData.success) {
               localStorage.setItem('userEmail', patientEmail);
-              message = 'A verification code was (re)sent to the email. Redirecting to verification...';
+              message = 'Welcome back! A verification code was sent to your email. Redirecting to verification...';
               setTimeout(() => goto('/verify-otp'), 700);
             } else {
-              error = resendData.message || 'Failed to send verification code';
+              error = resendData.message || 'Failed to send verification code. Please try again.';
             }
           } catch (e) {
+            console.error('Failed to resend verification code on caretaker login:', e);
             error = 'Network error when requesting verification code. Please try again.';
           }
         } else {
-          error = data.message || 'Failed to create patient account';
+          // Handle the specific patient account already exists message from backend
+          if (data.accountType === 'patient') {
+            error = 'You already have a patient account. A verification code has been sent to your email to sign in.';
+            // Try to send OTP anyway for convenience
+            try {
+              const resendResp = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: patientEmail })
+              });
+              const resendData = await resendResp.json();
+              if (resendResp.ok && resendData.success) {
+                localStorage.setItem('userEmail', patientEmail);
+                message = 'A verification code was sent to your email. Redirecting to verification...';
+                setTimeout(() => goto('/verify-otp'), 700);
+                return;
+              }
+            } catch (e) {
+              console.error('Resending verification code for patient failed:', e);
+            }
+          } else {
+            error = data.message || 'Unable to sign in at this time. Please contact your caretaker for assistance.';
+          }
         }
       }
     } catch (err) {
+      console.error('Caretaker login request failed:', err);
       error = 'Network error. Please try again.';
     } finally {
       loading = false;
@@ -96,6 +120,28 @@
       <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Memory Lane</h1>
       <ThemeToggle />
     </nav>
+
+    <!-- Platform Description -->
+    <div class="text-center mb-8">
+      <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">Preserving Memories, Connecting Hearts</h2>
+      <p class="text-lg text-gray-700 dark:text-gray-300 mb-4 max-w-4xl mx-auto">
+        Memory Lane helps families stay connected when memory challenges make communication difficult. Our AI-powered platform creates digital replicas that preserve precious memories, personalities, and conversations.
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto text-sm">
+        <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+          <div class="font-semibold text-blue-800 dark:text-blue-300 mb-2">For Memory Care</div>
+          <p class="text-blue-700 dark:text-blue-400">Helps patients with dementia, Alzheimer's, and other memory conditions maintain meaningful connections with their digital replicas.</p>
+        </div>
+        <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+          <div class="font-semibold text-green-800 dark:text-green-300 mb-2">Preserve Personalities</div>
+          <p class="text-green-700 dark:text-green-400">Capture the unique voice, memories, and personality traits of loved ones before they're lost to time.</p>
+        </div>
+        <div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+          <div class="font-semibold text-purple-800 dark:text-purple-300 mb-2">Stay Connected</div>
+          <p class="text-purple-700 dark:text-purple-400">Enable patients to interact with familiar personalities when direct communication becomes challenging.</p>
+        </div>
+      </div>
+    </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col">

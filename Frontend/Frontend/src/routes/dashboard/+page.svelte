@@ -2,8 +2,9 @@
 <script>
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
-    import { isAuthenticated, verifyAuth, logout, requireAuthForAction, apiCall } from '$lib/auth.js';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+
+  import { isAuthenticated, verifyAuth, logout, requireAuthForAction, apiCall } from '$lib/auth.js';
 
   let isAuth = $state(false);
   let user = $state(null);
@@ -21,18 +22,28 @@
             // Token is invalid, clear it
             isAuth = false;
           } else {
-            // Load user role
-            try {
-              const response = await apiCall('/api/auth/me', { method: 'GET' });
-              if (response.ok) {
-                const userData = await response.json();
-                userRole = userData.user?.role || 'caretaker';
+            // Load user role - first try from cached user data
+            if (user && user.role) {
+              userRole = user.role;
+              console.log('Dashboard: userRole from cached user:', userRole);
+            } else {
+              // Fallback to API call
+              try {
+                const response = await apiCall('/api/auth/me', { method: 'GET' });
+                if (response.ok) {
+                  const userData = await response.json();
+                  userRole = userData.user?.role || 'caretaker';
+                  console.log('Dashboard: userRole from API:', userRole);
+                }
+              } catch (error) {
+                console.error('Failed to load user role:', error);
+                userRole = 'caretaker'; // Default to caretaker
               }
-            } catch (error) {
-              console.error('Failed to load user role:', error);
-              userRole = 'caretaker'; // Default to caretaker
             }
           }
+        } else {
+          // Not authenticated
+          userRole = null;
         }
         authChecked = true;
       };
@@ -174,24 +185,24 @@
   </header>
 
   <!-- Main Content -->
-  <main class="max-w-6xl mx-auto px-4 py-12">
+  <main class="max-w-6xl mx-auto px-4 py-6 md:py-8 lg:py-12">
     <!-- Welcome Section -->
     <div class="text-center mb-12">
       <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-        {#if isAuthenticated}
+  {#if isAuth}
           Welcome back to Memory Lane
         {:else}
           Welcome to Memory Lane
         {/if}
       </h2>
       <p class="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-        {#if isAuthenticated}
+  {#if isAuth}
           Create, train, and interact with AI replicas. Manage your conversations, organize your memories, and build personalized AI assistants.
         {:else}
           Explore AI replicas and chat with Memory Lane AI. Sign up to create your own personalized AI assistants and manage your memories.
         {/if}
       </p>
-      {#if !isAuthenticated}
+  {#if !isAuth}
         <div class="mt-6">
           <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
             Currently exploring in demo mode
@@ -214,20 +225,48 @@
       {/if}
     </div>
 
+    <!-- Debug Info (remove after testing) -->
+    {#if authChecked}
+      <div class="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+        <div class="text-sm text-gray-700 dark:text-gray-300">
+          <strong>Debug Info:</strong><br>
+          Role: {userRole || 'null'}<br>
+          Auth: {isAuth}<br>
+          User Email: {user?.email || 'null'}<br>
+          <!-- User ID hidden for privacy -->
+          Cached Token: {typeof localStorage !== 'undefined' ? (localStorage.getItem('authToken') ? 'exists' : 'missing') : 'unknown'}
+        </div>
+        <button 
+          onclick={() => {
+            if (typeof localStorage !== 'undefined') {
+              localStorage.removeItem('authToken');
+              localStorage.removeItem('userData');
+              localStorage.removeItem('userEmail');
+              window.location.href = '/';
+            }
+          }}
+          class="mt-2 px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+        >
+          Clear Auth & Restart
+        </button>
+      </div>
+    {/if}
+
     <!-- Navigation Cards -->
-    <div class="{userRole === 'patient' ? 'grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto justify-items-center' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'}">
-      {#each navigationItems.filter(item => {
-        // Show item if not caretaker-only
-        if (!item.caretakerOnly) return true;
-        // Show caretaker-only items only for authenticated caretakers (not patients)
-        return isAuth && userRole === 'caretaker';
-      }) as item (item.id)}
+    {#if authChecked}
+      <div class="{userRole === 'patient' ? 'grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto justify-items-center' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'}">
+        {#each navigationItems.filter(item => {
+          // Show item if not caretaker-only
+          if (!item.caretakerOnly) return true;
+          // Show caretaker-only items only for authenticated caretakers (not patients)
+          return isAuth && userRole === 'caretaker';
+        }) as item (item.id)}
         <button
           onclick={() => navigateTo(item.route, item.requiresAuth)}
-          class="group relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-transparent focus:outline-none focus:ring-4 focus:ring-blue-500/20 {item.requiresAuth && !isAuthenticated ? 'opacity-75' : ''}"
+          class="group relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-transparent focus:outline-none focus:ring-4 focus:ring-blue-500/20 {item.requiresAuth && !isAuth ? 'opacity-75' : ''}"
         >
           <!-- Auth requirement badge -->
-          {#if item.requiresAuth && !isAuthenticated}
+          {#if item.requiresAuth && !isAuth}
             <div class="absolute top-3 right-3 z-10">
               <div class="flex items-center px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-md">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-600 dark:text-yellow-400 mr-1">
@@ -246,7 +285,32 @@
           <div class="relative p-8">
             <!-- Icon -->
             <div class="w-16 h-16 mx-auto mb-6 {item.textColor} group-hover:scale-110 transition-transform duration-300">
-              {@html item.icon}
+              <!-- Safe icon rendering - SVG icons are now inline components -->
+              {#if item.id === 'chatbot'}
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+              {:else if item.id === 'gallery'}
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                  <circle cx="9" cy="9" r="2"/>
+                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                </svg>
+              {:else if item.id === 'create-replica'}
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              {:else if item.id === 'manage-patients'}
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <line x1="17" x2="22" y1="8" y2="13"/>
+                  <line x1="22" x2="17" y1="8" y2="13"/>
+                </svg>
+              {/if}
             </div>
             
             <!-- Title -->
@@ -257,7 +321,7 @@
             <!-- Description -->
             <p class="text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
               {item.description}
-              {#if item.requiresAuth && !isAuthenticated}
+              {#if item.requiresAuth && !isAuth}
                 <span class="block mt-2 text-sm text-yellow-600 dark:text-yellow-400">
                   Sign up or login to access this feature
                 </span>
@@ -267,7 +331,7 @@
             <!-- Action Button -->
             <div class="inline-flex items-center justify-center px-6 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg group-hover:bg-gradient-to-r group-hover:from-blue-500 group-hover:to-purple-600 group-hover:text-white transition-all duration-300">
               <span class="font-medium mr-2">
-                {#if item.requiresAuth && !isAuthenticated}
+                {#if item.requiresAuth && !isAuth}
                   Login to Access
                 {:else}
                   Open {item.title}
@@ -281,7 +345,14 @@
           </div>
         </button>
       {/each}
-    </div>
+      </div>
+    {:else}
+      <!-- Loading state -->
+      <div class="text-center py-12">
+        <div class="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+        <p class="text-gray-600 dark:text-gray-400">Loading dashboard...</p>
+      </div>
+    {/if}
 
     <!-- Features Section -->
     <div class="mt-20">

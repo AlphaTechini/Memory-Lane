@@ -4,6 +4,8 @@
 
   let name = $state('');
   let description = $state('');
+  let greeting = $state('');
+  let preferredQuestion = $state('');
   let consent = $state(false);
   
   // Subscribe to wizard store and initialize with current values
@@ -12,12 +14,16 @@
     const currentState = wizardStore.getState();
     name = currentState.basics?.name || '';
     description = currentState.basics?.description || '';
+    greeting = currentState.basics?.greeting || '';
+    preferredQuestion = currentState.basics?.preferredQuestion || '';
     consent = currentState.basics?.consent || false;
     
     unsubscribe = wizardStore.subscribe(value => {
       if (value.basics) {
         if (value.basics.name !== undefined) name = value.basics.name;
         if (value.basics.description !== undefined) description = value.basics.description;
+        if (value.basics.greeting !== undefined) greeting = value.basics.greeting;
+        if (value.basics.preferredQuestion !== undefined) preferredQuestion = value.basics.preferredQuestion;
         if (value.basics.consent !== undefined) consent = value.basics.consent;
       }
     });
@@ -35,6 +41,16 @@
   function updateDescription(value) {
     description = value;
     wizardStore.updateBasics({ description: value });
+  }
+
+  function updateGreeting(value) {
+    greeting = value;
+    wizardStore.updateBasics({ greeting: value });
+  }
+
+  function updatePreferredQuestion(value) {
+    preferredQuestion = value;
+    wizardStore.updateBasics({ preferredQuestion: value });
   }
 
   function updateConsent(value) {
@@ -97,6 +113,54 @@
           Description must be 50 characters or less
         </p>
       {/if}
+    </div>
+
+    <!-- Greeting Message -->
+    <div>
+      <label for="greeting" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        Custom Greeting (Optional)
+      </label>
+      <textarea
+        id="greeting"
+        bind:value={greeting}
+        oninput={(e) => updateGreeting(e.target.value)}
+        maxlength="200"
+        rows="3"
+        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+        placeholder="How should your replica greet people? (e.g., 'Hey there! It's great to chat with you again!')"
+      ></textarea>
+      <div class="mt-1 flex justify-between items-start">
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          Personalized greeting message for conversations
+        </p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          {greeting.length}/200 characters
+        </p>
+      </div>
+    </div>
+
+    <!-- Preferred Question -->
+    <div>
+      <label for="preferredQuestion" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        Preferred Conversation Starter (Optional)
+      </label>
+      <input
+        id="preferredQuestion"
+        type="text"
+        bind:value={preferredQuestion}
+        oninput={(e) => updatePreferredQuestion(e.target.value)}
+        maxlength="150"
+        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+        placeholder="What question would your replica like to ask? (e.g., 'How was your day today?')"
+      />
+      <div class="mt-1 flex justify-between items-start">
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          Question your replica might ask to start conversations
+        </p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          {preferredQuestion.length}/150 characters
+        </p>
+      </div>
     </div>
 
     <!-- Consent Checkbox -->

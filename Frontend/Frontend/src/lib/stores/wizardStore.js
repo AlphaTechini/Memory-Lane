@@ -19,6 +19,8 @@ function createInitialState() {
     basics: {
       name: '',
       description: '',
+      greeting: '',
+      preferredQuestion: '',
       consent: false
     },
     
@@ -32,13 +34,37 @@ function createInitialState() {
     // Profile image
     profileImage: null,
     
+    // Knowledge Base (NEW - Step 7)
+    knowledgeBase: {
+      entries: [],
+      currentEntry: {
+        title: '',
+        text: '',
+        url: '',
+        filename: '',
+        autoRefresh: false,
+        inputType: 'text' // 'text', 'url', 'file'
+      }
+    },
+    
     // UI state
     loading: false,
     error: '',
     
     // Submission state
     replicaId: null,
-    trainingStatus: null
+    trainingStatus: null,
+
+    // Submission progress persistence for retry flow
+    submissionProgress: {
+      steps: [],
+      message: '',
+      showProgress: false,
+      submitError: null,
+      lastFailedStep: null,
+      baselineReplicaIds: [],
+      recoveredReplica: null
+    }
   };
 }
 
@@ -49,7 +75,11 @@ function loadInitialState() {
     if (saved) {
       try {
         const parsedState = JSON.parse(saved);
-        return { ...createInitialState(), ...parsedState };
+        const mergedState = { ...createInitialState(), ...parsedState };
+        if (typeof mergedState.currentStep === 'number') {
+          mergedState.currentStep = Math.max(0, Math.min(mergedState.currentStep, 6));
+        }
+        return mergedState;
       } catch (e) {
         console.warn('Failed to load wizard state from localStorage:', e);
       }
@@ -122,9 +152,11 @@ export const wizardStore = {
       case 4:
         return $state.selectedSegments.length > 0;
       case 5:
-        return Object.keys($state.optionalAnswers).length >= 40;
+        // Optional questions can be skipped - always allow proceeding to profile image
+        return true;
       case 6:
-        return $state.profileImage;
+        // Profile image is optional - allow proceeding to review
+        return true;
       default:
         return true;
     }
@@ -143,18 +175,19 @@ export const wizardStore = {
         return Object.keys($state.requiredAnswers).length === requiredQuestions.length &&
                requiredQuestions.every(q => {
                  const answer = $state.requiredAnswers[q.id];
-                 return answer && answer.trim().length >= q.minLength;
+                 // Some templates/questions may not define minLength — treat missing minLength as 0
+                 const minLen = typeof q.minLength === 'number' ? q.minLength : 0;
+                 return answer && answer.trim().length >= minLen;
                });
       }
       case 3:
         return $state.selectedSegments.length > 0;
       case 4:
-        return Object.keys($state.optionalAnswers).length >= 40 &&
-               Object.values($state.optionalAnswers).every(answer => 
-                 answer && answer.trim().length >= 120
-               );
+        // Optional questions can be skipped - always allow proceeding
+        return true;
       case 5:
-        return $state.profileImage;
+        // Profile image is optional - allow proceeding without it
+        return true;
       case 6: {
         const template = $state.template;
         const requiredQuestions = template ? getRequiredQuestionsByTemplate(template) : REQUIRED_QUESTIONS;
@@ -180,6 +213,8 @@ export const wizardStore = {
         ...s.basics,
         name: data.name !== undefined ? data.name : s.basics.name,
         description: data.description !== undefined ? data.description : s.basics.description,
+        greeting: data.greeting !== undefined ? data.greeting : s.basics.greeting,
+        preferredQuestion: data.preferredQuestion !== undefined ? data.preferredQuestion : s.basics.preferredQuestion,
         consent: data.consent !== undefined ? data.consent : s.basics.consent
       }
     }));
@@ -254,7 +289,7 @@ export const wizardStore = {
   setCurrentStep: (step) => {
     state.update(s => ({
       ...s,
-      currentStep: step
+      currentStep: Math.max(0, Math.min(step, 6))
     }));
   },
   
@@ -299,6 +334,93 @@ export const wizardStore = {
       trainingStatus: status
     }));
   },
+
+  setSubmissionProgress: (progress) => {
+    state.update(s => ({
+      ...s,
+      submissionProgress: {
+        ...s.submissionProgress,
+        ...progress
+      }
+    }));
+  },
+
+  updateSubmissionProgress: (updater) => {
+    state.update(s => {
+      const current = s.submissionProgress || createInitialState().submissionProgress;
+      const next = typeof updater === 'function' ? updater(current) : { ...current, ...updater };
+      return {
+        ...s,
+        submissionProgress: next
+      };
+    });
+  },
+
+  clearSubmissionProgress: () => {
+    state.update(s => ({
+      ...s,
+      submissionProgress: createInitialState().submissionProgress
+    }));
+  },
+  
+  // Knowledge Base Actions
+  updateKnowledgeBaseEntry: (field, value) => {
+    state.update(s => ({
+      ...s,
+      knowledgeBase: {
+        ...s.knowledgeBase,
+        currentEntry: {
+          ...s.knowledgeBase.currentEntry,
+          [field]: value
+        }
+      }
+    }));
+  },
+  
+  addKnowledgeBaseEntry: (entry) => {
+    state.update(s => ({
+      ...s,
+      knowledgeBase: {
+        ...s.knowledgeBase,
+        entries: [...s.knowledgeBase.entries, { ...entry, id: Date.now() }],
+        currentEntry: {
+          title: '',
+          text: '',
+          url: '',
+          filename: '',
+          autoRefresh: false,
+          inputType: 'text'
+        }
+      }
+    }));
+  },
+  
+  removeKnowledgeBaseEntry: (id) => {
+    state.update(s => ({
+      ...s,
+      knowledgeBase: {
+        ...s.knowledgeBase,
+        entries: s.knowledgeBase.entries.filter(entry => entry.id !== id)
+      }
+    }));
+  },
+  
+  clearKnowledgeBaseForm: () => {
+    state.update(s => ({
+      ...s,
+      knowledgeBase: {
+        ...s.knowledgeBase,
+        currentEntry: {
+          title: '',
+          text: '',
+          url: '',
+          filename: '',
+          autoRefresh: false,
+          inputType: 'text'
+        }
+      }
+    }));
+  },
   
   reset: () => {
     state.set(createInitialState());
@@ -313,7 +435,11 @@ export const wizardStore = {
       if (saved) {
         try {
           const parsedState = JSON.parse(saved);
-          state.set({ ...createInitialState(), ...parsedState });
+          const mergedState = { ...createInitialState(), ...parsedState };
+          if (typeof mergedState.currentStep === 'number') {
+            mergedState.currentStep = Math.max(0, Math.min(mergedState.currentStep, 6));
+          }
+          state.set(mergedState);
         } catch (e) {
           console.warn('Failed to load wizard state from localStorage:', e);
         }

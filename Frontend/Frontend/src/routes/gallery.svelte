@@ -1,5 +1,5 @@
 <script>
-  import { writable, derived } from 'svelte/store';
+  import { writable } from 'svelte/store';
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
@@ -43,19 +43,20 @@
       }
     };
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      ...defaultOptions,
-      headers: { ...defaultOptions.headers, ...options.headers }
-    });
-
-    if (response.status === 401) {
-      localStorage.removeItem('authToken');
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        ...defaultOptions,
+        headers: { ...defaultOptions.headers, ...options.headers }
+      });
+      return response;
+    } catch (err) {
+      console.error('API call failed:', err);
+      // Clear token and force login on persistent API errors
+      if (browser) localStorage.removeItem('authToken');
       goto('/login');
       return null;
     }
-
-    return response;
   }
 
   // Store for gallery images from backend
@@ -91,7 +92,6 @@
     if (!checkAuth()) return false;
 
     try {
-      uploadInProgress = true;
       const formData = new FormData();
       
       for (let i = 0; i < files.length; i++) {
@@ -385,7 +385,7 @@
                   Selected Files ({selectedFiles.length})
                 </h4>
                 <ul class="space-y-1">
-                  {#each selectedFiles as file}
+                  {#each selectedFiles as file, idx (file.name ?? idx)}
                     <li class="text-sm text-gray-600 dark:text-gray-400">
                       {file.name} ({formatFileSize(file.size)})
                     </li>

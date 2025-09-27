@@ -36,12 +36,31 @@ const rawFrontend = process.env.FRONTEND_URLS || process.env.FRONTEND_URL || '';
 const envOrigins = rawFrontend.split(',').map(s => s.trim()).filter(Boolean);
 const allowedOrigins = new Set([...envOrigins, ...defaultFrontendOrigins]);
 
-// CORS origin as function: allow if no origin (curl/servers) or if origin is in allowedOrigins
+// CORS origin as function: allow if no origin (curl/servers), if origin is in allowedOrigins,
+// or if the origin appears to be a local development origin (localhost, 127.0.0.1, [::1], 0.0.0.0).
 await server.register(cors, {
   origin: (origin, cb) => {
     // When origin is undefined (for same-origin or tools like curl), allow.
     if (!origin) return cb(null, true);
+
+    // Exact-match allowed origins from env or defaults
     if (allowedOrigins.has(origin)) return cb(null, true);
+
+    // Allow common local development origins (including IPv6 loopback).
+    // Examples: http://localhost:5173, http://127.0.0.1:5173, http://[::1]:5173
+    const localOriginRegex = /^https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::\d+)?$/i;
+    if (localOriginRegex.test(origin)) {
+      // Add to the allowedOrigins set so future requests are accepted without regex test
+      try {
+        allowedOrigins.add(origin);
+        // Log at info level that we dynamically allowed a dev origin
+        server.log.info({ origin }, 'Allowing local development CORS origin');
+      } catch (e) {
+        // ignore logging errors here
+      }
+      return cb(null, true);
+    }
+
     // Not allowed
     return cb(new Error('CORS origin not allowed'), false);
   },

@@ -2,7 +2,7 @@
 <script>
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
-  import { isAuthenticated, verifyAuth, requireAuthForAction, getAuthToken, apiCall } from '$lib/auth.js';
+  import { verifyAuth, getAuthToken, apiCall } from '$lib/auth.js';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import BackNavigation from '$lib/components/BackNavigation.svelte';
 
@@ -12,7 +12,7 @@
   let replicas = $state([]);
   let loading = $state(false);
   let patientEmail = $state('');
-  let selectedReplicas = $state(new Set());
+  let selectedReplicas = $state([]);
   let updating = $state(false);
   let updateStatus = $state('');
   let updateResults = $state([]);
@@ -80,12 +80,11 @@
   }
 
   function toggleReplicaSelection(replicaId) {
-    if (selectedReplicas.has(replicaId)) {
-      selectedReplicas.delete(replicaId);
+    if (selectedReplicas.includes(replicaId)) {
+      selectedReplicas = selectedReplicas.filter(id => id !== replicaId);
     } else {
-      selectedReplicas.add(replicaId);
+      selectedReplicas = [...selectedReplicas, replicaId];
     }
-    selectedReplicas = new Set(selectedReplicas);
   }
 
   async function addPatientEmail() {
@@ -99,7 +98,7 @@
       return;
     }
 
-    if (selectedReplicas.size === 0) {
+    if (selectedReplicas.length === 0) {
       updateStatus = 'Please select at least one replica';
       return;
     }
@@ -217,12 +216,12 @@
             </div>
           {:else}
             <div class="space-y-3" role="list">
-              {#each replicas as replica}
+              {#each replicas as replica (replica.replicaId)}
                 <label class="flex items-center space-x-3 p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer" role="listitem">
                   <input
                     type="checkbox"
                     aria-label={`Select replica ${replica.name}`}
-                    checked={selectedReplicas.has(replica.replicaId)}
+                    checked={selectedReplicas.includes(replica.replicaId)}
                     onchange={() => toggleReplicaSelection(replica.replicaId)}
                     class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     disabled={updating}
@@ -258,7 +257,7 @@
         <div class="flex space-x-4">
           <button
             onclick={addPatientEmail}
-            disabled={updating || !patientEmail || selectedReplicas.size === 0}
+            disabled={updating || !patientEmail || selectedReplicas.length === 0}
             class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
             {#if updating}
@@ -287,7 +286,7 @@
         {#if updateResults.length > 0}
           <div class="mt-4 space-y-2">
             <h3 class="font-medium text-gray-900 dark:text-white">Update Results:</h3>
-            {#each updateResults as result}
+            {#each updateResults as result, idx (`${result.replicaId}-${idx}`)}
                   <div class="flex items-center justify-between p-3 rounded-lg {result.success ? 'bg-green-50 dark:bg-green-900' : 'bg-red-50 dark:bg-red-900'}">
                     <span class="text-sm {result.success ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}">
                       {#if replicas && replicas.length}

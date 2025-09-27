@@ -109,6 +109,7 @@
         wizardStore.updateProfileImage(null);
       }
     } catch (error) {
+      console.error('Profile image upload failed:', error);
       uploadError = 'Upload failed. Please try again.';
       wizardStore.updateProfileImage(null);
     } finally {

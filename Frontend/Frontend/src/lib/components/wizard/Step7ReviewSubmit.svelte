@@ -1,8 +1,9 @@
 <script>
   import { onMount } from 'svelte';
-  import { wizardStore, coverageScore } from '$lib/stores/wizardStore.js';
+  import { wizardStore } from '$lib/stores/wizardStore.js';
   import { REQUIRED_QUESTIONS, OPTIONAL_SEGMENTS, getRequiredQuestionsByTemplate } from '$lib/questionBank.js';
   import { goto } from '$app/navigation';
+  import { apiCall } from '$lib/auth.js';
 
   // Backend API base (align with other routes; if later a proxy is added, can switch to '')
   const API_BASE_URL = 'http://localhost:4000';
@@ -15,24 +16,32 @@
   });
   let isSubmitting = $state(false);
   let submitError = $state(null);
-  let showProgress = $state(false);
-  let progressSteps = $state([
+  const defaultProgressSteps = () => ([
     { key: 'create', label: 'Creating replica', status: 'pending' },
-    { key: 'knowledge', label: 'Creating knowledge base', status: 'idle' },
-    { key: 'upload', label: 'Training replica', status: 'idle' },
+    { key: 'train', label: 'Training replica', status: 'idle' },
     { key: 'fetch', label: 'Fetching replica details', status: 'idle' },
     { key: 'finalize', label: 'Finalizing', status: 'idle' }
   ]);
+  let showProgress = $state(false);
+  let progressSteps = $state(defaultProgressSteps());
   let progressMessage = $state('');
-  let createdReplicaId = $state(null);
-  let editingSection = $state(null);
-  let expandedAnswers = $state(new Set());
+  let lastFailedStep = $state(null);
+  let expandedAnswers = $state([]);
+  let progressInterval = null;
   
   // Subscribe to wizard store
   let unsubscribe;
   onMount(() => {
     unsubscribe = wizardStore.subscribe(value => {
       state = value;
+      const progress = value?.submissionProgress;
+      if (progress) {
+        showProgress = progress.showProgress ?? false;
+        progressSteps = progress.steps?.length ? progress.steps : defaultProgressSteps();
+        progressMessage = progress.message ?? '';
+        submitError = progress.submitError ?? null;
+        lastFailedStep = progress.lastFailedStep ?? null;
+      }
     });
     
     return () => {
@@ -69,12 +78,11 @@
   }
 
   function toggleAnswerExpansion(questionId) {
-    if (expandedAnswers.has(questionId)) {
-      expandedAnswers.delete(questionId);
+    if (expandedAnswers.includes(questionId)) {
+      expandedAnswers = expandedAnswers.filter(id => id !== questionId);
     } else {
-      expandedAnswers.add(questionId);
+      expandedAnswers = [...expandedAnswers, questionId];
     }
-    expandedAnswers = new Set(expandedAnswers);
   }
 
   function truncateText(text, maxLength = 150) {
@@ -83,12 +91,208 @@
   }
 
   function editSection(section) {
-    editingSection = section;
     wizardStore.setCurrentStep(section);
+  }
+
+  function persistProgress(extra = {}) {
+    wizardStore.updateSubmissionProgress(prev => ({
+      ...prev,
+      steps: progressSteps,
+      message: progressMessage,
+      showProgress,
+      submitError,
+      lastFailedStep,
+      ...extra
+    }));
+  }
+
+  function resetProgressState() {
+    progressSteps = defaultProgressSteps();
+    progressMessage = '';
+    submitError = null;
+    lastFailedStep = null;
+    persistProgress({
+      steps: progressSteps,
+      message: progressMessage,
+      submitError: null,
+      lastFailedStep: null,
+      baselineReplicaIds: [],
+      recoveredReplica: null
+    });
   }
 
   function updateProgress(key, updates) {
     progressSteps = progressSteps.map(step => step.key === key ? { ...step, ...updates } : step);
+    persistProgress();
+  }
+
+  function setProgressMessage(message) {
+    progressMessage = message;
+    persistProgress();
+  }
+
+  function markFailure(stepKey) {
+    const keys = progressSteps.map(step => step.key);
+    const targetIndex = keys.indexOf(stepKey);
+    progressSteps = progressSteps.map((step, idx) => {
+      if (targetIndex === -1) {
+        if (idx === 0) {
+          return { ...step, status: idx === 0 ? 'error' : 'idle' };
+        }
+        return { ...step, status: 'idle' };
+      }
+      if (idx < targetIndex) {
+        return { ...step, status: 'done' };
+      }
+      if (idx === targetIndex) {
+        return { ...step, status: 'error' };
+      }
+      return { ...step, status: 'idle' };
+    });
+    persistProgress();
+  }
+
+  function prepareResumeSteps(stepKey) {
+    const keys = progressSteps.map(step => step.key);
+    const targetIndex = keys.indexOf(stepKey);
+    progressSteps = progressSteps.map((step, idx) => {
+      if (targetIndex === -1) {
+        return idx === 0
+          ? { ...step, status: 'working' }
+          : { ...step, status: 'idle' };
+      }
+      if (idx < targetIndex) {
+        return { ...step, status: 'done' };
+      }
+      if (idx === targetIndex) {
+        return { ...step, status: 'working' };
+      }
+      return { ...step, status: 'idle' };
+    });
+    persistProgress();
+  }
+
+  async function fetchReplicaSnapshot() {
+    try {
+      const response = await apiCall('/api/user/replicas');
+      if (!response.ok) return [];
+      const data = await response.json();
+      if (Array.isArray(data?.replicas)) {
+        return data.replicas;
+      }
+      return [];
+    } catch (error) {
+      console.warn('Failed to fetch replica snapshot:', error);
+      return [];
+    }
+  }
+
+  function normalizeReplica(replica) {
+    if (!replica) return null;
+    const id = replica.replicaId || replica.id || replica.uuid;
+    if (!id) return null;
+    return {
+      ...replica,
+      id,
+      name: replica.name || replica.title || 'Replica'
+    };
+  }
+
+  async function attemptRecoveryAfterFailure(baselineIdsSet) {
+    if (!baselineIdsSet || baselineIdsSet.size === 0) {
+      return null;
+    }
+    const snapshot = await fetchReplicaSnapshot();
+    for (const replica of snapshot) {
+      const normalized = normalizeReplica(replica);
+      if (normalized && !baselineIdsSet.has(normalized.id)) {
+        return normalized;
+      }
+    }
+    return null;
+  }
+
+  async function handleSuccessfulReplica(replica, trainingCount = 0) {
+    if (!replica) return;
+
+    if (progressInterval) {
+      clearInterval(progressInterval);
+      progressInterval = null;
+    }
+
+    updateProgress('create', { status: 'done' });
+    updateProgress('train', { status: 'done' });
+    if (trainingCount > 0) {
+      setProgressMessage(`Training completed: ${trainingCount} knowledge entries created`);
+    } else {
+      setProgressMessage('Training completed with basic knowledge');
+    }
+
+    updateProgress('fetch', { status: 'working' });
+    setProgressMessage('Fetching replica details...');
+
+    let hydratedReplica = replica;
+    if (replica.id) {
+      try {
+        const polled = await pollReplica(replica.id, 6, 1500);
+        if (polled && polled.id) {
+          hydratedReplica = { ...replica, ...polled, id: replica.id };
+        }
+      } catch (pollErr) {
+        console.warn('Replica polling failed, using initial data:', pollErr);
+      }
+    }
+
+    updateProgress('fetch', { status: 'done' });
+    updateProgress('finalize', { status: 'working' });
+    setProgressMessage('Finalizing and preparing chat...');
+
+    if (hydratedReplica?.id) {
+      try {
+        sessionStorage.setItem('newReplica', JSON.stringify(hydratedReplica));
+      } catch (storageError) {
+        console.warn('Could not persist new replica info to sessionStorage:', storageError);
+      }
+      wizardStore.setReplicaId(hydratedReplica.id);
+    }
+
+    updateProgress('finalize', { status: 'done' });
+    setProgressMessage(`✅ Replica "${hydratedReplica?.name || replica.name || 'Replica'}" successfully created! Redirecting to chat...`);
+
+    lastFailedStep = null;
+    submitError = null;
+    persistProgress({
+      showProgress: true,
+      lastFailedStep: null,
+      submitError: null,
+      baselineReplicaIds: [],
+      recoveredReplica: hydratedReplica
+    });
+
+    setTimeout(() => {
+      showProgress = false;
+      persistProgress({ showProgress: false });
+      wizardStore.clearSubmissionProgress();
+      wizardStore.reset();
+      if (hydratedReplica?.id) {
+        goto(`/chat-replicas?created=true&replicaId=${encodeURIComponent(hydratedReplica.id)}`);
+      } else {
+        goto('/chat-replicas?created=true');
+      }
+    }, 1500);
+  }
+
+  function resumeSubmission() {
+    const resumeKey = state?.submissionProgress?.lastFailedStep || lastFailedStep || 'create';
+    showProgress = true;
+    submitError = null;
+    persistProgress({ showProgress: true, submitError: null });
+    submitReplica({ resume: true, resumeFrom: resumeKey });
+  }
+
+  function dismissProgress() {
+    showProgress = false;
+    persistProgress({ showProgress: false });
   }
 
   async function safeJson(response) {
@@ -106,26 +310,61 @@
           const data = await safeJson(resp);
             if (data?.replica) return data.replica;
         }
-      } catch {}
+      } catch (error) {
+        console.error('Failed to poll replica details:', error);
+      }
       await new Promise(r => setTimeout(r, delayMs));
     }
     return null;
   }
 
-  async function submitReplica() {
-    if (!canSubmit) return;
-    
+  async function submitReplica(options = {}) {
+    const { resume = false, resumeFrom } = options;
+    if (!canSubmit || isSubmitting) return;
+
     isSubmitting = true;
     submitError = null;
     showProgress = true;
-    progressMessage = 'Initializing...';
-    updateProgress('create', { status: 'working' });
+
+    if (!progressSteps.length) {
+      progressSteps = defaultProgressSteps();
+    }
+
+    const targetStep = resume ? (resumeFrom || lastFailedStep || 'create') : 'create';
+
+    if (!resume) {
+      resetProgressState();
+    }
+
+    prepareResumeSteps(targetStep);
+    setProgressMessage(resume ? 'Resuming replica creation...' : 'Initializing...');
+    lastFailedStep = null;
+
+    const progressState = state?.submissionProgress || {};
+    let baselineIdsSet;
+
+    if (resume && Array.isArray(progressState.baselineReplicaIds) && progressState.baselineReplicaIds.length) {
+      baselineIdsSet = new Set(progressState.baselineReplicaIds);
+    } else {
+      const baselineSnapshot = await fetchReplicaSnapshot();
+      baselineIdsSet = new Set(
+        baselineSnapshot
+          .map(rep => normalizeReplica(rep)?.id)
+          .filter(Boolean)
+      );
+      persistProgress({ baselineReplicaIds: Array.from(baselineIdsSet) });
+    }
+
+    persistProgress({ showProgress: true, submitError: null, lastFailedStep: null });
 
     try {
-      // Prepare submission data
       const submissionData = {
         name: state.basics.name,
         description: state.basics.description,
+        greeting: state.basics.greeting || '',
+        preferredQuestion: state.basics.preferredQuestion || '',
+        template: state.template || null,
+        relationship: state.relationship || null,
         requiredAnswers: state.requiredAnswers,
         optionalAnswers: state.optionalAnswers,
         selectedSegments: state.selectedSegments,
@@ -133,7 +372,19 @@
         coverageScore: wizardStore.calculateCoverageScore()
       };
 
-      // Submit to backend API
+      setProgressMessage('Creating replica in Sensay API...');
+
+      progressInterval = setInterval(() => {
+        const currentStep = progressSteps.find(s => s.status === 'working');
+        if (currentStep?.key === 'create') {
+          updateProgress('create', { status: 'done' });
+          updateProgress('train', { status: 'working' });
+          setProgressMessage('Training your replica with provided answers...');
+        } else if (currentStep?.key === 'train') {
+          setProgressMessage('Processing knowledge entries (this may take up to 2 minutes)...');
+        }
+      }, 3000);
+
       const response = await fetch(`${API_BASE_URL}/api/replicas`, {
         method: 'POST',
         headers: {
@@ -142,77 +393,52 @@
         },
         body: JSON.stringify(submissionData)
       });
+
+      if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+      }
+
       const result = await safeJson(response);
-      if (!response.ok || !result?.success || !result?.replica?.id) {
+      if (!response.ok || !result?.success || !result?.replica) {
         throw new Error(result?.error || 'Failed to create replica');
       }
-      const createdReplica = result.replica;
-      createdReplicaId = createdReplica.id;
-      updateProgress('create', { status: 'done' });
-      
-      // Knowledge base creation happens on server during replica creation
-      updateProgress('knowledge', { status: 'working' });
-      progressMessage = 'Creating knowledge base...';
-      await new Promise(r => setTimeout(r, 1000)); // Brief pause for user feedback
-      updateProgress('knowledge', { status: 'done' });
 
-      // Training phase (server-side training with user answers)
-      updateProgress('upload', { status: 'working' });
-      progressMessage = 'Training replica with your answers...';
-      // Check if training was successful based on server response
-      if (result?.replica?.trainingCount > 0) {
-        await new Promise(r => setTimeout(r, 2000)); // Show training in progress
-        progressMessage = `Training completed: ${result.replica.trainingCount} knowledge entries created`;
-        updateProgress('upload', { status: 'done' });
-      } else {
-        await new Promise(r => setTimeout(r, 1500));
-        progressMessage = 'Training completed with basic knowledge';
-        updateProgress('upload', { status: 'done' }); // Still mark as done even if limited training
+      const normalizedReplica = normalizeReplica(result.replica);
+      if (!normalizedReplica) {
+        throw new Error('Replica created but response was missing an id');
       }
 
-      updateProgress('fetch', { status: 'working' });
-      progressMessage = 'Fetching replica details...';
-
-      // Fetch full replica (poll for consistency)
-      let fetchedReplica = await pollReplica(createdReplica.id, 6, 1500);
-      if (!fetchedReplica) {
-        // fallback to created copy
-        fetchedReplica = createdReplica;
-      }
-      updateProgress('fetch', { status: 'done' });
-
-      // Finalize
-      updateProgress('finalize', { status: 'working' });
-      progressMessage = 'Finalizing and preparing chat...';
-
-      // Persist for chat page to pick up and auto-select
-      if (fetchedReplica?.id) {
-        try {
-          sessionStorage.setItem('newReplica', JSON.stringify(fetchedReplica));
-        } catch {}
-      }
-
-      // Clear wizard state
-      wizardStore.reset();
-      updateProgress('finalize', { status: 'done' });
-      progressMessage = `✅ Replica "${fetchedReplica.name}" successfully created and trained! Redirecting to chat...`;
-      
-      // Show success message longer before redirect
-      setTimeout(() => {
-        if (fetchedReplica?.id) {
-          goto(`/chat-replicas?created=true&replicaId=${encodeURIComponent(fetchedReplica.id)}`);
-        } else {
-          goto('/chat-replicas?created=true');
-        }
-      }, 1500);
-      
+      await handleSuccessfulReplica(normalizedReplica, result?.replica?.trainingCount ?? 0);
+      return;
     } catch (error) {
       console.error('Submission error:', error);
-      submitError = error.message;
-      progressMessage = 'Error: ' + error.message;
-      updateProgress('create', { status: progressSteps.find(s=>s.key==='create').status==='done' ? 'done':'error' });
-      const current = progressSteps.find(s=>s.status==='working');
-      if (current) updateProgress(current.key, { status: 'error' });
+      const message = error?.message || 'Unknown error';
+      submitError = message;
+      setProgressMessage('Error: ' + message);
+
+      if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+      }
+
+  baselineIdsSet = baselineIdsSet || new Set();
+  const recoveredReplica = await attemptRecoveryAfterFailure(baselineIdsSet);
+      if (recoveredReplica) {
+        await handleSuccessfulReplica(recoveredReplica, recoveredReplica?.trainingCount || 0);
+        return;
+      }
+
+      const current = progressSteps.find(s => s.status === 'working');
+      const failureKey = current?.key || resumeFrom || lastFailedStep || 'create';
+      lastFailedStep = failureKey;
+      markFailure(failureKey);
+      persistProgress({
+        submitError,
+        lastFailedStep,
+        showProgress: true,
+        baselineReplicaIds: Array.from(baselineIdsSet || [])
+      });
     } finally {
       isSubmitting = false;
     }
@@ -271,6 +497,14 @@
         <div>
           <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</span>
           <p class="text-gray-900 dark:text-gray-100">{state?.basics?.description || 'Not provided'}</p>
+        </div>
+        <div>
+          <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Custom Greeting</span>
+          <p class="text-gray-900 dark:text-gray-100">{state?.basics?.greeting || 'Not provided (will use default)'}</p>
+        </div>
+        <div>
+          <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preferred Question</span>
+          <p class="text-gray-900 dark:text-gray-100">{state?.basics?.preferredQuestion || 'Not provided (will use default)'}</p>
         </div>
         <div>
           <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Consent</span>
@@ -337,7 +571,7 @@
                   {getRequiredQuestionText(questionId)}
                 </div>
                 <div class="text-gray-900 dark:text-gray-100">
-                  {#if expandedAnswers.has(questionId)}
+                  {#if expandedAnswers.includes(questionId)}
                     <p>{answer}</p>
                     <button
                       onclick={() => toggleAnswerExpansion(questionId)}
@@ -474,7 +708,7 @@
 
     <div class="flex justify-center">
       <button
-        onclick={submitReplica}
+        onclick={() => submitReplica()}
         disabled={!canSubmit || isSubmitting}
         class="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
       >
@@ -522,10 +756,8 @@
             </div>
             <div class="flex-1">
               <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{step.label}</p>
-              {#if step.key === 'upload'}
-                <p class="text-xs text-gray-500 dark:text-gray-400">Converting your answers into knowledge base entries...</p>
-              {:else if step.key === 'knowledge'}
-                <p class="text-xs text-gray-500 dark:text-gray-400">Setting up training infrastructure...</p>
+              {#if step.key === 'train'}
+                <p class="text-xs text-gray-500 dark:text-gray-400">Training your replica with the answers you've provided...</p>
               {:else if step.key === 'fetch'}
                 <p class="text-xs text-gray-500 dark:text-gray-400">Ensuring replica is ready for chat...</p>
               {/if}
@@ -539,9 +771,18 @@
           {submitError}
         </div>
       {/if}
-      <div class="mt-6 flex justify-end">
+      <div class="mt-6 flex justify-end gap-2">
         {#if submitError}
-          <button class="px-4 py-2 text-sm rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600" onclick={() => { showProgress=false; }}>
+          <button
+            class="px-4 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
+            onclick={resumeSubmission}
+          >
+            Retry
+          </button>
+          <button
+            class="px-4 py-2 text-sm rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+            onclick={dismissProgress}
+          >
             Close
           </button>
         {/if}

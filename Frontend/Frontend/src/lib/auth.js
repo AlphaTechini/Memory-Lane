@@ -41,12 +41,14 @@ export async function apiCall(endpoint, options = {}) {
   
   // Don't set Content-Type for FormData - let browser handle it
   const isFormData = options.body instanceof FormData;
+  // Don't set Content-Type for DELETE requests with no body
+  const isDeleteWithoutBody = options.method === 'DELETE' && !options.body;
   
   const config = {
     ...options,
     headers: {
       ...(token && { 'Authorization': `Bearer ${token}` }),
-      ...(!isFormData && { 'Content-Type': 'application/json' }),
+      ...(!isFormData && !isDeleteWithoutBody && { 'Content-Type': 'application/json' }),
       ...options.headers
     }
   };
@@ -95,7 +97,7 @@ export async function verifyAuth() {
                 localStorage.setItem('userData', JSON.stringify(data.user));
               }
             }
-          } catch (e) {
+          } catch {
             // If verification fails (401), apiCall will handle logout.
           }
         })();

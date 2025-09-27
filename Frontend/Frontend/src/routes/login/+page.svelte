@@ -69,6 +69,7 @@
         error = data.message || 'Login failed';
       }
     } catch (err) {
+      console.error('Login request failed:', err);
       error = 'Network error. Please try again.';
     } finally {
       loading = false;

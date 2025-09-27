@@ -2,13 +2,13 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { requireAuthForAction, checkAuthStatus, getAuthToken, apiCall } from '$lib/auth.js';
+  import { requireAuthForAction, checkAuthStatus, getAuthToken, apiCall, getUserRole } from '$lib/auth.js';
   import MessageInput from '$lib/components/MessageInput.svelte';
   import BackNavigation from '$lib/components/BackNavigation.svelte';
 
   const API_BASE_URL = 'http://localhost:4000';
 
-  import { formatTimestamp, relativeTime } from '$lib/utils/formatDate.js';
+  import { formatTimestamp } from '$lib/utils/formatDate.js';
 
   let userReplicas = $state([]);
   let selectedReplica = $state(null);
@@ -17,8 +17,13 @@
   let chatMessages = $state([]);
   let isSendingMessage = $state(false);
   let isAuthenticated = $state(false);
+  let userRole = null;
   let chatContainer; // Reference to chat messages container
   let currentConversationId = $state(null); // Current conversation ID for persistence
+  
+  // Delete confirmation states
+  let confirmingDelete = $state(null); // Replica ID being confirmed for deletion
+  let isDeletingReplica = $state(false);
   
   // Sidebar navigation states
   let sidebarView = $state('replicas'); // 'replicas' | 'conversations'
@@ -110,7 +115,28 @@
 
   onMount(async () => {
     isAuthenticated = checkAuthStatus();
+    
+    // Get user role from cache first, then from API if authenticated
+    try {
+      userRole = getUserRole();
+    } catch (e) {
+      console.error('Failed to get user role on auth init:', e);
+      userRole = null;
+    }
+    
     if (isAuthenticated) {
+      // Fetch fresh user data to get current role
+      try {
+        const response = await apiCall('/api/auth/me', { method: 'GET' });
+        if (response.ok) {
+          const userData = await response.json();
+          if (userData.user && userData.user.role) {
+            userRole = userData.user.role;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user role:', error);
+      }
       await loadUserReplicas();
       // Reconcile with remote if list empty or first load
       try {
@@ -130,7 +156,7 @@
           }
         }
       } catch (e) {
-        console.warn('Reconcile attempt failed', e);
+        console.error('Failed to reconcile replicas:', e);
       }
 
       // Check for replicaId in query params
@@ -176,7 +202,7 @@
                   }
                 }
               } catch (e) {
-                console.warn('Failed to parse newReplica from session storage', e);
+                console.warn('Failed to parse newReplica from session storage:', e);
               }
             }
         }
@@ -229,7 +255,7 @@
         beginStatusPolling();
       }
     } catch (e) {
-      console.warn('Failed to restore training session');
+      console.warn('Failed to restore training session:', e);
     }
   });
 
@@ -298,13 +324,8 @@
         
         console.log('All replicas fetched successfully, total:', userReplicas.length);
         
-        // Show success message briefly
-        const originalButtonText = 'Fetch All Replicas';
-        setTimeout(() => {
-          if (!isFetchingAll) {
-            // Button text will be reset when isFetchingAll becomes false
-          }
-        }, 2000);
+        // Success - isFetchingAll will be reset to false
+        console.log('All replicas fetched successfully');
         
       } else {
         const errorData = await reconcileResponse.text();
@@ -330,14 +351,7 @@
     }
   }
 
-  // Sidebar navigation functions
-  function expandReplicaConversations(replica) {
-    if (!requireAuthForAction('view conversation history')) return;
-    
-    expandedReplica = replica;
-    sidebarView = 'conversations';
-    loadConversations(replica.replicaId);
-  }
+  // Sidebar navigation functions - unused but keeping structure for future
 
   function backToReplicasList() {
     sidebarView = 'replicas';
@@ -373,39 +387,7 @@
     }
   }
 
-  async function selectConversation(conversation) {
-    selectedConversation = conversation;
-    selectedReplica = expandedReplica;
-    currentConversationId = conversation.id; // Set conversation ID for continued chat
-    
-    // Load conversation messages from API
-    try {
-      const token = getAuthToken();
-      const response = await fetch(`${API_BASE_URL}/api/conversations/${conversation.id}/messages`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        chatMessages = data.messages || [];
-      } else {
-        console.error('Failed to load conversation messages');
-        chatMessages = [];
-      }
-    } catch (error) {
-      console.error('Error loading conversation messages:', error);
-      chatMessages = [];
-    }
-    
-    // Reset training state when loading a conversation
-    stopTrainingTimer();
-    trainingSession = null;
-    trainingBuffer = [];
-    localStorage.removeItem(TRAIN_SESSION_KEY);
-    localStorage.removeItem(TRAIN_BUFFER_KEY);
-  }
+  // selectConversation removed: functionality handled by loadConversation or UI selection handlers
 
   function startNewConversation() {
     selectedConversation = null;
@@ -456,7 +438,16 @@
     
     // Set the selected replica for chat
     selectedReplica = replica;
-    chatMessages = [];
+    
+    // Add initial greeting message if replica has custom greeting
+    const greetingText = replica.greeting?.trim() || `Hi! I'm ${replica.name}. ${replica.description}`;
+    chatMessages = [{
+      id: Date.now(),
+      text: greetingText,
+      sender: 'replica',
+      timestamp: new Date()
+    }];
+    
     currentConversationId = null; // Reset conversation ID for new chat
     
     // Reset training state when selecting a new replica
@@ -468,6 +459,50 @@
     
     // Reset conversation selection
     selectedConversation = null;
+  }
+
+  function confirmDeleteReplica(replica) {
+    confirmingDelete = replica.replicaId;
+  }
+
+  function cancelDeleteReplica() {
+    confirmingDelete = null;
+  }
+
+  async function deleteReplica(replicaId) {
+    if (!requireAuthForAction('delete replicas')) return;
+    
+    isDeletingReplica = true;
+    try {
+      const response = await apiCall(`/api/replicas/${replicaId}`, { 
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete replica');
+      }
+      
+      // Remove from local state
+      userReplicas = userReplicas.filter(r => r.replicaId !== replicaId);
+      
+      // Clear selected replica if it was the deleted one
+      if (selectedReplica?.replicaId === replicaId) {
+        selectedReplica = null;
+        chatMessages = [];
+        currentConversationId = null;
+      }
+      
+      // Show success message
+      alert('Replica deleted successfully');
+      
+    } catch (error) {
+      console.error('Error deleting replica:', error);
+      alert('Failed to delete replica: ' + error.message);
+    } finally {
+      isDeletingReplica = false;
+      confirmingDelete = null;
+    }
   }
 
   function startGenericChat() {
@@ -574,6 +609,11 @@
     } finally {
       isSendingMessage = false;
     }
+  }
+
+  function handleSuggestedQuestion(question) {
+    // Send the suggested question as if the user typed it
+    sendMessage(question);
   }
 
   function handleSendMessage(event) {
@@ -705,7 +745,7 @@
         }
       }
     } catch (e) {
-      // ignore transient errors
+      console.error('Failed to delete replica:', e);
     }
   }
 
@@ -730,9 +770,9 @@
     subtitle="Start conversations with AI replicas or chat with the generic Memory Lane AI"
   />
   
-  <div class="h-[calc(100vh-8rem)] flex">
+  <div class="h-[calc(100vh-8rem)] flex flex-col lg:flex-row">
   <!-- Replica Selection Sidebar -->
-  <div class="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+  <div class="w-full lg:w-80 bg-white dark:bg-gray-800 border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-gray-700 flex flex-col max-h-64 lg:max-h-none overflow-y-auto lg:overflow-y-visible">
     <!-- Header -->
     <div class="p-4 border-b border-gray-200 dark:border-gray-700">
       <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Your Replicas</h2>
@@ -786,15 +826,17 @@
           {/if}
         </div>
       {/if}
-      <button
-  onclick={() => {
-          if (!requireAuthForAction('create a new replica')) return;
-          goto('/create-replicas');
-        }}
-        class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors mb-2"
-      >
-        Create New Replica
-      </button>
+      {#if userRole && userRole !== 'patient'}
+        <button
+    onclick={() => {
+            if (!requireAuthForAction('create a new replica')) return;
+            goto('/create-replicas');
+          }}
+          class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors mb-2"
+        >
+          Create New Replica
+        </button>
+      {/if}
       <button
   onclick={fetchAllReplicas}
         disabled={isFetchingAll}
@@ -849,12 +891,14 @@
             </div>
             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Replicas Yet</h3>
             <p class="text-gray-600 dark:text-gray-400 mb-4">Create your first AI replica to get started</p>
-            <button
-              onclick={() => goto('/create-replicas')}
-              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              Create Your First Replica
-            </button>
+                {#if userRole && userRole !== 'patient'}
+                  <button
+                    onclick={() => goto('/create-replicas')}
+                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    Create Your First Replica
+                  </button>
+                {/if}
           </div>
         {:else if isAuthenticated}
           <!-- Show user's actual replicas when authenticated -->
@@ -908,19 +952,76 @@
                         {/if}
                       </div>
                     </div>
-                    <button type="button"
-                      aria-label="View conversations"
-                      onclick={(e) => {
-                        e.stopPropagation();
-                        openReplicaConversations(replica);
-                      }}
-                      class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
-                      title="View conversations"
-                    >
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                      </svg>
-                    </button>
+                    <div class="flex items-center gap-1">
+                      <button type="button"
+                        aria-label="View conversations"
+                        onclick={(e) => {
+                          e.stopPropagation();
+                          openReplicaConversations(replica);
+                        }}
+                        class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+                        title="View conversations"
+                      >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                      </button>
+                      
+                      <!-- Delete button - only show for non-patients -->
+                      {#if userRole && userRole !== 'patient'}
+                        {#if confirmingDelete === replica.replicaId}
+                          <!-- Confirmation buttons -->
+                          <div class="flex items-center gap-1 ml-1">
+                            <button type="button"
+                              onclick={(e) => {
+                                e.stopPropagation();
+                                deleteReplica(replica.replicaId);
+                              }}
+                              disabled={isDeletingReplica}
+                              class="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors cursor-pointer disabled:opacity-50"
+                              title="Confirm delete"
+                            >
+                              {#if isDeletingReplica}
+                                <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                              {:else}
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                              {/if}
+                            </button>
+                            <button type="button"
+                              onclick={(e) => {
+                                e.stopPropagation();
+                                cancelDeleteReplica();
+                              }}
+                              class="p-1 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 transition-colors cursor-pointer"
+                              title="Cancel"
+                            >
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                              </svg>
+                            </button>
+                          </div>
+                        {:else}
+                          <!-- Delete button -->
+                          <button type="button"
+                            aria-label="Delete replica"
+                            onclick={(e) => {
+                              e.stopPropagation();
+                              confirmDeleteReplica(replica);
+                            }}
+                            class="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
+                            title="Delete replica"
+                          >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                          </button>
+                        {/if}
+                      {/if}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1187,6 +1288,20 @@
               </div>
             </div>
           {/each}
+          
+          <!-- Show preferred question suggestion for new chats -->
+          {#if selectedReplica?.preferredQuestion && chatMessages.length <= 2}
+            <div class="mt-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Suggested question:</h4>
+              <button
+                onclick={() => handleSuggestedQuestion(selectedReplica.preferredQuestion)}
+                class="w-full text-left px-3 py-2 text-sm bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md hover:bg-gray-100 dark:hover:bg-gray-500 transition-colors duration-200 text-gray-700 dark:text-gray-200"
+              >
+                {selectedReplica.preferredQuestion}
+              </button>
+            </div>
+          {/if}
+
           {#if isSendingMessage}
             <div class="flex justify-start">
               <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700">

@@ -366,10 +366,30 @@ async function authRoutes(fastify, options) {
         return;
       }
 
+      // Log full debug info on the server only
+      fastify.log.info('Auth.me requested - server-side debug:', {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        sensayUserId: user.sensayUserId
+      });
+
+      // Mask email for client response
+      const maskEmail = (email) => {
+        if (!email || typeof email !== 'string') return email;
+        const [local, domain] = email.split('@');
+        if (!local || !domain) return email;
+        const first = local.charAt(0);
+        return `${first}*****@${domain}`;
+      };
+
+      const userSafe = user.toJSON();
+      userSafe.email = maskEmail(userSafe.email);
+
       reply.send({
         success: true,
         message: 'User retrieved successfully',
-        user: user.toJSON()
+        user: userSafe
       });
     } catch (error) {
       fastify.log.error('Get user error:', error);

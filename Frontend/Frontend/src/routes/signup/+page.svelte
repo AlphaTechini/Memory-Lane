@@ -14,6 +14,7 @@
   let error = $state('');
   let showPassword = $state(false);
   let showConfirmPassword = $state(false);
+  let showLoginSuggestion = $state(false);
 
   // Validation patterns
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -87,9 +88,17 @@
         // Redirect to OTP verification
         goto('/verify-otp');
       } else {
-        error = data.message || 'Signup failed';
+        // Check if this is an existing user error with suggested action
+        if (data.suggestedAction === 'login') {
+          error = data.message || 'Account already exists';
+          showLoginSuggestion = true;
+        } else {
+          error = data.message || 'Signup failed';
+          showLoginSuggestion = false;
+        }
       }
     } catch (err) {
+      console.error('Signup request failed:', err);
       error = 'Network error. Please try again.';
     } finally {
       loading = false;
@@ -260,6 +269,17 @@
           {#if error}
             <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
               <p class="text-red-600 dark:text-red-400 text-sm">{error}</p>
+              {#if showLoginSuggestion}
+                <div class="mt-2">
+                  <button
+                    type="button"
+                    onclick={() => goto('/login')}
+                    class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition-colors"
+                  >
+                    Go to Login Page
+                  </button>
+                </div>
+              {/if}
             </div>
           {/if}
 

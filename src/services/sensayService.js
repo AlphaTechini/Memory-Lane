@@ -150,99 +150,140 @@ export const createReplica = async (replicaData) => {
 };
 
 /**
- * Creates a new knowledge base entry for training (two-step process)
- * @param {string} replicaId - The replica ID to train
+ * Creates a new knowledge base entry for a replica based on text, file, URL, or YouTube Videos
+ * @param {string} replicaId - The replica UUID to train
  * @param {Object} entryData - Knowledge base entry data
- * @param {string} entryData.title - Title of the entry
- * @param {string} entryData.rawText - The training text content
- * @returns {Promise<Object>} Created and updated KB entry object
+ * @param {string} [entryData.title] - Title for this knowledge base entry
+ * @param {string} [entryData.url] - A public URL to an HTML page or YouTube video to ingest
+ * @param {boolean} [entryData.autoRefresh] - Whether to allow automatic content updates from the URL
+ * @param {string} [entryData.text] - The text content you want your replica to learn
+ * @param {string} [entryData.filename] - The name of the file to upload
+ * @returns {Promise<Object>} Created KB entry response with 207 status
  */
 export const createKnowledgeBaseEntry = async (replicaId, entryData) => {
   console.log(`🔍 Creating KB entry for replica ${replicaId} with data:`, JSON.stringify(entryData, null, 2));
   console.log(`🔍 Using headers:`, JSON.stringify(sensayConfig.headers.base, null, 2));
   
-  // TEMPORARY: Return a mock success response if we're in development and the API isn't fully configured
+  // Return a mock success response if we're in development and the API isn't fully configured
   if (!sensayConfig.organizationSecret || sensayConfig.organizationSecret.includes('placeholder')) {
     console.log(`⚠️ Knowledge base training skipped - Sensay API not properly configured`);
-    return { id: `mock_kb_${Date.now()}`, success: true, message: 'KB entry skipped (API not configured)' };
+    return { 
+      success: true,
+      results: [{
+        type: 'text',
+        enqueued: true,
+        knowledgeBaseID: `mock_kb_${Date.now()}`
+      }],
+      message: 'KB entry skipped (API not configured)' 
+    };
   }
   
-  // Step 1: Create the knowledge base entry
   const url = `/v1/replicas/${replicaId}/knowledge-base`;
-  console.log(`🔍 Step 1: Creating KB entry at: ${sensayConfig.baseUrl}${url}`);
+  console.log(`🔍 Creating KB entry at: ${sensayConfig.baseUrl}${url}`);
   
-  // Prepare the initial request body (just title and minimal text to create entry)
-  const createRequestBody = {
-    title: entryData.title || 'Training Data',
-    text: "Initial entry" // Minimal text required to create the entry
-  };
+  // Prepare the request body according to the new API specification
+  const requestBody = {};
+  
+  // Add fields based on what's provided
+  if (entryData.title) requestBody.title = entryData.title;
+  if (entryData.url) requestBody.url = entryData.url;
+  if (entryData.autoRefresh !== undefined) requestBody.autoRefresh = entryData.autoRefresh;
+  if (entryData.text) requestBody.text = entryData.text;
+  if (entryData.filename) requestBody.filename = entryData.filename;
+  
+  // Legacy support - handle old parameter names
+  if (!requestBody.text && entryData.rawText) requestBody.text = entryData.rawText;
+  if (!requestBody.text && entryData.content) requestBody.text = entryData.content;
   
   try {
-    // Step 1: Create the entry
-    const createResponse = await sensayApi.post(url, createRequestBody, { 
-      headers: sensayConfig.headers.base 
-    });
-    
-    console.log(`✅ Step 1 complete - KB entry created`);
-    console.log('Create response status:', createResponse.status);
-    console.log('Create response data:', JSON.stringify(createResponse.data, null, 2));
-    
-    // Extract the knowledgeBaseID from the response
-    const createData = createResponse.data;
-    if (!createData.success || !createData.results || !Array.isArray(createData.results)) {
-      throw new Error('Invalid response format from KB creation');
-    }
-    
-    const kbEntry = createData.results[0];
-    if (!kbEntry || !kbEntry.knowledgeBaseID) {
-      throw new Error('No knowledgeBaseID found in creation response');
-    }
-    
-    const knowledgeBaseID = kbEntry.knowledgeBaseID;
-    console.log(`🔍 Extracted knowledgeBaseID: ${knowledgeBaseID}`);
-    
-    // Step 2: Update the entry with the actual training content
-    const updateUrl = `/v1/replicas/${replicaId}/knowledge-base/${knowledgeBaseID}`;
-    console.log(`🔍 Step 2: Updating KB entry at: ${sensayConfig.baseUrl}${updateUrl}`);
-    
-    const updateRequestBody = {
-      rawText: entryData.rawText || entryData.content || entryData.text
+    const headers = {
+      ...sensayConfig.headers.base,
+      'X-API-Version': '2025-03-25'
     };
+
+    const response = await sensayApi.post(url, requestBody, { headers });
     
-    const updateResponse = await sensayApi.patch(updateUrl, updateRequestBody, { 
-      headers: sensayConfig.headers.base 
-    });
+    console.log(`✅ KB entry created successfully`);
+    console.log('Response status:', response.status);
+    console.log('Response data:', JSON.stringify(response.data, null, 2));
     
-    console.log(`✅ Step 2 complete - KB entry updated with training content`);
-    console.log('Update response status:', updateResponse.status);
-    console.log('Update response data:', JSON.stringify(updateResponse.data, null, 2));
-    
-    // Return the combined result with the ID
-    return {
-      id: knowledgeBaseID,
-      success: true,
-      createData: createData,
-      updateData: updateResponse.data
-    };
+    // Validate response format according to API specification
+    if (response.status === 207 && response.data.success && response.data.results) {
+      const data = response.data || {};
+      const normalized = { ...data };
+
+      const resultIds = Array.isArray(data.results)
+        ? data.results
+            .map(item => item?.knowledgeBaseID ?? item?.knowledgeBaseId ?? item?.id ?? item?.entryId)
+            .filter(Boolean)
+        : [];
+
+      const primaryId = data.id
+        ?? data.knowledgeBaseID
+        ?? data.knowledgeBaseId
+        ?? (Array.isArray(data.entryIds) ? data.entryIds[0] : undefined)
+        ?? resultIds[0];
+
+      if (primaryId && !normalized.id) {
+        normalized.id = primaryId;
+      }
+
+      if (resultIds.length && !normalized.entryIds) {
+        normalized.entryIds = resultIds;
+      }
+
+      return normalized;
+    } else {
+      throw new Error('Unexpected response format from KB creation');
+    }
     
   } catch (error) {
-    console.log(`❌ Knowledge base operation failed:`, {
+    console.log(`❌ Knowledge base creation failed:`, {
       status: error.response?.status,
       statusText: error.response?.statusText,
       data: error.response?.data,
       url: error.config?.url
     });
     
-    // If it's a 404, it might mean the replica doesn't exist or API credentials are wrong
+    // Handle specific error cases according to API specification
+    if (error.response?.status === 400) {
+      console.warn(`⚠️ Bad request for KB entry creation (400)`);
+      throw new Error('Bad Request: Invalid entry data provided');
+    }
+    
+    if (error.response?.status === 401) {
+      console.warn(`⚠️ Unauthorized KB entry creation (401)`);
+      throw new Error('Unauthorized: Invalid API credentials');
+    }
+    
     if (error.response?.status === 404) {
-      console.warn(`⚠️ Knowledge base endpoint returned 404 for replica ${replicaId}. This might mean:`);
+      console.warn(`⚠️ Knowledge base endpoint returned 404 for replica ${replicaId}`);
       console.warn(`   - The replica doesn't exist in the Sensay system`);
       console.warn(`   - The API credentials are incorrect`);
       console.warn(`   - The replica UUID format is wrong`);
-      return { id: `temp_kb_${Date.now()}`, success: true, message: 'KB training postponed (replica not found)' };
+      // Return mock response for development continuity
+      return { 
+        success: true,
+        results: [{
+          type: 'text',
+          enqueued: true,
+          knowledgeBaseID: `temp_kb_${Date.now()}`
+        }],
+        message: 'KB training postponed (replica not found)' 
+      };
     }
     
-    // For other errors, log them but don't fail the entire process
+    if (error.response?.status === 409) {
+      console.warn(`⚠️ URL already exists in knowledge base (409)`);
+      throw new Error('Conflict: URL already exists in the knowledge base');
+    }
+    
+    if (error.response?.status === 415) {
+      console.warn(`⚠️ Unsupported media type for KB entry creation (415)`);
+      throw new Error('Unsupported Media Type: Invalid file type or content');
+    }
+    
+    // For other errors, log them and throw
     console.error('Knowledge base creation failed:', error.message);
     throw handleSensayError(error, 'Failed to create knowledge base entry');
   }
@@ -254,16 +295,15 @@ export const createKnowledgeBaseEntry = async (replicaId, entryData) => {
  * @param {string} rawText - The text content to add
  * @returns {Promise<Object>} Updated KB entry object
  */
-export const updateKnowledgeBaseWithText = async (entryId, rawText) => {
+export const updateKnowledgeBaseWithText = async (replicaId, entryId, rawText) => {
+  if (!replicaId) throw new Error('replicaId required');
+  if (!entryId) throw new Error('entryId required');
   try {
+    const url = `/v1/replicas/${replicaId}/knowledge-base/${entryId}`;
     const response = await sensayApi.put(
-      `${sensayConfig.endpoints.knowledgeBase}/${entryId}`,
-      {
-        rawText,
-      },
-      {
-        headers: sensayConfig.headers.base,
-      }
+      url,
+      { rawText },
+      { headers: { ...sensayConfig.headers.base, 'X-API-Version': '2025-03-25' } }
     );
 
     return response.data;
@@ -326,6 +366,112 @@ export const getKnowledgeBaseEntryStatus = async (replicaId, knowledgeBaseID) =>
     }
     
     throw handleSensayError(error, 'Failed to get knowledge base entry status');
+  }
+};
+
+/**
+ * Get detailed information about a specific knowledge base entry
+ * @param {string} replicaId - The replica UUID
+ * @param {string|number} entryId - The knowledge base entry ID
+ * @returns {Promise<Object>} Complete KB entry details including type, status, content, and metadata
+ */
+export const getKnowledgeBaseEntry = async (replicaId, entryId) => {
+  if (!replicaId) throw new Error('replicaId required');
+  if (!entryId) throw new Error('entryId required');
+  
+  console.log(`🔍 Fetching KB entry for replica ${replicaId}, entry ${entryId}`);
+  
+  if (!sensayConfig.isProperlyConfigured()) {
+    console.log(`⚠️ Knowledge base retrieval skipped - Sensay API not properly configured`);
+    return { 
+      id: entryId,
+      replicaUUID: replicaId,
+      type: 'text',
+      status: 'READY',
+      success: true,
+      title: 'Mock Entry',
+      rawText: 'Mock training content',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      language: 'en',
+      message: 'Mock entry (API not configured)' 
+    };
+  }
+
+  // Skip for mock entries
+  if (String(entryId).startsWith('mock_kb_') || String(entryId).startsWith('temp_kb_')) {
+    console.log(`⚠️ Returning mock data for mock/temp entry: ${entryId}`);
+    return { 
+      id: entryId,
+      replicaUUID: replicaId,
+      type: 'text',
+      status: 'READY',
+      success: true,
+      title: 'Mock Entry',
+      rawText: 'Mock training content',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      language: 'en',
+      generatedFacts: ['Mock fact 1', 'Mock fact 2'],
+      rawTextChunks: [
+        {
+          content: 'Mock training content chunk',
+          chunkChars: 28,
+          chunkIndex: 0,
+          chunkTokens: 5
+        }
+      ]
+    };
+  }
+
+  const url = `/v1/replicas/${replicaId}/knowledge-base/${entryId}`;
+  console.log(`🔍 Fetching KB entry at: ${sensayConfig.baseUrl}${url}`);
+
+  try {
+    const headers = {
+      ...sensayConfig.headers.base,
+      'X-API-Version': '2025-03-25'
+    };
+
+    const response = await sensayApi.get(url, { headers });
+    
+    console.log(`✅ KB entry retrieved successfully`);
+    console.log('Response status:', response.status);
+    console.log('Response data:', JSON.stringify(response.data, null, 2));
+    
+    return response.data;
+    
+  } catch (error) {
+    console.log(`❌ Failed to fetch KB entry:`, {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      url: error.config?.url
+    });
+    
+    // Handle specific error cases according to API specification
+    if (error.response?.status === 404) {
+      console.warn(`⚠️ KB entry ${entryId} not found (404)`);
+      throw new Error('Knowledge base entry not found');
+    }
+    
+    if (error.response?.status === 400) {
+      console.warn(`⚠️ Bad request for KB entry retrieval (400)`);
+      throw new Error('Bad Request: Invalid entry ID or parameters');
+    }
+    
+    if (error.response?.status === 401) {
+      console.warn(`⚠️ Unauthorized KB entry retrieval (401)`);
+      throw new Error('Unauthorized: Invalid API credentials');
+    }
+    
+    if (error.response?.status === 415) {
+      console.warn(`⚠️ Unsupported media type for KB entry retrieval (415)`);
+      throw new Error('Unsupported Media Type');
+    }
+    
+    console.error('Knowledge base entry retrieval failed:', error.message);
+    throw handleSensayError(error, 'Failed to retrieve knowledge base entry');
   }
 };
 
@@ -396,8 +542,8 @@ export const pollKnowledgeBaseEntryStatus = async (replicaId, knowledgeBaseID, m
       
       console.log(`📊 Poll attempt ${attempts + 1}/${maxAttempts}: Status = ${status.status}`);
       
-      if (status.status === 'READY') {
-        console.log(`✅ KB entry ${knowledgeBaseID} is ready after ${attempts + 1} attempts`);
+      if (['READY', 'VECTOR_CREATED', 'PROCESSED_TEXT'].includes(status.status)) {
+        console.log(`✅ KB entry ${knowledgeBaseID} reached terminal status ${status.status} after ${attempts + 1} attempts`);
         return status;
       }
       
@@ -495,13 +641,21 @@ export const trainReplica = async (replicaId, trainingData) => {
     let kbEntry;
     let attempts = 0;
     let lastErr;
+    let textIncludedInCreate = false;
     while (attempts < 3) {
       try {
-        kbEntry = await createKnowledgeBaseEntry(replicaId, {
+        // Include raw text or filename in the initial KB create request when available
+        const createPayload = {
           title: trainingData.title,
           description: trainingData.description,
           metadata: trainingData.metadata,
-        });
+        };
+        if (trainingData.rawText) createPayload.text = trainingData.rawText;
+        if (trainingData.file && trainingData.file.filename) createPayload.filename = trainingData.file.filename;
+
+        textIncludedInCreate = Boolean(createPayload.text);
+
+        kbEntry = await createKnowledgeBaseEntry(replicaId, createPayload);
         break;
       } catch (err) {
         lastErr = err;
@@ -517,12 +671,20 @@ export const trainReplica = async (replicaId, trainingData) => {
     }
     if (!kbEntry) throw lastErr || new Error('Unable to create KB entry after retries');
 
-    const entryId = kbEntry.id || kbEntry.uuid;
+    // Sensay may return a 207 multi-status with results[] containing a knowledgeBaseID
+    let entryId = kbEntry.id || kbEntry.uuid || kbEntry.data?.id;
+    if (!entryId && Array.isArray(kbEntry.results) && kbEntry.results[0]) {
+      entryId = kbEntry.results[0].knowledgeBaseID || kbEntry.results[0].knowledgeBaseId || kbEntry.results[0].id;
+    }
 
     // 2. Add content (text or file)
     if (trainingData.rawText) {
-      console.log('Adding raw text to KB entry...');
-      await updateKnowledgeBaseWithText(entryId, trainingData.rawText);
+      if (textIncludedInCreate) {
+        console.log('Raw text was provided during create; skipping separate update');
+      } else {
+        console.log('Adding raw text to KB entry (update)...');
+        await updateKnowledgeBaseWithText(replicaId, entryId, trainingData.rawText);
+      }
     } else if (trainingData.file) {
       console.log('Uploading file to KB entry...');
       const signedUrlResponse = await requestSignedUploadUrl(
@@ -644,26 +806,6 @@ export const listKnowledgeBaseEntries = async (replicaId, options = {}) => {
 };
 
 /**
- * Get a single knowledge base entry using the official API endpoint
- * @param {string} replicaId - The replica UUID
- * @param {number} entryId - The knowledge base entry ID
- * @returns {Promise<Object>} KB entry details
- */
-export const getKnowledgeBaseEntry = async (replicaId, entryId) => {
-  if (!replicaId) throw new Error('replicaId required');
-  if (!entryId) throw new Error('entryId required');
-  try {
-    const res = await sensayApi.get(`/v1/replicas/${replicaId}/knowledge-base/${entryId}`, { 
-      headers: sensayConfig.headers.base 
-    });
-    return res.data;
-  } catch (error) {
-    console.error('Error fetching KB entry:', error.message);
-    throw handleSensayError(error, 'Failed to fetch knowledge base entry');
-  }
-};
-
-/**
  * Delete a knowledge base entry using the official API endpoint
  * @param {string} replicaId - The replica UUID
  * @param {number} entryId - The knowledge base entry ID
@@ -711,5 +853,72 @@ export const updateReplica = async (replicaUUID, updateData) => {
   } catch (error) {
     console.error('Error updating replica:', error.message);
     throw handleSensayError(error, 'Failed to update replica');
+  }
+};
+
+/**
+ * Start a training session placeholder. Returns a lightweight session object.
+ * This is intentionally a thin wrapper so routes that expect start/complete
+ * training session functions can import them without failing when the
+ * underlying Sensay API does not expose explicit session endpoints.
+ */
+export const startTrainingSession = async (replicaId) => {
+  console.log(`Starting training session for replica ${replicaId}`);
+  // Return a local session id; callers may immediately call completeTrainingSession
+  return { success: true, sessionId: `local_session_${Date.now()}` };
+};
+
+/**
+ * Complete a training session placeholder. If you want real behavior, replace
+ * this with a call into Sensay to finalize any queued training work.
+ */
+export const completeTrainingSession = async (replicaId, sessionId) => {
+  console.log(`Completing training session ${sessionId} for replica ${replicaId}`);
+  // No-op completion that signals success; keeps route logic simple for now.
+  return { success: true, sessionId, completedAt: new Date().toISOString() };
+};
+
+/**
+ * Delete a replica in Sensay (thin wrapper). Returns Sensay response or a mock.
+ * @param {string} replicaId
+ */
+export const deleteReplica = async (replicaId) => {
+  if (!replicaId) throw new Error('replicaId required');
+  if (!sensayConfig.isProperlyConfigured()) {
+    console.log(`⚠️ Sensay not configured - mock delete for ${replicaId}`);
+    return { success: true, id: replicaId, message: 'Mock delete' };
+  }
+
+  try {
+    const res = await sensayApi.delete(`/v1/replicas/${replicaId}`, { headers: sensayConfig.headers.base });
+    return res.data || { success: true };
+  } catch (error) {
+    console.error('Error deleting replica in Sensay:', error.message);
+    throw handleSensayError(error, 'Failed to delete replica');
+  }
+};
+
+/**
+ * Update a knowledge base entry (PATCH/PUT). This is a flexible helper used by routes.
+ * @param {string} replicaId
+ * @param {string} entryId
+ * @param {Object} updateData
+ */
+export const updateKnowledgeBaseEntry = async (replicaId, entryId, updateData) => {
+  if (!replicaId) throw new Error('replicaId required');
+  if (!entryId) throw new Error('entryId required');
+
+  if (!sensayConfig.isProperlyConfigured()) {
+    console.log(`⚠️ Sensay not configured - mock update for ${entryId}`);
+    return { success: true, id: entryId, ...updateData };
+  }
+
+  try {
+    const url = `/v1/replicas/${replicaId}/knowledge-base/${entryId}`;
+    const res = await sensayApi.patch(url, updateData, { headers: sensayConfig.headers.base });
+    return res.data;
+  } catch (error) {
+    console.error('Error updating KB entry:', error.message);
+    throw handleSensayError(error, 'Failed to update knowledge base entry');
   }
 };

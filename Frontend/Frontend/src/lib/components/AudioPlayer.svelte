@@ -19,13 +19,6 @@
   function handleEnded() { isPlaying = false; currentTime = 0; }
   function handlePlay() { isPlaying = true; }
   function handlePause() { isPlaying = false; }
-
-  function formatTime(seconds) {
-    if (isNaN(seconds)) return '0:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }
 </script>
 
 <div class="flex items-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-lg p-2">

@@ -94,7 +94,7 @@
       try {
         answers = JSON.parse(saved);
       } catch (e) {
-        console.warn('Failed to load saved training answers');
+        console.warn('Failed to load saved training answers:', e);
       }
     }
   }
@@ -124,7 +124,7 @@
 
   function getCompletionStats() {
   const completed = questions.filter(q => isQuestionAnswered(q.id)).length;
-  const started = Object.entries(answers).filter(([id, val]) => (val || '').trim().length > 0).length;
+  const started = Object.entries(answers).filter(([, val]) => (val || '').trim().length > 0).length;
   return { completed, started, answered: completed, total: questions.length };
   }
 
@@ -150,6 +150,149 @@
     nextQuestion();
   }
 
+  // New Knowledge Base functionality
+  let knowledgeBaseEntries = [];
+  let showKnowledgeBase = false;
+  let newKnowledgeBase = {
+    title: '',
+    text: '',
+    url: '',
+    filename: '',
+    autoRefresh: false,
+    inputType: 'text' // 'text', 'url', 'file'
+  };
+
+  async function loadKnowledgeBaseEntries() {
+    if (!selectedReplica) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/replicas/${selectedReplica.replicaId}/kb`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        knowledgeBaseEntries = data.entries || [];
+      }
+    } catch (err) {
+      console.warn('Failed to load knowledge base entries:', err);
+    }
+  }
+
+  async function createKnowledgeBaseEntry() {
+    if (!selectedReplica) return;
+
+    // Validate input based on type
+    if (newKnowledgeBase.inputType === 'text' && !newKnowledgeBase.text.trim()) {
+      error = 'Please enter training text';
+      return;
+    }
+    if (newKnowledgeBase.inputType === 'url' && !newKnowledgeBase.url.trim()) {
+      error = 'Please enter a valid URL';
+      return;
+    }
+    if (newKnowledgeBase.inputType === 'file' && !newKnowledgeBase.filename.trim()) {
+      error = 'Please specify a filename';
+      return;
+    }
+
+    isLoading = true;
+    error = '';
+    successMessage = '';
+
+    try {
+      // Prepare request body with only relevant fields (API supports optional fields)
+      const requestBody = {};
+      
+      if (newKnowledgeBase.title.trim()) requestBody.title = newKnowledgeBase.title.trim();
+      
+      if (newKnowledgeBase.inputType === 'text' && newKnowledgeBase.text.trim()) {
+        requestBody.text = newKnowledgeBase.text.trim();
+      }
+      
+      if (newKnowledgeBase.inputType === 'url' && newKnowledgeBase.url.trim()) {
+        requestBody.url = newKnowledgeBase.url.trim();
+        if (newKnowledgeBase.autoRefresh) {
+          requestBody.autoRefresh = newKnowledgeBase.autoRefresh;
+        }
+      }
+      
+      if (newKnowledgeBase.inputType === 'file' && newKnowledgeBase.filename.trim()) {
+        requestBody.filename = newKnowledgeBase.filename.trim();
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/replicas/${selectedReplica.replicaId}/kb`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await response.json();
+      if (data.success && data.results && data.results.length > 0) {
+        const result = data.results[0];
+        let message = `Knowledge base entry created successfully! ID: ${result.knowledgeBaseID}`;
+        
+        // Show signed URL if it's a file upload
+        if (result.signedURL) {
+          message += `\n\nUpload your file to: ${result.signedURL}`;
+        }
+        
+        successMessage = message;
+        
+        // Reset form
+        newKnowledgeBase = {
+          title: '',
+          text: '',
+          url: '',
+          filename: '',
+          autoRefresh: false,
+          inputType: 'text'
+        };
+        
+        // Reload entries
+        await loadKnowledgeBaseEntries();
+      } else {
+        error = data.error || 'Failed to create knowledge base entry';
+      }
+    } catch (err) {
+      console.error('Knowledge base creation error:', err);
+      error = 'An error occurred while creating the knowledge base entry';
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  async function deleteKnowledgeBaseEntry(entryId) {
+    if (!confirm('Are you sure you want to delete this knowledge base entry?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/replicas/${selectedReplica.replicaId}/kb/${entryId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        successMessage = 'Knowledge base entry deleted successfully';
+        await loadKnowledgeBaseEntries();
+      } else {
+        error = data.error || 'Failed to delete entry';
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+      error = 'An error occurred while deleting the entry';
+    }
+  }
+
   async function submitTraining() {
     if (!selectedReplica) return;
 
@@ -158,7 +301,7 @@
     successMessage = '';
 
     try {
-      // Prepare training data from answered questions
+      // Prepare training data from answered questions using new KB API
       const trainingData = [];
       
       Object.entries(answers).forEach(([questionId, answer]) => {
@@ -166,9 +309,8 @@
           const question = questions.find(q => q.id === questionId);
           if (question) {
             trainingData.push({
-              replicaId: selectedReplica.replicaId,
               title: `Training: ${question.text}`,
-              rawText: answer
+              text: answer // Use 'text' instead of 'rawText' for new API
             });
           }
         }
@@ -179,11 +321,11 @@
         return;
       }
 
-      // Submit each training entry
+      // Submit each training entry using new KB API
       let successCount = 0;
       for (const training of trainingData) {
         try {
-          const response = await fetch(`${API_BASE_URL}/api/replicas/train`, {
+          const response = await fetch(`${API_BASE_URL}/api/replicas/${selectedReplica.replicaId}/kb`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -193,25 +335,31 @@
           });
 
           if (response.ok) {
-            successCount++;
+            const data = await response.json();
+            if (data.success && data.results && data.results.length > 0) {
+              successCount++;
+            }
           }
         } catch (err) {
-          console.warn('Failed to submit training entry:', training.title);
+          console.warn('Failed to submit training entry:', training.title, err);
         }
       }
 
       if (successCount > 0) {
-        successMessage = `Successfully submitted ${successCount} training entries to your replica!`;
+        successMessage = `Successfully created ${successCount} knowledge base entries from your training answers!`;
         // Clear saved answers
         const savedKey = `train-${selectedReplica.replicaId}`;
         localStorage.removeItem(savedKey);
         answers = {};
+        // Reload KB entries
+        await loadKnowledgeBaseEntries();
       } else {
         error = 'Failed to submit training data. Please try again.';
       }
 
     } catch (err) {
-      error = err.message;
+      console.warn('Error submitting training:', err);
+      error = err.message || 'An error occurred';
     } finally {
       isLoading = false;
     }
@@ -225,6 +373,7 @@
     answers = {};
     currentQuestionIndex = 0;
     loadSavedAnswers();
+    loadKnowledgeBaseEntries(); // Load KB entries for the selected replica
   }
 </script>
 
@@ -240,7 +389,7 @@
         Train Your Replicas
       </h1>
       <p class="text-gray-600 dark:text-gray-400">
-        Continue training your AI replicas with additional questions to make them more personalized.
+        Train your AI replicas with additional questions, text content, websites, or file uploads to make them more knowledgeable and personalized.
       </p>
     </div>
 
@@ -292,6 +441,190 @@
       </div>
     {/if}
 
+    <!-- Knowledge Base Management -->
+    {#if selectedReplica}
+      <div class="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Knowledge Base</h2>
+          <button
+            onclick={() => showKnowledgeBase = !showKnowledgeBase}
+            class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 font-medium"
+          >
+            {showKnowledgeBase ? 'Hide' : 'Show'} Knowledge Base
+          </button>
+        </div>
+
+        {#if showKnowledgeBase}
+          <!-- Add New Knowledge Base Entry -->
+          <div class="mb-6 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+            <h3 class="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">Add Knowledge Base Entry</h3>
+            
+            <!-- Input Type Selection -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Content Type</label>
+              <div class="flex space-x-4">
+                <label class="flex items-center">
+                  <input type="radio" bind:group={newKnowledgeBase.inputType} value="text" class="mr-2" />
+                  <span class="text-sm text-gray-700 dark:text-gray-300">Text</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="radio" bind:group={newKnowledgeBase.inputType} value="url" class="mr-2" />
+                  <span class="text-sm text-gray-700 dark:text-gray-300">URL/Website</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="radio" bind:group={newKnowledgeBase.inputType} value="file" class="mr-2" />
+                  <span class="text-sm text-gray-700 dark:text-gray-300">File</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Title (Optional) -->
+            <div class="mb-4">
+              <label for="kb-title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Title (Optional)
+              </label>
+              <input 
+                id="kb-title"
+                type="text"
+                bind:value={newKnowledgeBase.title}
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                placeholder="Enter a title for this knowledge base entry..."
+              />
+            </div>
+
+            <!-- Dynamic Content Input -->
+            {#if newKnowledgeBase.inputType === 'text'}
+              <div class="mb-4">
+                <label for="kb-text" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Training Text *
+                </label>
+                <textarea 
+                  id="kb-text"
+                  bind:value={newKnowledgeBase.text}
+                  rows="6"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="Enter the text you want your replica to learn from..."
+                ></textarea>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  Provide detailed information, examples, or knowledge that you want your replica to learn from.
+                </p>
+              </div>
+            {:else if newKnowledgeBase.inputType === 'url'}
+              <div class="mb-4">
+                <label for="kb-url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Website URL *
+                </label>
+                <input 
+                  id="kb-url"
+                  type="url"
+                  bind:value={newKnowledgeBase.url}
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="https://example.com or https://www.youtube.com/watch?v=..."
+                />
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  Supports websites and YouTube videos. The content will be automatically extracted.
+                </p>
+              </div>
+              <div class="mb-4">
+                <label class="flex items-center">
+                  <input type="checkbox" bind:checked={newKnowledgeBase.autoRefresh} class="mr-2" />
+                  <span class="text-sm text-gray-700 dark:text-gray-300">Auto-refresh content from URL</span>
+                </label>
+              </div>
+            {:else if newKnowledgeBase.inputType === 'file'}
+              <div class="mb-4">
+                <label for="kb-filename" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Filename *
+                </label>
+                <input 
+                  id="kb-filename"
+                  type="text"
+                  bind:value={newKnowledgeBase.filename}
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="document.pdf, data.csv, presentation.pptx, etc."
+                />
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  Supported: PDF, DOC, CSV, PPT, TXT, MP3, MP4, Images, and more. You'll get an upload URL after creating the entry.
+                </p>
+              </div>
+            {/if}
+
+            <button 
+              onclick={createKnowledgeBaseEntry}
+              disabled={isLoading}
+              class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200 flex items-center justify-center"
+            >
+              {#if isLoading}
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Creating...
+              {:else}
+                Create Knowledge Base Entry
+              {/if}
+            </button>
+          </div>
+
+          <!-- Existing Knowledge Base Entries -->
+          {#if knowledgeBaseEntries.length > 0}
+            <div>
+              <h3 class="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">
+                Knowledge Base Entries ({knowledgeBaseEntries.length})
+              </h3>
+              
+              <div class="space-y-3">
+                {#each knowledgeBaseEntries as entry}
+                  <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                    <div class="flex justify-between items-start">
+                      <div class="flex-1">
+                        <h4 class="font-medium text-gray-900 dark:text-white">
+                          {entry.title || entry.generatedTitle || `Entry ${entry.id}`}
+                        </h4>
+                        <div class="flex flex-wrap gap-2 mt-1">
+                          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            {entry.type || 'text'}
+                          </span>
+                          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {entry.status === 'READY' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'}">
+                            {entry.status || 'PROCESSING'}
+                          </span>
+                          <span class="text-xs text-gray-500 dark:text-gray-400">ID: {entry.id}</span>
+                        </div>
+                        {#if entry.url}
+                          <p class="text-sm text-blue-600 dark:text-blue-400 mt-2 truncate">
+                            <span class="font-medium">URL:</span> {entry.url}
+                          </p>
+                        {/if}
+                        {#if entry.summary}
+                          <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">
+                            {entry.summary}
+                          </p>
+                        {/if}
+                      </div>
+                      <button
+                        onclick={() => deleteKnowledgeBaseEntry(entry.id)}
+                        class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-1 ml-2"
+                        title="Delete entry"
+                      >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            </div>
+          {:else}
+            <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+              <p>No knowledge base entries found for this replica.</p>
+              <p class="text-sm mt-1">Create your first entry above to get started.</p>
+            </div>
+          {/if}
+        {/if}
+      </div>
+    {/if}
+
     {#if selectedReplica && filteredQuestions.length > 0}
       <!-- Progress Overview -->
       {#key selectedReplica?.replicaId}
@@ -326,7 +659,7 @@
           class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
         >
           <option value="all">All Categories ({filteredQuestions.length})</option>
-          {#each selectedSegments as segment}
+          {#each selectedSegments as segment (segment)}
             <option value={segment}>
               {OPTIONAL_SEGMENTS[segment]?.name || segment} ({questions.filter(q => q.segment === segment).length})
             </option>

@@ -1,6 +1,5 @@
 <script>
   import { browser } from '$app/environment';
-  import { derived } from 'svelte/store';
   import { protectRoute, apiCall, logout, verifyAuth } from '$lib/auth.js';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import BackNavigation from '$lib/components/BackNavigation.svelte';
@@ -45,7 +44,7 @@
   // Search / filter / sort state
   let searchQuery = $state('');
   let sortOption = $state('recent'); // recent | oldest | name-asc | name-desc
-  let showFilters = $state(false);
+  // showFilters removed (unused)
 
   // Simple debounce mechanism for search (avoid recompute on every keystroke)
   let debouncedSearch = $state('');
@@ -110,7 +109,7 @@
         error = 'Failed to load gallery';
       }
     } catch (err) {
-      error = err.message;
+        console.error('Error while loading gallery:', err);
     } finally {
       loading = false;
     }
@@ -361,7 +360,7 @@
   // This preserves the user's ability to set description/date/album before uploading.
   }
 
-  function handleFileSelect() {
+  function openFileDialog() {
     fileInput?.click();
   }
 
@@ -383,18 +382,7 @@
     );
   }
 
-  function handleDrop(event) {
-    event.preventDefault();
-    const files = Array.from(event.dataTransfer.files).filter(file => file.type.startsWith('image/'));
-    if (files.length > 0) {
-      // Store dropped files in the form; user must click Upload Photos to send them.
-      uploadForm.files = files;
-    }
-  }
-
-  function handleDragOver(event) {
-    event.preventDefault();
-  }
+  // drag/drop handlers removed (not used)
 
   function handleCreateAlbum() {
     editingAlbum = null;
@@ -632,7 +620,7 @@
             </label>
             <div class="flex items-center gap-3">
               <button
-                onclick={handleFileSelect}
+                onclick={openFileDialog}
                 class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -657,7 +645,7 @@
             <!-- Selected Files Display -->
             {#if uploadForm.files.length > 0}
               <div class="mt-3 space-y-2">
-                {#each uploadForm.files as file, index}
+                {#each uploadForm.files as file, index (file.name ?? index)}
                   <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-2 rounded">
                     <span class="text-sm text-gray-700 dark:text-gray-300 truncate">{file.name}</span>
                     <button
@@ -713,7 +701,7 @@
               class="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select an album...</option>
-              {#each albums as album}
+              {#each albums as album (album._id)}
                 <option value={album._id}>{album.name}</option>
               {/each}
             </select>

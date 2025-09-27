@@ -141,6 +141,12 @@ const userSchema = new mongoose.Schema({
       type: String,
       required: true
     },
+    // Template used (dad, mom, brother, etc.) – optional
+    template: {
+      type: String,
+      trim: true,
+      lowercase: true
+    },
     profileImageUrl: {
       type: String
     },
@@ -185,7 +191,36 @@ const userSchema = new mongoose.Schema({
         },
         message: 'Please enter a valid email address'
       }
-    }]
+    }],
+    // Stored copy of the baseline persona text actually injected during first training
+    baselinePersona: {
+      type: String
+    },
+    // Stored copy of the consolidated informational profile lines used for training
+    infoProfileSnapshot: {
+      type: String
+    },
+    // Custom greeting message for the replica
+    greeting: {
+      type: String
+    },
+    // Preferred question to suggest to users when starting conversations
+    preferredQuestion: {
+      type: String
+    }
+  }],
+  
+  // Recently deleted replicas (to prevent re-adding during reconciliation)
+  deletedReplicas: [{
+    replicaId: {
+      type: String,
+      required: true
+    },
+    deletedAt: {
+      type: Date,
+      default: Date.now,
+      expires: 86400 // Auto-remove after 24 hours (in seconds)
+    }
   }],
   
   // Whitelisted patient emails for gallery access

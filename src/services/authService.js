@@ -168,12 +168,28 @@ class AuthService {
               unverified: true
             };
         }
+        
+        // Better messaging for existing verified users
         console.warn(`[signup] duplicate verified email attempt: ${email}`);
-        return {
-          success: false,
-          message: 'User with this email already exists',
-          errors: ['Email is already registered']
-        };
+        const isPatient = existingUser.role === 'patient';
+        
+        if (isPatient) {
+          return {
+            success: false,
+            message: 'You already have a patient account with this email. Please use the login page to access your account, or contact your caretaker if you need help.',
+            errors: ['Account already exists - please login instead'],
+            accountType: 'patient',
+            suggestedAction: 'login'
+          };
+        } else {
+          return {
+            success: false,
+            message: 'You already have an account with this email. Please use the login page to access your existing account.',
+            errors: ['Account already exists - please login instead'],
+            accountType: 'caretaker',
+            suggestedAction: 'login'
+          };
+        }
       }
 
   // Create new user

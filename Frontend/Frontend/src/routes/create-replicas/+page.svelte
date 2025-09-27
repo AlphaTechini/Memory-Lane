@@ -11,7 +11,7 @@
   import Step3ChooseSegments from '$lib/components/wizard/Step3ChooseSegments.svelte';
   import Step4OptionalQuestions from '$lib/components/wizard/Step4OptionalQuestions.svelte';
   import Step5ProfileImage from '$lib/components/wizard/Step5ProfileImage.svelte';
-  import Step6ReviewSubmit from '$lib/components/wizard/Step6ReviewSubmit.svelte';
+  import Step7ReviewSubmit from '$lib/components/wizard/Step7ReviewSubmit.svelte';
 
   let state = $state({
     currentStep: 0, // 0 = template selection before existing steps
@@ -23,7 +23,7 @@
     relationship: null
   });
 
-  const fixedTemplates = ['self','dad','mom','brother','sister','lover','best_friend'];
+  // Template ordering constant (currently using inline array instead)
   const displayNames = {
     self: 'Self', dad: 'Dad', mom: 'Mom', brother: 'Brother', sister: 'Sister', lover: 'Lover', best_friend: 'Best Friend', close_relation: 'Close Relation'
   };
@@ -199,8 +199,8 @@
     { number: 2, title: 'Required Questions', component: Step2RequiredQuestions },
     { number: 3, title: 'Choose Categories', component: Step3ChooseSegments },
     { number: 4, title: 'Optional Questions', component: Step4OptionalQuestions },
-    { number: 5, title: 'Profile Image', component: Step5ProfileImage },
-    { number: 6, title: 'Review & Submit', component: Step6ReviewSubmit }
+  { number: 5, title: 'Profile Image', component: Step5ProfileImage },
+  { number: 6, title: 'Review & Submit', component: Step7ReviewSubmit }
   ];
 
   function goToStep(stepNumber) {
@@ -210,6 +210,7 @@
 
   function nextStep() {
     if (!requireAuthForAction('proceed to the next step')) return;
+  // Allow advancing up to step 6 (inclusive)
   if (state.currentStep < 6) {
       wizardStore.setCurrentStep(state.currentStep + 1);
     }
@@ -230,21 +231,18 @@
 
   function canProceedToStep(stepNumber) {
     if (stepNumber <= state.currentStep) return true;
+    if (stepNumber <= 1) return true;
 
-    switch (stepNumber) {
-      case 2:
-        return Boolean(state?.basics?.name?.trim() && state?.basics?.description?.trim() && state?.basics?.consent);
-      case 3:
-        return Object.keys(state?.requiredAnswers || {}).length >= 10;
-      case 4:
-        return (state?.selectedSegments || []).length > 0;
-      case 5:
-        return true; // Profile image optional
-      case 6:
-        return true; // Review step
-      default:
+    const wizardState = wizardStore.getState?.() ?? state;
+    const lastPrerequisiteStep = Math.min(stepNumber - 1, steps.length);
+
+    for (let i = 1; i <= lastPrerequisiteStep; i += 1) {
+      if (!wizardStore.isStepValid(i, wizardState)) {
         return false;
+      }
     }
+
+    return true;
   }
 
   function getStepStatus(stepNumber) {
@@ -253,6 +251,30 @@
     if (canProceedToStep(stepNumber)) return 'available';
     return 'locked';
   }
+
+  // Reactive helper to decide if the Next button should be enabled.
+  // Enable if the current step is already valid (e.g. step 2: required questions complete)
+  // or if the next step is allowed to be entered.
+  let nextEnabled = $state(false);
+
+  $effect(() => {
+    // Track state changes - this creates proper reactivity
+    const currentState = state;
+    const currentStep = currentState.currentStep;
+    
+    try {
+      // If current step is valid according to wizardStore, allow Next
+      if (wizardStore.isStepValid?.(currentStep, currentState)) {
+        nextEnabled = true;
+        return;
+      }
+    } catch (e) {
+      // ignore and fallback to canProceedToStep
+    }
+    
+    // Fallback: check if we can proceed to next step
+    nextEnabled = canProceedToStep(currentStep + 1);
+  });
 
 </script>
 
@@ -336,7 +358,7 @@
         <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Choose a Template</h2>
         <p class="text-gray-600 dark:text-gray-400 mb-6">Start with a pre-made template to speed up your replica creation process.</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          {#each ['dad','mom','brother','sister','lover','best_friend','close_relation','self'] as key}
+          {#each ['dad','mom','brother','sister','lover','best_friend','close_relation','self'] as key (key)}
             <button 
               class="border border-gray-200 dark:border-gray-600 rounded-lg p-6 text-left hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 dark:bg-gray-700/40 hover:bg-white dark:hover:bg-gray-700/60" 
               onclick={() => selectTemplate(key)}
@@ -365,7 +387,7 @@
           </div>
         {/if}
         <div class="space-y-4 overflow-y-auto max-h-[55vh] pr-1">
-          {#each templates[state.template] as q}
+          {#each templates[state.template] as q (q.id)}
             <div class="border border-gray-200 dark:border-gray-600 rounded p-4 bg-gray-50 dark:bg-gray-700/40">
               <label for={`q_${q.id}`} class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{q.text} {#if q.required}<span class="text-red-500">*</span>{/if}</label>
               {#if q.type === 'textarea'}
@@ -385,7 +407,7 @@
                   onchange={(e)=> templateAnswers[q.id]=e.target.value}
                 >
                   <option value="">Select...</option>
-                  {#each q.options as opt}<option value={opt}>{opt}</option>{/each}
+                  {#each q.options as opt (opt)}<option value={opt}>{opt}</option>{/each}
                 </select>
               {:else if q.type === 'date'}
                 <input 
@@ -447,7 +469,8 @@
       {:else if state.currentStep < 6}
         <button
           onclick={nextStep}
-          disabled={!canProceedToStep(state.currentStep + 1)}
+          disabled={!nextEnabled}
+          aria-disabled={!nextEnabled}
           class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Next
