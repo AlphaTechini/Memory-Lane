@@ -187,10 +187,10 @@ await server.register(multipart, {
   }
 });
 
-// Connect to MongoDB asynchronously so the server can start listening immediately.
+// Connect to Postgres asynchronously so the server can start listening immediately.
 // Any errors are logged inside databaseConfig.connect().
 databaseConfig.connect().catch(err => {
-  server.log.error({ err }, 'Initial MongoDB connection attempt failed');
+  server.log.error({ err }, 'Initial Postgres connection attempt failed');
 });
 
 // Register routes

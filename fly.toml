@@ -17,6 +17,7 @@ kill_timeout = 5
 # Deploy across Frankfurt (EU), US East (iad), and US Central (ord)
 [deploy]
   strategy = "rolling"
+  release_command = "npx prisma migrate deploy"
 
 [env]
   PORT = "4000"

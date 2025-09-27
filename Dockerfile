@@ -16,6 +16,7 @@ RUN if [ -f package-lock.json ]; then npm ci --omit=dev; \
 
 # Copy source (only backend)
 COPY src ./src
+COPY prisma ./prisma
 # Expose port (matches PORT env default 4000)
 EXPOSE 4000
 

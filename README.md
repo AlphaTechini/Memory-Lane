@@ -2,7 +2,7 @@
 	<h1>Sensay Memory Care Platform</h1>
 	<p><strong>AI-assisted memory support</strong> combining caregiver-managed replicas, simplified patient access, conversational history, and secure gallery sharing.</p>
 	<p>
-		Backend: Fastify + MongoDB (Mongoose) · Frontend: SvelteKit · Auth: JWT (Caretaker & Patient) · External: Sensay API, Cloudinary, Nodemailer
+		Backend: Fastify + PostgreSQL (Prisma) · Frontend: SvelteKit · Auth: JWT (Caretaker & Patient) · External: Sensay API, Cloudinary, Nodemailer
 	</p>
 	<hr/>
 </div>
@@ -31,10 +31,10 @@ Caretakers create and train AI "replicas" (persona-based conversational agents) 
 │  Middleware (auth, gallery ACL) │
 └───────▲──────────────┬─────────┘
 				│              │
-				│ Mongoose     │
+				│ Prisma ORM   │
 				│              │
 ┌───────┴──────────────▼─────────┐
-│            MongoDB              │
+│            PostgreSQL           │
 │  Users (caretakers)             │
 │  Patients (email + caretaker)   │
 │  Conversations (message logs)   │
@@ -64,7 +64,7 @@ External Services:
 |--------------|------|
 | Runtime      | Node.js (ES Modules) |
 | Framework    | Fastify v5 |
-| DB           | MongoDB Atlas / Local (Mongoose 8) |
+| DB           | PostgreSQL (Fly.io) via Prisma ORM |
 | Frontend     | SvelteKit + Tailwind CSS |
 | Auth         | JWT + Email OTP (caretakers) + Simple email (patients) |
 | External     | Sensay API, Cloudinary, Nodemailer |
@@ -90,8 +90,8 @@ SENSAY_OWNER_ID=
 # External / 3rd-party keys
 LLAMA_API_KEY=
 
-# MongoDB (Atlas recommended)
-MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/sensay-ai?retryWrites=true&w=majority
+# Database (PostgreSQL via Fly.io Postgres or external host)
+DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<database>?sslmode=require
 
 # Email (Nodemailer) – for caretaker OTP / notifications
 EMAIL_FROM=noreply@example.com
@@ -123,9 +123,9 @@ LOG_LEVEL=info
 ```
 
 Notes:
-- Collections create automatically on first write (Mongoose) — no manual provisioning needed.
-- Unique indexes (e.g., `User.email`) enforced at insert time.
-- If running in production, consider disabling `autoIndex` (add `{ autoIndex: false }`) and running a migration script for predictable startup.
+- Run `npx prisma migrate deploy` after setting up your Postgres database to ensure tables and indexes exist.
+- Unique constraints (e.g., `User.email`) are enforced via Prisma migrations; keep your schema in version control.
+- Configure connection pooling (e.g., Fly's PgBouncer) for high-concurrency scenarios if needed.
 
 ## 6. Data Models (Schemas)
 ### User (Caretaker)
@@ -148,24 +148,24 @@ timestamps
 Simplified access identity tied to a caretaker (email-only login path):
 ```
 email (required, lowercase)
-caretaker (ObjectId -> User)
+caretakerId (UUID -> User)
 userId (optional link if patient eventually upgrades to full user)
 allowedReplicas[] (list of replica ids they can chat with)
 timestamps
-unique compound index: { email, caretaker }
+unique compound index: { email, caretakerId }
 ```
 
 Currently the service layer references additional patient convenience fields (`firstName`, `lastName`, `caretakerEmail`, `isActive`, `updateLastLogin()`) — add them if you choose to extend patient experience. (See “Future Enhancements” section.)
 
 ### Conversation
 ```
-userId (ObjectId -> User)
+userId (UUID -> User)
 replicaId (string)
 title (auto-derived from first user message)
 messages[]: { id, text, sender: 'user'|'bot', timestamp }
 lastMessageAt (updated pre-save)
 timestamps
-Index: { userId, replicaId, lastMessageAt: -1 }
+Index: { userId, replicaId, lastMessageAt desc }
 ```
 
 ## 7. Authentication Flows
@@ -309,7 +309,7 @@ curl http://localhost:4000/health
 | Issue | Cause | Fix |
 |-------|-------|-----|
 | App exits immediately | DB connection failure (and unhandled flows) | Check logs: `docker logs sensay-api` |
-| ECONNREFUSED Mongo | Local Mongo not reachable from container | Use Atlas or host.docker.internal (on Mac/Win) |
+| ECONNREFUSED Postgres | Database not reachable (wrong host/port or local service down) | Verify `DATABASE_URL`, ensure Postgres is listening and accessible |
 | 401 on all routes | Missing `JWT_SECRET` in container | Add to `.env` or pass `-e JWT_SECRET=...` |
 | Sensay failures | Missing secret or network egress blocked | Verify `SENSAY_ORGANIZATION_SECRET` and outbound firewall |
 
@@ -360,10 +360,42 @@ Recommendations:
 - Keep the secret server-side; never expose in public client bundles.
 - If `ORIGIN_REGISTRATION_SECRET` is unset, registration endpoints remain effectively disabled (401).
 
+## 15.8 Fly.io Postgres Integration
+Deploying on Fly with a managed Postgres instance is a three-step flow: provision the database, attach it to the app (which seeds `DATABASE_URL`), then run Prisma migrations. The project’s `fly.toml` already wires a `release_command` (`npx prisma migrate deploy`) so every deploy replays pending migrations automatically once the secret exists.
+
+1. Create a dedicated Fly Postgres cluster (pick a region close to your app):
+```powershell
+flyctl postgres create --name built-with-sensay-db --region fra --vm-size shared-cpu-1x --initial-cluster-size 1
+```
+
+2. Attach the database to this app so Fly injects `DATABASE_URL` (and connection pool secrets) automatically:
+```powershell
+flyctl postgres attach --postgres-app built-with-sensay-db --app built-with-sensay-api
+```
+
+3. (Optional) Inspect secrets to confirm the URL is present:
+```powershell
+flyctl secrets list --app built-with-sensay-api
+```
+
+4. Deploy; the release phase now runs Prisma migrations inside the image before traffic shifts:
+```powershell
+flyctl deploy
+```
+
+5. To run manual migrations or Prisma commands against Fly from your laptop, proxy a local port and reuse `DATABASE_URL`:
+```powershell
+flyctl proxy 15432:5432 --app built-with-sensay-db
+$env:DATABASE_URL="postgresql://flycast:<password>@127.0.0.1:15432/<database>?sslmode=disable"
+npx prisma studio
+```
+
+If you prefer a separate shadow database for `prisma migrate dev`, set `SHADOW_DATABASE_URL` via `flyctl secrets set`. Otherwise, the provided workflow (`migrate deploy`) is migration-safe in CI/CD while keeping production credentials off developer machines.
+
 ## 15. Troubleshooting
 | Symptom | Likely Cause | Action |
 |---------|--------------|-------|
-`MongoDB connection error` | Bad URI / network / IP not whitelisted | Verify `MONGODB_URI`, Atlas IP access list |
+`Postgres connection error` | Bad URI / network / credentials | Verify `DATABASE_URL`, ensure Fly Postgres is attached and reachable |
 `OTP not received` | SMTP misconfig | Check SMTP creds; test with a simple nodemailer script |
 `Replica creation failed` | Missing Sensay secret or invalid model payload | Confirm `SENSAY_ORGANIZATION_SECRET`; inspect logs |
 `Patient login fails` | Email not whitelisted / Patient doc absent | Ensure caretaker added email to a replica |
@@ -430,7 +462,7 @@ This project was recently updated to improve deployment readiness and developer 
 	- `.env.example` updated to include all known environment keys (placeholders only).
 
 - Server & code changes
-	- Removed deprecated Mongo driver options and tightened database connection configuration.
+	- Migrated persistence layer from MongoDB to Prisma + PostgreSQL and tightened database connection configuration.
 	- Added per-route rate limits on sensitive auth endpoints; global defaults remain configurable via environment variables.
 	- Added a root landing route (`GET /`) and a health endpoint (`GET /health`).
 	- CORS handling improved: allowed origins seeded from `FRONTEND_URL(S)` and dynamic runtime origin registration via `POST /internal/register-origin` (guarded by `ORIGIN_REGISTRATION_SECRET`).
