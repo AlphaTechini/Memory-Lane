@@ -16,17 +16,17 @@ RUN if [ -f package-lock.json ]; then npm ci --omit=dev; \
 
 # Copy source (only backend)
 COPY src ./src
-COPY SENSAY_API_GUIDE.md ./
-COPY AUTH_API_DOCS.md ./
-COPY PROTECTED_ROUTES.md ./
-COPY MONGODB_SETUP.md ./
-
 # Expose port (matches PORT env default 4000)
 EXPOSE 4000
 
-# Healthcheck (basic TCP)
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT||4000) + '/health', r=>{if(r.statusCode!==200)process.exit(1)})" || exit 1
+# Note: skipping optional documentation COPY steps to avoid build failures when
+# those files are not present in the remote build context. Keep docs in the
+# repository root for local development, but do not rely on copying them into
+# the container image.
+
+# No Docker-level HEALTHCHECK: platform-level health checks are handled by
+# Fly configuration (fly.toml). Avoid container-level healthchecks which can
+# cause additional restarts during deployment cycles.
 
 # Default environment
 ENV NODE_ENV=production
