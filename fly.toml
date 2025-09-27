@@ -3,7 +3,8 @@
 # Docs: https://fly.io/docs/reference/configuration/
 
 app = "built-with-sensay-api"
-primary_region = "iad"  # Change to closest region (e.g. fra, lax, sjc, sin, syd)
+# Preferred region: Frankfurt (fra). If you prefer UK/ London use `lhr` instead.
+primary_region = "fra"  # e.g. fra (Frankfurt) or lhr (London)
 
 kill_signal = "SIGINT"
 kill_timeout = 5
@@ -19,9 +20,9 @@ kill_timeout = 5
 [http_service]
   internal_port = 4000
   force_https = true
-  auto_stop_machines = true      # Scale to zero when idle (optional)
+  auto_stop_machines = false     # Do NOT scale to zero; keep machines running
   auto_start_machines = true
-  min_machines_running = 1       # Set to 0 if you want full scale-to-zero
+  min_machines_running = 1       # Keep at least 1 machine running
   processes = ["app"]
 
   [http_service.concurrency]
@@ -42,6 +43,12 @@ kill_timeout = 5
 #[[vm]]
 #  size = "shared-cpu-1x"   # Other options: performance-1x, shared-cpu-2x, etc.
 #  memory = "512mb"          # 256mb minimum; raise if memory pressure occurs
+
+# Restart policy guidance:
+# Fly ephemeral deployer machines used for building have restart_policy=no by design.
+# App machines are controlled via the platform and will be restarted according to
+# the platform's configuration; keeping `auto_stop_machines=false` ensures your
+# app machines remain available and are managed by Fly's VM lifecycle.
 
 # You can add secrets with: flyctl secrets set KEY=value
 # Example:
