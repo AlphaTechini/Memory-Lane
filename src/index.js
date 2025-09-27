@@ -168,47 +168,39 @@ await server.register(replicaImageRoutes);
 await server.register(genericChatRoutes);
 
 // Health check endpoint
+// Lightweight health-check: return minimal payload and avoid verbose logging
 server.get('/health', async (request, reply) => {
-  const dbHealth = await databaseConfig.healthCheck();
-  
-  reply.send({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    service: 'Sensay AI API',
-    version: '1.0.0',
-    database: dbHealth
-  });
+  try {
+    const dbHealth = await databaseConfig.healthCheck();
+    // Only indicate status and minimal db state to keep logs small
+    reply.header('X-Service', 'sensay-api').send({ status: 'ok', db: dbHealth.ok ? 'ok' : 'unavailable' });
+  } catch (err) {
+    // Log detailed error server-side (stack + context) but return minimal payload to the probe
+    try {
+      server.log.error({ err, route: '/health' }, 'Health check failed');
+    } catch (logErr) {
+      // ensure logging failures don't crash the health endpoint
+      console.error('Failed to log health check error', logErr);
+    }
+    reply.code(503).send({ status: 'unhealthy' });
+  }
 });
 
 // Root landing page - helpful when visiting the app URL in a browser
+// Lightweight root responder — keep output small to reduce log noise when probed
 server.get('/', async (request, reply) => {
-  const html = `
-    <!doctype html>
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>Sensay AI API</title>
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <style>body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;line-height:1.6;padding:2rem}</style>
-      </head>
-      <body>
-        <h1>Sensay AI API</h1>
-        <p>This server hosts the Sensay Memory Care API backend.</p>
-        <ul>
-          <li><a href="/health">Health check</a></li>
-          <li><a href="/documentation">API documentation (if enabled)</a></li>
-        </ul>
-        <p>If you intended to view the frontend app, deploy or host the Svelte frontend separately and configure a reverse proxy to forward API calls to this service (see README).</p>
-      </body>
-    </html>
-  `;
-
-  reply.type('text/html').send(html);
+  reply.type('text/plain').send('Sensay AI API');
 });
 
 // Global error handler
 server.setErrorHandler((error, request, reply) => {
-  server.log.error(error);
+  // Log full error with request context so stacks appear server-side for debugging
+  try {
+    server.log.error({ err: error, method: request.method, url: request.url, params: request.params }, 'Unhandled error');
+  } catch (logErr) {
+    // Fallback to simple error logging if structured logging fails
+    server.log.error(error);
+  }
   
   // MongoDB/Mongoose errors
   if (error.name === 'ValidationError') {
