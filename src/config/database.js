@@ -7,20 +7,23 @@ class DatabaseConfig {
   constructor() {
     // Default to MongoDB Atlas connection string format
     this.connectionString = process.env.MONGODB_URI || 'mongodb+srv://<username>:<password>@<cluster>.mongodb.net/sensay-ai?retryWrites=true&w=majority';
+    const serverSelectionTimeout = parseInt(process.env.MONGO_SERVER_SELECTION_TIMEOUT_MS || '8000', 10);
+    const connectTimeout = parseInt(process.env.MONGO_CONNECT_TIMEOUT_MS || '8000', 10);
+
     this.options = {
       // Connection pool settings optimized for Atlas
       maxPoolSize: 50, // Maintain up to 50 socket connections for cluster
       minPoolSize: 5, // Maintain minimum 5 connections
-      serverSelectionTimeoutMS: 30000, // 30 seconds for Atlas connection
+      serverSelectionTimeoutMS: serverSelectionTimeout, // Reduce startup blocking to ~8s by default
       socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
-      connectTimeoutMS: 30000, // 30 seconds connection timeout
+      connectTimeoutMS: connectTimeout, // Connection timeout (shorter to unblock app startup)
       
       // Atlas specific options
       retryWrites: true,
       w: 'majority',
       
-      // Helpful for development and Atlas
-  family: 4 // Use IPv4, skip trying IPv6 (modern driver defaults handle parser & topology)
+    // Helpful for development and Atlas
+    family: 4 // Use IPv4, skip trying IPv6 (modern driver defaults handle parser & topology)
 
   // NOTE: Removed deprecated options `useNewUrlParser` and `useUnifiedTopology`.
   // They are defaults since MongoDB Node Driver >=4 and produce warnings if supplied.
