@@ -187,8 +187,11 @@ await server.register(multipart, {
   }
 });
 
-// Connect to MongoDB
-await databaseConfig.connect();
+// Connect to MongoDB asynchronously so the server can start listening immediately.
+// Any errors are logged inside databaseConfig.connect().
+databaseConfig.connect().catch(err => {
+  server.log.error({ err }, 'Initial MongoDB connection attempt failed');
+});
 
 // Register routes
 await server.register(authRoutes);
@@ -214,6 +217,11 @@ server.get('/health', async (request, reply) => {
     }
     reply.code(503).send({ status: 'unhealthy' });
   }
+});
+
+// Root endpoint - simple ok response, keep log noise low
+server.get('/', { logLevel: 'error' }, async (request, reply) => {
+  reply.send({ status: 'ok', service: 'Sensay AI API' });
 });
 
 // Global error handler
