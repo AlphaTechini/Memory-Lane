@@ -5,6 +5,9 @@ FROM node:20-alpine AS base
 # Set working directory
 WORKDIR /app
 
+# Install runtime dependencies required by Prisma and Node
+RUN apk add --no-cache openssl libc6-compat
+
 # Install only production dependencies first (leveraging Docker layer caching)
 COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
 
