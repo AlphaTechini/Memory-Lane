@@ -77,33 +77,49 @@ Create a `.env` file at project root. Only include what you need; missing option
 # Server
 PORT=4000
 NODE_ENV=development
-JWT_SECRET=super-secret-dev-key
+JWT_SECRET=your-jwt-secret-here
 JWT_EXPIRES_IN=7d
 
+# Sensay API (external service)
+# Keep these secrets out of source control and store them in your host's secret manager
+SENSAY_API_KEY=
+SENSAY_BASE_URL=https://api.sensay.ai/v1
+SENSAY_ORGANIZATION_SECRET=
+SENSAY_OWNER_ID=
+
+# External / 3rd-party keys
+LLAMA_API_KEY=
+
 # MongoDB (Atlas recommended)
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/sensay-ai?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/sensay-ai?retryWrites=true&w=majority
 
 # Email (Nodemailer) – for caretaker OTP / notifications
-SMTP_HOST=smtp.yourhost.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your_smtp_user
-SMTP_PASS=your_smtp_password
-EMAIL_FROM="Sensay Memory <no-reply@sensay.local>"
-
-# Sensay API
-SENSAY_ORGANIZATION_SECRET=your-org-secret
-SENSAY_API_VERSION=2025-03-25
-SENSAY_OWNER_ID=optional-default-owner
-SENSAY_ALLOW_PLACEHOLDER=false
+EMAIL_FROM=noreply@example.com
+EMAIL_SMTP_HOST=smtp.example.com
+EMAIL_SMTP_PORT=465
+EMAIL_SMTP_USER=your-smtp-user
+EMAIL_SMTP_PASS=your-smtp-pass
 
 # Cloudinary (optional)
-CLOUDINARY_CLOUD_NAME=your_cloud
-CLOUDINARY_API_KEY=xxx
-CLOUDINARY_API_SECRET=xxx
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+
+# Frontend (CORS / links)
+FRONTEND_URL=http://localhost:5173
+FRONTEND_URLS=
 
 # Admin (simple email list auth)
 ADMIN_EMAILS=admin1@example.com,admin2@example.com
+
+# Security / misc
+BCRYPT_ROUNDS=12
+MAX_LOGIN_ATTEMPTS=5
+LOGIN_WINDOW_MS=900000
+ORIGIN_REGISTRATION_SECRET=
+
+# Logging
+LOG_LEVEL=info
 ```
 
 Notes:
@@ -398,6 +414,36 @@ Headers exposed on success:
 ```
 X-RateLimit-Limit: <max>
 X-RateLimit-Remaining: <remaining>
+
+## Latest changes (2025-09-27)
+
+This project was recently updated to improve deployment readiness and developer ergonomics. Highlights:
+
+- Deployment & Fly.io
+	- Added `fly.toml` and adjusted the Docker build context so the remote builder can successfully build the backend image.
+	- Moved `Dockerfile` and `.dockerignore` into the repository root to match Fly's build expectations.
+	- Machines are configured to avoid automatic scale-to-zero during development (`auto_stop_machines=false` in `fly.toml`).
+	- Backend now binds to `0.0.0.0:4000` (satisfies platform proxies).
+
+- Secrets & configuration
+	- All runtime secrets should be stored in your platform's secret manager (e.g. Fly secrets). Use `flyctl secrets set KEY="value" -a <app>` or `flyctl secrets import` from a sanitized `.env` to avoid committing secrets.
+	- `.env.example` updated to include all known environment keys (placeholders only).
+
+- Server & code changes
+	- Removed deprecated Mongo driver options and tightened database connection configuration.
+	- Added per-route rate limits on sensitive auth endpoints; global defaults remain configurable via environment variables.
+	- Added a root landing route (`GET /`) and a health endpoint (`GET /health`).
+	- CORS handling improved: allowed origins seeded from `FRONTEND_URL(S)` and dynamic runtime origin registration via `POST /internal/register-origin` (guarded by `ORIGIN_REGISTRATION_SECRET`).
+
+- Frontend updates
+	- Frontend switched to a configurable API base URL via `VITE_API_BASE_URL` and now uses a central `apiUrl()` helper in the Svelte app.
+	- Integrated `@vercel/speed-insights` injection in layout for lightweight performance monitoring.
+
+- Misc
+	- Added README documentation for environment variables and deployment notes.
+	- Rate limiting headers added so clients can observe remaining quota.
+
+If you use a different host (e.g., Vercel, Netlify), keep secrets in their provided secret/storage mechanism and configure the frontend `VITE_API_BASE_URL` accordingly.
 X-RateLimit-Reset: <unix_epoch_seconds>
 ```
 
