@@ -218,19 +218,57 @@ class AuthService {
   const savedUser = await newUser.save();
   console.log(`[signup] created new user ${savedUser._id} (${savedUser.email})`);
 
-      // Attempt to create corresponding Sensay user (non-blocking failure)
-      try {
-        const fullName = (firstName || lastName) ? `${firstName || ''} ${lastName || ''}`.trim() : email.split('@')[0];
-        const sensayResp = await createSensayUser({ email: savedUser.email, name: fullName });
-        if (sensayResp && sensayResp.id) {
-          savedUser.sensayUserId = sensayResp.id;
-          await savedUser.save();
-          logger?.info?.(`Linked Sensay user ${sensayResp.id} to local user ${savedUser._id}`) || console.log('Linked Sensay user', sensayResp.id);
-        } else if (sensayResp?.conflict) {
-          logger?.warn?.(`Sensay user conflict for ${savedUser.email}; consider backfill.`) || console.warn('Sensay user conflict');
+      // Attempt to create corresponding Sensay user with retry logic
+      const createSensayUserWithRetry = async (retries = 3) => {
+        for (let attempt = 1; attempt <= retries; attempt++) {
+          try {
+            const fullName = (firstName || lastName) ? `${firstName || ''} ${lastName || ''}`.trim() : email.split('@')[0];
+            logger?.info?.(`Attempting to create Sensay user for ${savedUser.email} (attempt ${attempt}/${retries})`) || console.log(`Creating Sensay user attempt ${attempt}`);
+            
+            const sensayResp = await createSensayUser({ email: savedUser.email, name: fullName });
+            
+            if (sensayResp && sensayResp.id) {
+              savedUser.sensayUserId = sensayResp.id;
+              await savedUser.save();
+              logger?.info?.(`Successfully linked Sensay user ${sensayResp.id} to local user ${savedUser._id}`) || console.log('Linked Sensay user', sensayResp.id);
+              return true;
+            } else if (sensayResp?.conflict) {
+              // Handle conflict - try to find existing Sensay user
+              logger?.warn?.(`Sensay user already exists for ${savedUser.email}, attempting to resolve conflict`) || console.warn('Sensay user conflict, resolving...');
+              
+              try {
+                // Try to get the existing user from Sensay API
+                const { getSensayUser } = await import('./sensayService.js');
+                // Since we don't have the exact ID, we'll skip this for now and log for manual resolution
+                logger?.warn?.(`Manual intervention needed: Sensay user exists for ${savedUser.email} but ID not linked`) || console.warn('Manual intervention needed for Sensay user conflict');
+                return false;
+              } catch (conflictErr) {
+                logger?.warn?.(`Failed to resolve Sensay user conflict for ${savedUser.email}: ${conflictErr.message}`) || console.warn('Failed to resolve conflict');
+                return false;
+              }
+            }
+            
+            logger?.warn?.(`Sensay user creation returned unexpected response for ${savedUser.email}:`, sensayResp) || console.warn('Unexpected Sensay response');
+            return false;
+            
+          } catch (sensayErr) {
+            logger?.warn?.(`Sensay user creation attempt ${attempt}/${retries} failed for ${email}: ${sensayErr.message}`) || console.warn(`Sensay creation attempt ${attempt} failed:`, sensayErr.message);
+            
+            if (attempt === retries) {
+              logger?.error?.(`All ${retries} attempts to create Sensay user failed for ${email}. User will need manual linking.`) || console.error('All Sensay user creation attempts failed');
+              return false;
+            }
+            
+            // Wait before retry (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+          }
         }
-      } catch (sensayErr) {
-        logger?.warn?.(`Non-blocking: failed to create Sensay user for signup ${email}: ${sensayErr.message}`) || console.warn('Failed Sensay user creation', sensayErr.message);
+        return false;
+      };
+      
+      const sensaySuccess = await createSensayUserWithRetry();
+      if (!sensaySuccess) {
+        logger?.error?.(`CRITICAL: User ${savedUser._id} (${savedUser.email}) created without Sensay user ID. Replica creation will fail until manually resolved.`) || console.error('CRITICAL: User created without Sensay ID');
       }
 
       // Generate and send OTP for email verification

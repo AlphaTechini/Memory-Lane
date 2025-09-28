@@ -724,6 +724,98 @@ async function authRoutes(fastify, options) {
       });
     }
   });
+
+  /**
+   * POST /auth/link-sensay
+   * Create and link Sensay user for accounts missing sensayUserId (protected route)
+   */
+  fastify.post('/auth/link-sensay', { 
+    preHandler: authenticateToken,
+    config: { rateLimit: { max: 3, timeWindow: '10 minutes' } }
+  }, async (request, reply) => {
+    try {
+      const userId = request.user.id;
+      const User = (await import('../models/User.js')).default;
+      const { createSensayUser } = await import('../services/sensayService.js');
+      
+      const user = await User.findById(userId);
+      if (!user) {
+        reply.code(404).send({
+          success: false,
+          message: 'User not found',
+          errors: ['User account not found']
+        });
+        return;
+      }
+      
+      // Only caretakers need Sensay users
+      if (user.role === 'patient') {
+        reply.code(400).send({
+          success: false,
+          message: 'Patients do not need Sensay user accounts',
+          errors: ['Patient accounts use whitelist email access']
+        });
+        return;
+      }
+      
+      // Check if already linked
+      if (user.sensayUserId) {
+        return {
+          success: true,
+          message: 'Sensay user already linked',
+          sensayUserId: user.sensayUserId
+        };
+      }
+      
+      // Create Sensay user
+      const fullName = (user.firstName || user.lastName) ? 
+        `${user.firstName || ''} ${user.lastName || ''}`.trim() : 
+        user.email.split('@')[0];
+        
+      fastify.log.info(`Manually linking Sensay user for ${user.email}`);
+      
+      const sensayResp = await createSensayUser({ 
+        email: user.email, 
+        name: fullName 
+      });
+      
+      if (sensayResp && sensayResp.id) {
+        user.sensayUserId = sensayResp.id;
+        await user.save();
+        
+        fastify.log.info(`Successfully linked Sensay user ${sensayResp.id} to user ${user._id}`);
+        
+        return {
+          success: true,
+          message: 'Sensay user created and linked successfully',
+          sensayUserId: sensayResp.id
+        };
+      } else if (sensayResp?.conflict) {
+        fastify.log.warn(`Sensay user conflict for ${user.email} - manual resolution needed`);
+        reply.code(409).send({
+          success: false,
+          message: 'Sensay user already exists but could not be linked automatically',
+          errors: ['Please contact support for manual linking']
+        });
+        return;
+      } else {
+        reply.code(500).send({
+          success: false,
+          message: 'Failed to create Sensay user',
+          errors: ['Sensay API returned unexpected response']
+        });
+        return;
+      }
+      
+    } catch (error) {
+      fastify.log.error(`Error linking Sensay user for ${request.user.id}:`, error);
+      reply.code(500).send({
+        success: false,
+        message: 'Error creating Sensay user link',
+        errors: ['Internal server error']
+      });
+    }
+  });
 }
 
 export default authRoutes;
