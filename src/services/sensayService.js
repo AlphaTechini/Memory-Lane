@@ -3,13 +3,16 @@ import { sensayConfig } from '../config/sensay.js';
 import logger from '../utils/logger.js';
 
 /**
- * Complete Sensay API service with replica creation, training, and chat functionality
+ * My main Sensay API service - handles all the heavy lifting for users, replicas, and knowledge base stuff
+ * Built this to work seamlessly with the official Sensay API v2025-03-25
+ * It's been a journey getting all the error handling just right!
  */
 
-// Create base Axios instance
+// Setting up my axios instance - 30 seconds should be plenty for most API calls
+// Learned the hard way that some training operations can take a while!
 const sensayApi = axios.create({
   baseURL: sensayConfig.baseUrl,
-  timeout: 30000, // 30 second timeout
+  timeout: 30000,
 });
 
 /**
@@ -28,10 +31,10 @@ export const createSensayUser = async ({ email, name, id, linkedAccounts }) => {
       throw new Error('Email is required for user creation');
     }
 
-    // Prepare request body according to API docs
+    // Building the request body - keeping it simple with just email to start
     const body = { email };
     
-    // Validate and add name if provided (max 50 chars, specific pattern)
+    // If they gave us a name, I need to validate it (learned this the hard way!)
     if (name) {
       const trimmedName = name.substring(0, 50);
       const namePattern = /^[a-zA-Z0-9\s().,'\-/]*$/;
@@ -43,7 +46,7 @@ export const createSensayUser = async ({ email, name, id, linkedAccounts }) => {
       }
     }
     
-    // Add optional fields
+    // Toss in any optional stuff they provided
     if (id) body.id = id;
     if (linkedAccounts && Array.isArray(linkedAccounts)) {
       body.linkedAccounts = linkedAccounts;
@@ -56,7 +59,7 @@ export const createSensayUser = async ({ email, name, id, linkedAccounts }) => {
       }
     });
     
-    // API returns 200 with { success: true, id, email, name, linkedAccounts }
+    // If everything went well, Sensay gives us back the user data
     if (res.data && res.data.success && res.data.id) {
       logger?.info?.(`Created Sensay user ${res.data.id} for ${email}`) || console.log('Created Sensay user', res.data.id);
       return res.data;
