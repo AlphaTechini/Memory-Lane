@@ -20,6 +20,9 @@ RUN if [ -f package-lock.json ]; then npm ci --omit=dev; \
 # Copy source (only backend)
 COPY src ./src
 COPY prisma ./prisma
+
+# Generate Prisma client for runtime usage
+RUN npx prisma generate
 # Expose port (matches PORT env default 4000)
 EXPOSE 4000
 
