@@ -237,11 +237,20 @@ class AuthService {
               logger?.warn?.(`Sensay user already exists for ${savedUser.email}, attempting to resolve conflict`) || console.warn('Sensay user conflict, resolving...');
               
               try {
-                // Try to get the existing user from Sensay API
-                const { getSensayUser } = await import('./sensayService.js');
-                // Since we don't have the exact ID, we'll skip this for now and log for manual resolution
-                logger?.warn?.(`Manual intervention needed: Sensay user exists for ${savedUser.email} but ID not linked`) || console.warn('Manual intervention needed for Sensay user conflict');
-                return false;
+                // Try to get the existing user from Sensay API by email
+                const { findSensayUserByEmail } = await import('./sensayService.js');
+                const existingSensayUser = await findSensayUserByEmail(savedUser.email);
+                
+                if (existingSensayUser && existingSensayUser.id) {
+                  // Found existing user, link it
+                  savedUser.sensayUserId = existingSensayUser.id;
+                  await savedUser.save();
+                  logger?.info?.(`Successfully linked existing Sensay user ${existingSensayUser.id} to local user ${savedUser._id}`) || console.log('Linked existing Sensay user', existingSensayUser.id);
+                  return true;
+                } else {
+                  logger?.warn?.(`Could not find existing Sensay user for ${savedUser.email} despite conflict response`) || console.warn('Could not find existing Sensay user despite conflict');
+                  return false;
+                }
               } catch (conflictErr) {
                 logger?.warn?.(`Failed to resolve Sensay user conflict for ${savedUser.email}: ${conflictErr.message}`) || console.warn('Failed to resolve conflict');
                 return false;

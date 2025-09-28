@@ -791,13 +791,41 @@ async function authRoutes(fastify, options) {
           sensayUserId: sensayResp.id
         };
       } else if (sensayResp?.conflict) {
-        fastify.log.warn(`Sensay user conflict for ${user.email} - manual resolution needed`);
-        reply.code(409).send({
-          success: false,
-          message: 'Sensay user already exists but could not be linked automatically',
-          errors: ['Please contact support for manual linking']
-        });
-        return;
+        fastify.log.warn(`Sensay user conflict for ${user.email} - attempting resolution`);
+        
+        try {
+          // Try to find existing Sensay user by email
+          const { findSensayUserByEmail } = await import('../services/sensayService.js');
+          const existingSensayUser = await findSensayUserByEmail(user.email);
+          
+          if (existingSensayUser && existingSensayUser.id) {
+            user.sensayUserId = existingSensayUser.id;
+            await user.save();
+            
+            fastify.log.info(`Successfully linked existing Sensay user ${existingSensayUser.id} to user ${user._id}`);
+            
+            return {
+              success: true,
+              message: 'Existing Sensay user found and linked successfully',
+              sensayUserId: existingSensayUser.id
+            };
+          } else {
+            reply.code(409).send({
+              success: false,
+              message: 'Sensay user exists but could not be found for linking',
+              errors: ['Please contact support for manual linking']
+            });
+            return;
+          }
+        } catch (searchErr) {
+          fastify.log.error(`Failed to search for existing Sensay user: ${searchErr.message}`);
+          reply.code(409).send({
+            success: false,
+            message: 'Sensay user already exists but could not be linked automatically',
+            errors: ['Please contact support for manual linking']
+          });
+          return;
+        }
       } else {
         reply.code(500).send({
           success: false,

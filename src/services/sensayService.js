@@ -94,6 +94,35 @@ export const getSensayUser = async (userId) => {
 };
 
 /**
+ * Search for Sensay users by email
+ * @param {string} email
+ * @returns {Promise<Object|null>} User object if found, null if not found
+ */
+export const findSensayUserByEmail = async (email) => {
+  try {
+    // Try to list users and find by email - this may need to be adjusted based on actual Sensay API
+    const res = await sensayApi.get('/v1/users', { 
+      headers: sensayConfig.headers.base,
+      params: { email } // Assuming the API supports email search
+    });
+    
+    if (res.data && Array.isArray(res.data)) {
+      return res.data.find(user => user.email === email) || null;
+    } else if (res.data && res.data.email === email) {
+      return res.data;
+    }
+    
+    return null;
+  } catch (error) {
+    if (error.response?.status === 404) {
+      return null;
+    }
+    logger?.warn?.(`Failed to search Sensay user by email ${email}: ${error.message}`) || console.warn('Failed to search Sensay user', error.message);
+    return null; // Return null instead of throwing to allow fallback
+  }
+};
+
+/**
  * Creates a new replica in Sensay
  * @param {Object} replicaData - The replica configuration
  * @param {string} replicaData.name - The name of the replica
