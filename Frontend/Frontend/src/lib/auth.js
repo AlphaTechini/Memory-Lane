@@ -80,9 +80,10 @@ export async function verifyAuth() {
   // If we have cached user data, return it immediately so the UI can render quickly.
   // If an auth token also exists, kick off a background verification to refresh the cache.
   try {
-    const cachedUser = localStorage.getItem('userData');
-    if (cachedUser) {
-      const user = JSON.parse(cachedUser);
+    const cachedUserRaw = localStorage.getItem('userData');
+    // Guard against literal string "null" (can happen if code does JSON.stringify(null))
+    if (cachedUserRaw && cachedUserRaw !== 'null') {
+      const user = JSON.parse(cachedUserRaw);
 
       // Background verification if token exists
       const token = getAuthToken();
@@ -93,7 +94,7 @@ export async function verifyAuth() {
             const resp = await apiCall('/api/auth/me');
             if (resp.ok) {
               const data = await resp.json();
-              if (data.success) {
+              if (data.success && data.user) {
                 localStorage.setItem('userData', JSON.stringify(data.user));
               }
             }
@@ -104,6 +105,9 @@ export async function verifyAuth() {
       }
 
       return user;
+    } else if (cachedUserRaw === 'null') {
+      // Clean up invalid cached entry
+      localStorage.removeItem('userData');
     }
   } catch {
     localStorage.removeItem('userData');
@@ -117,7 +121,7 @@ export async function verifyAuth() {
     const response = await apiCall('/api/auth/me');
     if (response.ok) {
       const data = await response.json();
-      if (data.success) {
+      if (data.success && data.user) {
         localStorage.setItem('userData', JSON.stringify(data.user));
         return data.user;
       }
@@ -183,14 +187,15 @@ export function getUserRole() {
   if (!browser) return null;
   
   try {
-    const userData = localStorage.getItem('userData');
-    if (userData) {
-      const user = JSON.parse(userData);
-      return user.role || 'caretaker';
+    const userDataRaw = localStorage.getItem('userData');
+    if (userDataRaw && userDataRaw !== 'null') {
+      const user = JSON.parse(userDataRaw);
+      return user?.role || 'caretaker';
     }
   } catch {
     // Ignore parsing errors
   }
-  
+  // If there's an auth token but no cached user data, assume default caretaker role until verified
+  if (getAuthToken()) return 'caretaker';
   return null;
 }
