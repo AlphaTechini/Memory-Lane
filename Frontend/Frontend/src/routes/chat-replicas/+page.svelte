@@ -3,7 +3,10 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { requireAuthForAction, checkAuthStatus, getAuthToken, apiCall, getUserRole } from '$lib/auth.js';
-  import MessageInput from '$lib/components/MessageInput.svelte';
+    import MessageInput from '$lib/components/MessageInput.svelte';
+    import getApiBase from '$lib/apiBase.js';
+  
+    const API_BASE_URL = getApiBase();
   import BackNavigation from '$lib/components/BackNavigation.svelte';
   import { apiUrl } from '$lib/utils/api.js';
 

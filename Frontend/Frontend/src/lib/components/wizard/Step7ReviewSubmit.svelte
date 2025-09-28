@@ -5,6 +5,8 @@
   import { goto } from '$app/navigation';
   import { apiCall } from '$lib/auth.js';
   import { apiUrl } from '$lib/utils/api.js';
+    import { getApiBase } from '$lib/apiBase.js';
+    const API_BASE_URL = getApiBase();
 
   let state = $state({
     basics: {},

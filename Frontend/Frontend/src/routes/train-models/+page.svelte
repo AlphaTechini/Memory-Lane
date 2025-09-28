@@ -2,6 +2,9 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { checkAuthStatus, apiCall } from '$lib/auth.js';
+  import getApiBase from '$lib/apiBase.js';
+
+  const API_BASE_URL = getApiBase();
   import { OPTIONAL_SEGMENTS, getAllOptionalQuestions } from '$lib/questionBank.js';
   import { apiUrl } from '$lib/utils/api.js';
 
