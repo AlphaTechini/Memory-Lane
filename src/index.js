@@ -200,6 +200,12 @@ await server.register(galleryRoutes);
 await server.register(replicaImageRoutes);
 await server.register(genericChatRoutes);
 
+// Admin routes (import conditionally to avoid loading in production accidentally)
+if (process.env.NODE_ENV === 'development' || process.env.ENABLE_ADMIN_ROUTES === 'true') {
+  const adminRoutes = (await import('./routes/adminRoutes.js')).default;
+  await server.register(adminRoutes);
+}
+
 // Health check endpoint
 // Lightweight health-check: return minimal payload and avoid verbose logging
 server.get('/health', async (request, reply) => {
