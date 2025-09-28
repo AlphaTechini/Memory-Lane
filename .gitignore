@@ -7,3 +7,7 @@
 # Logs
 *.log
 
+# Hackathon pitch files (private copy)
+PITCH.md
+PITCH.txt
+

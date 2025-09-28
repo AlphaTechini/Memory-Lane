@@ -118,7 +118,22 @@ export const createSensayUser = async ({ email, name, id, linkedAccounts }) => {
         }
       }
 
-      // If we couldn't resolve an existing user id, return the conflict payload so callers can decide
+      // If we couldn't resolve an existing user id from the conflict payload, try a best-effort lookup by email.
+      // NOTE: Sensay's public docs don't guarantee an email search endpoint for org tokens. This is an optimistic
+      // attempt — if the endpoint doesn't exist or is forbidden, we'll gracefully fall back to the original conflict
+      // payload so callers (UI) can show a manual linking path.
+      try {
+        logger?.info?.(`Attempting best-effort Sensay lookup by email for ${email}`) || console.log('Attempting Sensay lookup by email', email);
+        const maybeByEmail = await tryFindUserByEmail(email);
+        if (maybeByEmail) {
+          logger?.info?.(`Resolved existing Sensay user by email for ${email}: ${maybeByEmail.id || maybeByEmail.user?.id}`) || console.log('Resolved by email', maybeByEmail);
+          return maybeByEmail;
+        }
+      } catch (emailErr) {
+        logger?.warn?.('Email lookup for Sensay user failed', emailErr.message) || console.warn('Email lookup failed', emailErr.message);
+      }
+
+      // If all resolution attempts failed, return the conflict payload so callers can decide
       return { conflict: true, error: respData };
     }
     logger?.warn?.(`Failed to create Sensay user for ${email}: ${error.message}`) || console.warn('Failed to create Sensay user', error.message);
@@ -232,19 +247,61 @@ export const createReplica = async (replicaData) => {
       throw err;
     }
 
-  const raw = response.data || {};
-  // Some environments may return a provisional 'uuid' before a full replica object is materialized
-  const resolvedId = raw.id || raw.replicaId || raw.replica?.id || raw.data?.id || raw.uuid;
+  let raw = response.data || {};
 
-    if (!resolvedId) {
-      logger?.error?.('Sensay createReplica response missing id/uuid field', { keys: Object.keys(raw) }) || console.error('Replica response missing id. Keys:', Object.keys(raw));
-      throw new Error('Sensay API did not return a replica id');
+  // Some environments may return a provisional 'uuid' before a full replica object is materialized
+  let resolvedId = raw.id || raw.replicaId || raw.replica?.id || raw.data?.id || raw.uuid;
+
+  // If Sensay didn't return an id, try a few best-effort fallbacks instead of throwing immediately
+  if (!resolvedId) {
+    // 1) Check Location header (some APIs return a Location: /v1/replicas/{id})
+    const location = response.headers?.location || response.headers?.Location || response.headers?.['x-location'];
+    if (location && typeof location === 'string') {
+      try {
+        const m = location.match(/\/v1\/replicas\/(?:([^\/?#]+))/i) || location.match(/\/replicas\/(?:([^\/?#]+))/i) || location.match(/([^\/]+)\/?$/);
+        if (m && m[1]) resolvedId = m[1];
+      } catch (err) {
+        // ignore extraction errors
+      }
+
+      if (resolvedId) {
+        try {
+          const fetched = await sensayApi.get(`/v1/replicas/${resolvedId}`, { headers: sensayConfig.headers.base });
+          if (fetched?.data) raw = fetched.data;
+        } catch (err) {
+          logger?.warn?.('Failed to fetch replica by id from Location header', resolvedId, err.message) || console.warn('Failed to fetch replica by id', resolvedId, err?.message);
+        }
+      }
     }
 
-    logger?.info?.(`Created Sensay replica ${resolvedId} for owner ${replicaData.ownerID}`) || console.log('Created replica', resolvedId);
+    // 2) Try listing replicas for owner and find by slug or name if ownerID provided
+    if (!resolvedId && replicaData.ownerID) {
+      try {
+        const items = await listReplicas(replicaData.ownerID);
+        if (Array.isArray(items) && items.length) {
+          const match = items.find(it => (it.slug && replicaData.slug && it.slug === replicaData.slug) || (it.name && replicaData.name && it.name === replicaData.name));
+          if (match) {
+            resolvedId = match.id || match.uuid || match.replicaId || match._id || match._key;
+            if (resolvedId) raw = match;
+          }
+        }
+      } catch (err) {
+        logger?.debug?.('listReplicas fallback failed', err.message) || console.debug('listReplicas fallback failed', err?.message);
+      }
+    }
 
-    // Normalize return to always have .id
-    return { ...raw, id: resolvedId };
+    // 3) If still unresolved, return a provisional pending object rather than throwing so the UI can poll
+    if (!resolvedId) {
+      const pendingId = `pending_${Date.now()}`;
+      logger?.warn?.('Sensay createReplica did not return id; returning pending replica object', { owner: replicaData.ownerID, slug: replicaData.slug }) || console.warn('Replica created but no id returned from Sensay');
+      return { ...raw, id: pendingId, pending: true, message: 'Replica created but id missing from Sensay response; provisioning pending' };
+    }
+  }
+
+  logger?.info?.(`Created Sensay replica ${resolvedId} for owner ${replicaData.ownerID}`) || console.log('Created replica', resolvedId);
+
+  // Normalize return to always have .id
+  return { ...raw, id: resolvedId };
   } catch (error) {
     console.error('Error creating replica:', error.message);
     throw handleSensayError(error, 'Failed to create replica');
@@ -321,15 +378,8 @@ export const createKnowledgeBaseEntry = async (replicaUUID, entryData) => {
             .filter(Boolean)
         : [];
 
-      const primaryId = data.id
-        ?? data.knowledgeBaseID
-        ?? data.knowledgeBaseId
-        ?? (Array.isArray(data.entryIds) ? data.entryIds[0] : undefined)
-        ?? resultIds[0];
-
-      if (primaryId && !normalized.id) {
-        normalized.id = primaryId;
-      }
+      const primaryId = data.id ?? data.knowledgeBaseID ?? data.knowledgeBaseId ?? (Array.isArray(data.entryIds) ? data.entryIds[0] : undefined);
+      normalized.id = primaryId;
 
       if (resultIds.length && !normalized.entryIds) {
         normalized.entryIds = resultIds;
@@ -1407,5 +1457,39 @@ export const ensureSensayUser = async (userData) => {
   } catch (error) {
     logger?.error?.(`Failed to ensure Sensay user for ${userData.email}: ${error.message}`) || console.error('Failed to ensure Sensay user', error.message);
     throw error;
+  }
+};
+
+/**
+ * Best-effort lookup by email for cases where Sensay returns a 409 without an id.
+ * Some org-token endpoints may allow querying by email (not guaranteed by public docs).
+ * Returns user object or null if not found / not supported.
+ */
+export const tryFindUserByEmail = async (email) => {
+  if (!email) return null;
+  try {
+    // Optimistically try a query endpoint. If Sensay doesn't support this, it'll likely return 404/400/403.
+    const res = await sensayApi.get(`/v1/users`, {
+      headers: {
+        ...sensayConfig.headers.base,
+        'X-API-Version': '2025-03-25'
+      },
+      params: { email }
+    });
+
+    // If API returns a single user or a list, normalize.
+    const data = res.data || {};
+    if (!data) return null;
+
+    if (Array.isArray(data.items) && data.items.length) return data.items[0];
+    if (Array.isArray(data) && data.length) return data[0];
+    if (data.user) return data.user;
+    if (data.id) return data;
+
+    return null;
+  } catch (error) {
+    // Not all org tokens / API versions support this. Don't escalate - just return null.
+    logger?.debug?.('tryFindUserByEmail failed', error.response?.status, error.response?.data) || console.debug('tryFindUserByEmail failed', error?.message);
+    return null;
   }
 };
