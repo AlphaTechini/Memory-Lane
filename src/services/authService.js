@@ -642,8 +642,13 @@ class AuthService {
       const submittedOtp = String(otpCode).trim();
       const storedOtp = user.otpCode != null ? String(user.otpCode).trim() : '';
 
+      // Prepare normalized email for logging/lookups
+      const normalizedEmail = (user.email || '').toLowerCase();
+
       if (storedOtp !== submittedOtp) {
-        logger?.warn?.(`OTP mismatch for ${normalizedEmail}: stored='${storedOtp.replace(/./g, '*')}' submitted='${submittedOtp.replace(/./g, '*')}`) || console.warn('OTP mismatch', normalizedEmail);
+        // Mask OTPs safely even if empty
+        const mask = s => (s && s.length ? s.replace(/./g, '*') : '(none)');
+        logger?.warn?.(`OTP mismatch for ${normalizedEmail}: stored='${mask(storedOtp)}' submitted='${mask(submittedOtp)}'`) || console.warn('OTP mismatch for', normalizedEmail);
         return {
           success: false,
           message: 'Invalid OTP',
@@ -652,7 +657,6 @@ class AuthService {
       }
 
       // Patients must be associated with a caretaker before receiving access
-      const normalizedEmail = user.email.toLowerCase();
       if (user.role === 'patient') {
         let caretakerLink = null;
         try {
