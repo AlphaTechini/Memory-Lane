@@ -155,7 +155,10 @@
     <div class="w-full max-w-md">
       <!-- Header -->
       <div class="text-center mb-8">
+        <!-- Add your site logo at Frontend/Frontend/static/logo.png -->
+        <img src="/logo.png" alt="Memory Lane logo" class="mx-auto mb-4 h-14 w-auto" />
         <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Create Account</h2>
+        <p class="text-gray-600 dark:text-gray-400 mb-2">Memory Lane is a caregiver-curated reminiscence platform that turns family photos and notes into personalized, role-based conversational replicas so patients can revisit memories in a safe, familiar voice.</p>
         <p class="text-gray-600 dark:text-gray-400">Join Memory Lane and start building your digital replica</p>
       </div>
 
