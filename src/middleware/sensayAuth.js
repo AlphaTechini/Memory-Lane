@@ -1,4 +1,4 @@
-import { getCurrentSensayUser, ensureSensayUser } from '../services/sensayService.js';
+import { getCurrentSensayUser, ensureSensayUser as ensureSensayUserService } from '../services/sensayService.js';
 import logger from '../utils/logger.js';
 import User from '../models/User.js';
 
@@ -18,25 +18,25 @@ export const ensureSensayUser = (options = {}) => {
     skipSync = false
   } = options;
 
-  return async (req, res, next) => {
+  return async (request, reply) => {
     try {
       // Check if user is authenticated first
-      if (!req.user) {
-        return res.status(401).json({
+      if (!request.user) {
+        return reply.status(401).send({
           success: false,
           message: 'User authentication required'
         });
       }
 
-      const userId = req.user.id || req.user._id;
-      let user = req.user;
+      const userId = request.user.id || request.user._id;
+      let user = request.user;
 
       // If user object doesn't have sensayUserId, fetch from database
       if (!user.sensayUserId) {
         const dbUser = await User.findById(userId);
         if (dbUser) {
           user = dbUser;
-          req.user = dbUser; // Update req.user with complete data
+          request.user = dbUser; // Update request.user with complete data
         }
       }
 
@@ -44,7 +44,7 @@ export const ensureSensayUser = (options = {}) => {
       if (!user.sensayUserId) {
         if (!autoCreate) {
           if (required) {
-            return res.status(400).json({
+            return reply.status(400).send({
               success: false,
               message: 'Sensay user not linked for this account. Please contact support or retry later.',
               error: 'SENSAY_USER_NOT_LINKED',
@@ -52,8 +52,8 @@ export const ensureSensayUser = (options = {}) => {
             });
           } else {
             // Not required, continue without Sensay user
-            req.sensayUser = null;
-            return next();
+            request.sensayUser = null;
+            return ;
           }
         }
 
@@ -62,7 +62,7 @@ export const ensureSensayUser = (options = {}) => {
         
         try {
           const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
-          const sensayResult = await ensureSensayUser({
+          const sensayResult = await ensureSensayUserService({
             email: user.email,
             name: fullName || user.email.split('@')[0],
             id: userId.toString()
@@ -74,9 +74,9 @@ export const ensureSensayUser = (options = {}) => {
             user.sensayError = undefined; // Clear any previous errors
             await user.save();
 
-            // Update req.user
-            req.user.sensayUserId = sensayResult.user.id;
-            req.sensayUser = sensayResult.user;
+            // Update request.user
+            request.user.sensayUserId = sensayResult.user.id;
+            request.sensayUser = sensayResult.user;
 
             logger?.info?.(`Auto-created Sensay user ${sensayResult.user.id} for ${user.email}`) || console.log('Auto-created Sensay user');
           } else if (sensayResult.conflict) {
@@ -84,15 +84,15 @@ export const ensureSensayUser = (options = {}) => {
             logger?.warn?.(`Sensay user exists for ${user.email} but cannot be auto-linked`) || console.warn('Sensay user exists but cannot be auto-linked');
             
             if (required) {
-              return res.status(409).json({
+              return reply.status(409).send({
                 success: false,
                 message: 'Sensay user already exists for this email but cannot be automatically linked. Please contact support.',
                 error: 'SENSAY_USER_EXISTS_CANNOT_LINK',
                 suggestedAction: 'contact_support'
               });
             } else {
-              req.sensayUser = null;
-              return next();
+              request.sensayUser = null;
+              return ;
             }
           } else {
             throw new Error(sensayResult.message || 'Failed to create Sensay user');
@@ -113,15 +113,15 @@ export const ensureSensayUser = (options = {}) => {
           }
 
           if (required) {
-            return res.status(500).json({
+            return reply.status(500).send({
               success: false,
               message: 'Failed to create Sensay user. Please contact support or retry later.',
               error: 'SENSAY_USER_CREATION_FAILED',
               suggestedAction: 'retry_or_contact_support'
             });
           } else {
-            req.sensayUser = null;
-            return next();
+            request.sensayUser = null;
+            return ;
           }
         }
       } else {
@@ -138,7 +138,7 @@ export const ensureSensayUser = (options = {}) => {
                 logger?.info?.(`Recreating missing Sensay user for ${user.email}`) || console.log('Recreating missing Sensay user');
                 
                 const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
-                const sensayResult = await ensureSensayUser({
+                const sensayResult = await ensureSensayUserService({
                   email: user.email,
                   name: fullName || user.email.split('@')[0],
                   id: userId.toString()
@@ -147,53 +147,53 @@ export const ensureSensayUser = (options = {}) => {
                 if (sensayResult.success && sensayResult.user) {
                   user.sensayUserId = sensayResult.user.id;
                   await user.save();
-                  req.user.sensayUserId = sensayResult.user.id;
-                  req.sensayUser = sensayResult.user;
+                  request.user.sensayUserId = sensayResult.user.id;
+                  request.sensayUser = sensayResult.user;
                 } else {
                   throw new Error('Failed to recreate Sensay user');
                 }
               } else {
                 if (required) {
-                  return res.status(400).json({
+                  return reply.status(400).send({
                     success: false,
                     message: 'Sensay user not found. Please contact support.',
                     error: 'SENSAY_USER_NOT_FOUND',
                     suggestedAction: 'contact_support'
                   });
                 } else {
-                  req.sensayUser = null;
-                  return next();
+                  request.sensayUser = null;
+                  return ;
                 }
               }
             } else {
-              req.sensayUser = sensayUser;
+              request.sensayUser = sensayUser;
             }
           } catch (syncError) {
             logger?.warn?.(`Failed to verify Sensay user ${user.sensayUserId}: ${syncError.message}`) || console.warn('Failed to verify Sensay user', syncError.message);
             
             if (required) {
-              return res.status(500).json({
+              return reply.status(500).send({
                 success: false,
                 message: 'Failed to verify Sensay user. Please retry later.',
                 error: 'SENSAY_USER_VERIFICATION_FAILED',
                 suggestedAction: 'retry'
               });
             } else {
-              req.sensayUser = null;
-              return next();
+              request.sensayUser = null;
+              return ;
             }
           }
         } else {
           // Skip sync, just pass the sensayUserId
-          req.sensayUser = { id: user.sensayUserId };
+          request.sensayUser = { id: user.sensayUserId };
         }
       }
 
-      next();
+      ;
     } catch (error) {
       logger?.error?.(`Sensay user middleware error: ${error.message}`) || console.error('Sensay user middleware error', error.message);
       
-      return res.status(500).json({
+      return reply.status(500).send({
         success: false,
         message: 'Internal server error while processing Sensay user',
         error: 'SENSAY_MIDDLEWARE_ERROR'
@@ -206,29 +206,29 @@ export const ensureSensayUser = (options = {}) => {
  * Middleware to validate that the current user is properly linked to Sensay
  * This is a lighter-weight check that just verifies the link exists
  */
-export const validateSensayLink = async (req, res, next) => {
+export const validateSensayLink = async (request, reply) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({
+    if (!request.user) {
+      return reply.status(401).send({
         success: false,
         message: 'User authentication required'
       });
     }
 
-    const userId = req.user.id || req.user._id;
-    let user = req.user;
+    const userId = request.user.id || request.user._id;
+    let user = request.user;
 
     // If user object doesn't have sensayUserId, fetch from database
     if (!user.sensayUserId) {
       const dbUser = await User.findById(userId);
       if (dbUser) {
         user = dbUser;
-        req.user = dbUser;
+        request.user = dbUser;
       }
     }
 
     if (!user.sensayUserId) {
-      return res.status(400).json({
+      return reply.status(400).send({
         success: false,
         message: 'Sensay user not linked for this account. Please contact support or retry later.',
         error: 'SENSAY_USER_NOT_LINKED',
@@ -236,12 +236,12 @@ export const validateSensayLink = async (req, res, next) => {
       });
     }
 
-    req.sensayUserId = user.sensayUserId;
-    next();
+    request.sensayUserId = user.sensayUserId;
+    ;
   } catch (error) {
     logger?.error?.(`Sensay link validation error: ${error.message}`) || console.error('Sensay link validation error', error.message);
     
-    return res.status(500).json({
+    return reply.status(500).send({
       success: false,
       message: 'Internal server error while validating Sensay link',
       error: 'SENSAY_LINK_VALIDATION_ERROR'
@@ -253,46 +253,46 @@ export const validateSensayLink = async (req, res, next) => {
  * Middleware to add Sensay user information to the request if available
  * This doesn't require Sensay user but adds it if present
  */
-export const addSensayUser = async (req, res, next) => {
+export const addSensayUser = async (request, reply) => {
   try {
-    if (!req.user) {
-      return next();
+    if (!request.user) {
+      return ;
     }
 
-    const userId = req.user.id || req.user._id;
-    let user = req.user;
+    const userId = request.user.id || request.user._id;
+    let user = request.user;
 
     // If user object doesn't have sensayUserId, fetch from database
     if (!user.sensayUserId) {
       const dbUser = await User.findById(userId);
       if (dbUser && dbUser.sensayUserId) {
         user = dbUser;
-        req.user = dbUser;
+        request.user = dbUser;
       }
     }
 
     if (user.sensayUserId) {
       try {
         const sensayUser = await getCurrentSensayUser(user.sensayUserId);
-        req.sensayUser = sensayUser;
-        req.sensayUserId = user.sensayUserId;
+        request.sensayUser = sensayUser;
+        request.sensayUserId = user.sensayUserId;
       } catch (error) {
         logger?.warn?.(`Failed to fetch Sensay user ${user.sensayUserId}: ${error.message}`) || console.warn('Failed to fetch Sensay user');
-        req.sensayUser = null;
-        req.sensayUserId = user.sensayUserId;
+        request.sensayUser = null;
+        request.sensayUserId = user.sensayUserId;
       }
     } else {
-      req.sensayUser = null;
-      req.sensayUserId = null;
+      request.sensayUser = null;
+      request.sensayUserId = null;
     }
 
-    next();
+    ;
   } catch (error) {
     logger?.error?.(`Add Sensay user middleware error: ${error.message}`) || console.error('Add Sensay user middleware error', error.message);
     // Don't fail the request, just continue without Sensay user
-    req.sensayUser = null;
-    req.sensayUserId = null;
-    next();
+    request.sensayUser = null;
+    request.sensayUserId = null;
+    ;
   }
 };
 
