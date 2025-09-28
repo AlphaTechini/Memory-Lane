@@ -533,7 +533,16 @@ async function authRoutes(fastify, options) {
         user: userSafe
       });
     } catch (error) {
-      fastify.log.error('Get user error:', error);
+      // Log full stack and request context for easier debugging in production
+      fastify.log.error({
+        msg: 'Get user error',
+        errMessage: error?.message,
+        stack: error?.stack,
+        reqId: request.id,
+        route: 'auth/me',
+        userId: request.user?.id,
+        userEmail: request.user?.email
+      });
       reply.code(500).send({
         success: false,
         message: 'Internal server error',
