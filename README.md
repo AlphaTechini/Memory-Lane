@@ -127,7 +127,78 @@ Notes:
 - Unique constraints (e.g., `User.email`) are defined directly in the Prisma schema; keep the schema in version control and rerun `db push` whenever it changes.
 - Configure connection pooling (e.g., Fly's PgBouncer) for high-concurrency scenarios if needed.
 
-## 6. Data Models (Schemas)
+## 6. Enhanced Sensay User Management
+
+The platform now includes comprehensive Sensay user management that follows the official Sensay API documentation exactly. This ensures proper user creation, linking, and synchronization between the local database and Sensay's service.
+
+### Key Features
+- **Automatic User Creation**: When users sign up, a corresponding Sensay user is automatically created
+- **Proper Error Handling**: Handles all documented Sensay API response codes (400, 401, 404, 409, 415, 500)
+- **User Linking**: Links local users with their Sensay counterparts using `sensayUserId`
+- **Sync Functionality**: Keeps user data synchronized between local database and Sensay
+- **Middleware Protection**: Routes requiring Sensay functionality are protected with middleware
+- **Conflict Resolution**: Gracefully handles cases where users already exist in Sensay
+
+### Sensay API Integration
+The implementation includes functions for all documented Sensay user endpoints:
+
+| Function | Endpoint | Purpose |
+|----------|----------|---------|
+| `createSensayUser()` | `POST /v1/users` | Create new users in Sensay |
+| `getCurrentSensayUser()` | `GET /v1/users/me` | Get current user info |
+| `updateCurrentSensayUser()` | `PUT /v1/users/me` | Update user information |
+| `deleteCurrentSensayUser()` | `DELETE /v1/users/me` | Delete user account |
+| `getSensayUser()` | `GET /v1/users/{userID}` | Get user by ID |
+| `ensureSensayUser()` | Helper function | Create user or handle conflicts |
+| `syncUserWithSensay()` | Helper function | Sync local/remote user data |
+
+### Authentication Middleware
+Three new middleware functions protect Sensay-dependent routes:
+
+- **`ensureSensayUser()`**: Ensures user has valid Sensay account (creates if needed)
+- **`validateSensayLink()`**: Lightweight check that user is linked to Sensay
+- **`addSensayUser()`**: Optionally adds Sensay user info to request
+
+### API Endpoints
+New authentication endpoints for Sensay management:
+
+- `POST /auth/sync-sensay` - Sync user with Sensay service
+- `POST /auth/ensure-sensay` - Ensure user exists in Sensay
+- `GET /auth/sensay-status` - Get user's Sensay connection status
+
+### Error Handling
+The implementation properly handles all documented error scenarios:
+- **409 Conflict**: User already exists (graceful conflict resolution)
+- **400 Bad Request**: Invalid input data with specific error messages
+- **401 Unauthorized**: API credential issues
+- **404 Not Found**: User doesn't exist
+- **500 Internal Server Error**: Sensay service issues
+
+### Usage Example
+```javascript
+import { ensureSensayUser } from '../services/sensayService.js';
+
+// Create or find existing Sensay user
+const result = await ensureSensayUser({
+  email: 'user@example.com',
+  name: 'John Doe',
+  id: 'preferred-user-id'
+});
+
+if (result.success) {
+  console.log('User ready:', result.user.id);
+} else if (result.conflict) {
+  console.log('User exists but cannot be auto-linked');
+}
+```
+
+### Testing
+Run the test suite to verify Sensay integration:
+```bash
+node test-sensay-users.js
+```
+
+## 7. Data Models (Schemas)
 ### User (Caretaker)
 Key fields:
 ```

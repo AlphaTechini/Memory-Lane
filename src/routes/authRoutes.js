@@ -844,6 +844,145 @@ async function authRoutes(fastify, options) {
       });
     }
   });
+
+  // Sync user with Sensay
+  fastify.post('/sync-sensay', {
+    preHandler: [authenticateToken],
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+            sensayUser: { type: 'object' }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    try {
+      const userId = request.user.id || request.user._id;
+      const syncResult = await authService.syncUserWithSensay(userId);
+      
+      if (syncResult.success) {
+        reply.code(200).send({
+          success: true,
+          message: syncResult.message,
+          sensayUser: syncResult.sensayUser
+        });
+      } else {
+        reply.code(400).send({
+          success: false,
+          message: syncResult.message,
+          error: syncResult.error
+        });
+      }
+    } catch (error) {
+      fastify.log.error(`Error syncing user with Sensay:`, error);
+      reply.code(500).send({
+        success: false,
+        message: 'Failed to sync with Sensay',
+        errors: [error.message]
+      });
+    }
+  });
+
+  // Ensure user exists in Sensay (create if missing)
+  fastify.post('/ensure-sensay', {
+    preHandler: [authenticateToken],
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+            sensayUserId: { type: 'string' },
+            created: { type: 'boolean' }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    try {
+      const userId = request.user.id || request.user._id;
+      const result = await authService.ensureUserInSensay(userId);
+      
+      reply.code(200).send(result);
+    } catch (error) {
+      fastify.log.error(`Error ensuring user in Sensay:`, error);
+      reply.code(500).send({
+        success: false,
+        message: 'Failed to ensure user exists in Sensay',
+        errors: [error.message]
+      });
+    }
+  });
+
+  // Get user's Sensay status
+  fastify.get('/sensay-status', {
+    preHandler: [authenticateToken],
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            hasConnection: { type: 'boolean' },
+            sensayUserId: { type: ['string', 'null'] },
+            lastSync: { type: ['string', 'null'] },
+            error: { type: ['object', 'null'] }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    try {
+      const userId = request.user.id || request.user._id;
+      const User = (await import('../models/User.js')).default;
+      const user = await User.findById(userId);
+      
+      if (!user) {
+        reply.code(404).send({
+          success: false,
+          message: 'User not found'
+        });
+        return;
+      }
+
+      const hasConnection = Boolean(user.sensayUserId);
+      const response = {
+        success: true,
+        hasConnection,
+        sensayUserId: user.sensayUserId || null,
+        lastSync: user.updatedAt ? user.updatedAt.toISOString() : null,
+        error: user.sensayError || null
+      };
+
+      // If user has sensayUserId, try to verify it exists
+      if (hasConnection) {
+        try {
+          const { getCurrentSensayUser } = await import('../services/sensayService.js');
+          const sensayUser = await getCurrentSensayUser(user.sensayUserId);
+          response.verified = Boolean(sensayUser);
+          response.sensayUserData = sensayUser;
+        } catch (verifyError) {
+          response.verified = false;
+          response.verificationError = verifyError.message;
+        }
+      }
+
+      reply.code(200).send(response);
+    } catch (error) {
+      fastify.log.error(`Error getting Sensay status:`, error);
+      reply.code(500).send({
+        success: false,
+        message: 'Failed to get Sensay status',
+        errors: [error.message]
+      });
+    }
+  });
 }
 
 export default authRoutes;

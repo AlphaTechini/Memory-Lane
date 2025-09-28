@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import validator from 'validator';
 import emailService from './emailService.js';
-import { createSensayUser } from './sensayService.js';
+import { createSensayUser, ensureSensayUser, syncUserWithSensay } from './sensayService.js';
 import logger from '../utils/logger.js';
 
 // JWT secret - in production, use environment variable
@@ -218,77 +218,41 @@ class AuthService {
   const savedUser = await newUser.save();
   console.log(`[signup] created new user ${savedUser._id} (${savedUser.email})`);
 
-      // Attempt to create corresponding Sensay user with retry logic
-      const createSensayUserWithRetry = async (retries = 3) => {
-        for (let attempt = 1; attempt <= retries; attempt++) {
-          try {
-            const fullName = (firstName || lastName) ? `${firstName || ''} ${lastName || ''}`.trim() : email.split('@')[0];
-            logger?.info?.(`Attempting to create Sensay user for ${savedUser.email} (attempt ${attempt}/${retries})`) || console.log(`Creating Sensay user attempt ${attempt}`);
-            
-            const sensayResp = await createSensayUser({ email: savedUser.email, name: fullName });
-            
-            if (sensayResp && sensayResp.id) {
-              savedUser.sensayUserId = sensayResp.id;
-              await savedUser.save();
-              logger?.info?.(`Successfully linked Sensay user ${sensayResp.id} to local user ${savedUser._id}`) || console.log('Linked Sensay user', sensayResp.id);
-              return true;
-            } else if (sensayResp?.conflict) {
-              // Handle conflict - try to find existing Sensay user
-              logger?.warn?.(`Sensay user already exists for ${savedUser.email}, attempting to resolve conflict`) || console.warn('Sensay user conflict, resolving...');
-              
-              try {
-                // Try to get the existing user from Sensay API by email
-                const { findSensayUserByEmail } = await import('./sensayService.js');
-                const existingSensayUser = await findSensayUserByEmail(savedUser.email);
-                
-                if (existingSensayUser && existingSensayUser.id) {
-                  // Found existing user, link it
-                  savedUser.sensayUserId = existingSensayUser.id;
-                  await savedUser.save();
-                  logger?.info?.(`Successfully linked existing Sensay user ${existingSensayUser.id} to local user ${savedUser._id}`) || console.log('Linked existing Sensay user', existingSensayUser.id);
-                  return true;
-                } else {
-                  logger?.warn?.(`Could not find existing Sensay user for ${savedUser.email} despite conflict response`) || console.warn('Could not find existing Sensay user despite conflict');
-                  return false;
-                }
-              } catch (conflictErr) {
-                logger?.warn?.(`Failed to resolve Sensay user conflict for ${savedUser.email}: ${conflictErr.message}`) || console.warn('Failed to resolve conflict');
-                return false;
-              }
-            }
-            
-            logger?.warn?.(`Sensay user creation returned unexpected response for ${savedUser.email}:`, sensayResp) || console.warn('Unexpected Sensay response');
-            return false;
-            
-          } catch (sensayErr) {
-            logger?.warn?.(`Sensay user creation attempt ${attempt}/${retries} failed for ${email}: ${sensayErr.message}`) || console.warn(`Sensay creation attempt ${attempt} failed:`, sensayErr.message);
-            
-            if (attempt === retries) {
-              logger?.error?.(`All ${retries} attempts to create Sensay user failed for ${email}. User will need manual linking.`) || console.error('All Sensay user creation attempts failed');
-              return false;
-            }
-            
-            // Wait before retry (exponential backoff)
-            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
-          }
+      // Create corresponding Sensay user using enhanced service
+      try {
+        const fullName = (firstName || lastName) ? `${firstName || ''} ${lastName || ''}`.trim() : email.split('@')[0];
+        logger?.info?.(`Creating Sensay user for ${savedUser.email}`) || console.log('Creating Sensay user');
+        
+        const sensayResult = await ensureSensayUser({ 
+          email: savedUser.email, 
+          name: fullName,
+          id: savedUser._id.toString() // Try to use local user ID if possible
+        });
+        
+        if (sensayResult.success && sensayResult.user) {
+          savedUser.sensayUserId = sensayResult.user.id;
+          await savedUser.save();
+          
+          const action = sensayResult.created ? 'Created and linked' : 'Linked existing';
+          logger?.info?.(`${action} Sensay user ${sensayResult.user.id} to local user ${savedUser._id}`) || console.log(`${action} Sensay user`, sensayResult.user.id);
+        } else {
+          throw new Error(sensayResult.message || 'Failed to ensure Sensay user');
         }
-        return false;
-      };
-      
-      const sensaySuccess = await createSensayUserWithRetry();
-      if (!sensaySuccess) {
-        // Persist a troubleshooting field on the user so we can inspect failures later
+        
+      } catch (sensayErr) {
+        // Persist troubleshooting information
         try {
-          savedUser.sensayError = savedUser.sensayError || {};
-          savedUser.sensayError.createdAt = new Date();
-          savedUser.sensayError.message = 'Sensay user creation failed after retries';
+          savedUser.sensayError = {
+            createdAt: new Date(),
+            message: sensayErr.message || 'Sensay user creation failed',
+            lastAttempt: new Date()
+          };
           await savedUser.save();
         } catch (persistErr) {
-          // Non-fatal but log so we can surface any DB save issues
           logger?.warn?.(`Failed to persist sensayError for user ${savedUser._id}: ${persistErr.message}`) || console.warn('Failed to persist sensayError', persistErr.message);
         }
 
-        logger?.error?.(`CRITICAL: User ${savedUser._id} (${savedUser.email}) created without Sensay user ID. Replica creation will fail until manually resolved.`) || console.error('CRITICAL: User created without Sensay ID');
+        logger?.error?.(`CRITICAL: User ${savedUser._id} (${savedUser.email}) created without Sensay user ID. Error: ${sensayErr.message}`) || console.error('CRITICAL: User created without Sensay ID', sensayErr.message);
       }
 
       // Generate and send OTP for email verification
@@ -876,8 +840,137 @@ class AuthService {
         throw new Error('User not found');
       }
 
+      // Sync with Sensay if user has sensayUserId
+      if (user.sensayUserId) {
+        try {
+          await syncUserWithSensay(user);
+          logger?.info?.(`Synced user profile updates with Sensay for user ${userId}`) || console.log('Synced profile updates with Sensay');
+        } catch (syncError) {
+          logger?.warn?.(`Failed to sync profile updates with Sensay for user ${userId}: ${syncError.message}`) || console.warn('Failed to sync profile updates with Sensay', syncError.message);
+          // Don't fail the update if Sensay sync fails
+        }
+      }
+
       return user;
     } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Sync user with Sensay service
+   * @param {String} userId - User ID
+   * @returns {Object} Sync result
+   */
+  async syncUserWithSensay(userId) {
+    try {
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+
+      const user = await User.findById(userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      const syncResult = await syncUserWithSensay(user);
+      
+      if (syncResult.success) {
+        logger?.info?.(`Successfully synced user ${userId} with Sensay`) || console.log('Successfully synced user with Sensay');
+      } else {
+        logger?.warn?.(`Failed to sync user ${userId} with Sensay: ${syncResult.message}`) || console.warn('Failed to sync user with Sensay', syncResult.message);
+      }
+
+      return syncResult;
+    } catch (error) {
+      logger?.error?.(`Error syncing user ${userId} with Sensay: ${error.message}`) || console.error('Error syncing user with Sensay', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Ensure user exists in Sensay (create if missing)
+   * @param {String} userId - User ID
+   * @returns {Object} Result of ensuring user exists in Sensay
+   */
+  async ensureUserInSensay(userId) {
+    try {
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+
+      const user = await User.findById(userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // If user already has sensayUserId, verify it exists
+      if (user.sensayUserId) {
+        try {
+          const syncResult = await syncUserWithSensay(user);
+          if (syncResult.success) {
+            return { success: true, message: 'User already exists in Sensay', sensayUserId: user.sensayUserId };
+          }
+        } catch (syncError) {
+          logger?.warn?.(`Existing Sensay user ${user.sensayUserId} may not be valid, attempting to recreate`) || console.warn('Existing Sensay user may not be valid');
+        }
+      }
+
+      // Create or ensure user exists in Sensay
+      const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+      const sensayResult = await ensureSensayUser({
+        email: user.email,
+        name: fullName || user.email.split('@')[0],
+        id: user._id.toString()
+      });
+
+      if (sensayResult.success && sensayResult.user) {
+        // Update local user with Sensay ID
+        user.sensayUserId = sensayResult.user.id;
+        user.sensayError = undefined; // Clear any previous errors
+        await user.save();
+
+        const action = sensayResult.created ? 'Created new' : 'Linked existing';
+        logger?.info?.(`${action} Sensay user ${sensayResult.user.id} for local user ${userId}`) || console.log(`${action} Sensay user`, sensayResult.user.id);
+
+        return {
+          success: true,
+          message: `${action} Sensay user successfully`,
+          sensayUserId: sensayResult.user.id,
+          created: sensayResult.created
+        };
+      } else if (sensayResult.conflict) {
+        // User exists in Sensay but cannot be automatically linked
+        logger?.warn?.(`Sensay user exists for ${user.email} but cannot be auto-linked`) || console.warn('Sensay user exists but cannot be auto-linked');
+        
+        return {
+          success: false,
+          message: 'Sensay user already exists for this email but cannot be automatically linked. Manual intervention required.',
+          conflict: true,
+          requiresManualLinking: true
+        };
+      } else {
+        throw new Error(sensayResult.message || 'Failed to ensure user in Sensay');
+      }
+
+    } catch (error) {
+      logger?.error?.(`Error ensuring user ${userId} exists in Sensay: ${error.message}`) || console.error('Error ensuring user exists in Sensay', error.message);
+      
+      // Update user with error information
+      try {
+        const user = await User.findById(userId);
+        if (user) {
+          user.sensayError = {
+            createdAt: new Date(),
+            message: error.message,
+            lastAttempt: new Date()
+          };
+          await user.save();
+        }
+      } catch (persistErr) {
+        logger?.warn?.(`Failed to persist Sensay error for user ${userId}`) || console.warn('Failed to persist Sensay error');
+      }
+
       throw error;
     }
   }

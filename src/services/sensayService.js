@@ -13,26 +13,59 @@ const sensayApi = axios.create({
 });
 
 /**
- * Create a Sensay user (per-user ownership)\n * @param {Object} params
- * @param {string} params.email
- * @param {string} params.name
- * @param {string} [params.id] optional specific id to request
- * @returns {Promise<Object>} { id, email, name } or { conflict: true, existing?: any }
+ * Create a Sensay user according to API documentation
+ * POST /v1/users
+ * @param {Object} params
+ * @param {string} params.email - Email address (required)
+ * @param {string} [params.name] - User name (max 50 chars, pattern: ^[a-zA-Z0-9\s().,'\-/]*$)
+ * @param {string} [params.id] - Optional specific ID to request
+ * @param {Array} [params.linkedAccounts] - Array of linked account objects
+ * @returns {Promise<Object>} { id, email, name, linkedAccounts, success: true } or { conflict: true, error }
  */
-export const createSensayUser = async ({ email, name, id }) => {
+export const createSensayUser = async ({ email, name, id, linkedAccounts }) => {
   try {
-    // Ensure name meets Sensay constraints (<=50 chars, allowed pattern)
-    const trimmedName = (name || '').substring(0, 50);
-    const namePattern = /^[a-zA-Z0-9\s().,'\-/]*$/;
-    const safeName = namePattern.test(trimmedName) ? trimmedName : trimmedName.replace(/[^a-zA-Z0-9\s().,'\-/]/g, '').trim();
-    const body = { email, name: safeName };
+    if (!email) {
+      throw new Error('Email is required for user creation');
+    }
+
+    // Prepare request body according to API docs
+    const body = { email };
+    
+    // Validate and add name if provided (max 50 chars, specific pattern)
+    if (name) {
+      const trimmedName = name.substring(0, 50);
+      const namePattern = /^[a-zA-Z0-9\s().,'\-/]*$/;
+      if (namePattern.test(trimmedName)) {
+        body.name = trimmedName;
+      } else {
+        // Clean name to match pattern
+        body.name = trimmedName.replace(/[^a-zA-Z0-9\s().,'\-/]/g, '').trim();
+      }
+    }
+    
+    // Add optional fields
     if (id) body.id = id;
-    const res = await sensayApi.post('/v1/users', body, { headers: sensayConfig.headers.base });
-    logger?.info?.(`Created Sensay user ${res.data.id} for ${email}`) || console.log('Created Sensay user', res.data.id);
-    return res.data;
+    if (linkedAccounts && Array.isArray(linkedAccounts)) {
+      body.linkedAccounts = linkedAccounts;
+    }
+
+    const res = await sensayApi.post('/v1/users', body, { 
+      headers: {
+        ...sensayConfig.headers.base,
+        'X-API-Version': '2025-03-25'
+      }
+    });
+    
+    // API returns 200 with { success: true, id, email, name, linkedAccounts }
+    if (res.data && res.data.success && res.data.id) {
+      logger?.info?.(`Created Sensay user ${res.data.id} for ${email}`) || console.log('Created Sensay user', res.data.id);
+      return res.data;
+    } else {
+      throw new Error('Invalid response format from Sensay API');
+    }
   } catch (error) {
     if (error.response?.status === 409) {
-      // Conflict – user already exists. Return indicator instead of throwing.
+      // 409: User, email, or linked account already exists
       logger?.warn?.(`Sensay user already exists for ${email}`) || console.warn('Sensay user conflict', email);
       return { conflict: true, error: error.response.data };
     }
@@ -77,13 +110,25 @@ export const listReplicas = async (ownerID) => {
 };
 
 /**
- * Fetch a Sensay user by id
- * @param {string} userId
- * @returns {Promise<Object|null>} null if 404
+ * Get a user by ID using organization service token
+ * GET /v1/users/{userID}
+ * @param {string} userId - User ID (minimum length 1)
+ * @returns {Promise<Object|null>} User object or null if not found
  */
 export const getSensayUser = async (userId) => {
   try {
-    const res = await sensayApi.get(`/v1/users/${userId}`, { headers: sensayConfig.headers.base });
+    if (!userId || userId.length < 1) {
+      throw new Error('userId is required and must have minimum length of 1');
+    }
+
+    const res = await sensayApi.get(`/v1/users/${userId}`, { 
+      headers: {
+        ...sensayConfig.headers.base,
+        'X-API-Version': '2025-03-25'
+      }
+    });
+    
+    // API returns { success: true, id, email, name, linkedAccounts }
     return res.data;
   } catch (error) {
     if (error.response?.status === 404) {
@@ -93,34 +138,9 @@ export const getSensayUser = async (userId) => {
   }
 };
 
-/**
- * Search for Sensay users by email
- * @param {string} email
- * @returns {Promise<Object|null>} User object if found, null if not found
- */
-export const findSensayUserByEmail = async (email) => {
-  try {
-    // Try to list users and find by email - this may need to be adjusted based on actual Sensay API
-    const res = await sensayApi.get('/v1/users', { 
-      headers: sensayConfig.headers.base,
-      params: { email } // Assuming the API supports email search
-    });
-    
-    if (res.data && Array.isArray(res.data)) {
-      return res.data.find(user => user.email === email) || null;
-    } else if (res.data && res.data.email === email) {
-      return res.data;
-    }
-    
-    return null;
-  } catch (error) {
-    if (error.response?.status === 404) {
-      return null;
-    }
-    logger?.warn?.(`Failed to search Sensay user by email ${email}: ${error.message}`) || console.warn('Failed to search Sensay user', error.message);
-    return null; // Return null instead of throwing to allow fallback
-  }
-};
+// Note: The Sensay API does not provide a user search/listing endpoint.
+// User lookup can only be done by specific user ID via GET /v1/users/{userID}
+// or via the authenticated user endpoint GET /v1/users/me
 
 /**
  * Creates a new replica in Sensay
@@ -180,7 +200,8 @@ export const createReplica = async (replicaData) => {
 
 /**
  * Creates a new knowledge base entry for a replica based on text, file, URL, or YouTube Videos
- * @param {string} replicaId - The replica UUID to train
+ * POST /v1/replicas/{replicaUUID}/knowledge-base
+ * @param {string} replicaUUID - The replica UUID to train
  * @param {Object} entryData - Knowledge base entry data
  * @param {string} [entryData.title] - Title for this knowledge base entry
  * @param {string} [entryData.url] - A public URL to an HTML page or YouTube video to ingest
@@ -189,8 +210,8 @@ export const createReplica = async (replicaData) => {
  * @param {string} [entryData.filename] - The name of the file to upload
  * @returns {Promise<Object>} Created KB entry response with 207 status
  */
-export const createKnowledgeBaseEntry = async (replicaId, entryData) => {
-  console.log(`🔍 Creating KB entry for replica ${replicaId} with data:`, JSON.stringify(entryData, null, 2));
+export const createKnowledgeBaseEntry = async (replicaUUID, entryData) => {
+  console.log(`🔍 Creating KB entry for replica ${replicaUUID} with data:`, JSON.stringify(entryData, null, 2));
   console.log(`🔍 Using headers:`, JSON.stringify(sensayConfig.headers.base, null, 2));
   
   // Return a mock success response if we're in development and the API isn't fully configured
@@ -207,7 +228,7 @@ export const createKnowledgeBaseEntry = async (replicaId, entryData) => {
     };
   }
   
-  const url = `/v1/replicas/${replicaId}/knowledge-base`;
+  const url = `/v1/replicas/${replicaUUID}/knowledge-base`;
   console.log(`🔍 Creating KB entry at: ${sensayConfig.baseUrl}${url}`);
   
   // Prepare the request body according to the new API specification
@@ -286,7 +307,7 @@ export const createKnowledgeBaseEntry = async (replicaId, entryData) => {
     }
     
     if (error.response?.status === 404) {
-      console.warn(`⚠️ Knowledge base endpoint returned 404 for replica ${replicaId}`);
+      console.warn(`⚠️ Knowledge base endpoint returned 404 for replica ${replicaUUID}`);
       console.warn(`   - The replica doesn't exist in the Sensay system`);
       console.warn(`   - The API credentials are incorrect`);
       console.warn(`   - The replica UUID format is wrong`);
@@ -320,15 +341,17 @@ export const createKnowledgeBaseEntry = async (replicaId, entryData) => {
 
 /**
  * Updates a knowledge base entry with raw text content
+ * PUT /v1/replicas/{replicaUUID}/knowledge-base/{id}
+ * @param {string} replicaUUID - The replica UUID
  * @param {string} entryId - The KB entry ID
  * @param {string} rawText - The text content to add
  * @returns {Promise<Object>} Updated KB entry object
  */
-export const updateKnowledgeBaseWithText = async (replicaId, entryId, rawText) => {
-  if (!replicaId) throw new Error('replicaId required');
-  if (!entryId) throw new Error('entryId required');
+export const updateKnowledgeBaseWithText = async (replicaUUID, entryId, rawText) => {
+  if (!replicaUUID) throw new Error('replicaUUID is required');
+  if (!entryId) throw new Error('entryId is required');
   try {
-    const url = `/v1/replicas/${replicaId}/knowledge-base/${entryId}`;
+    const url = `/v1/replicas/${replicaUUID}/knowledge-base/${entryId}`;
     const response = await sensayApi.put(
       url,
       { rawText },
@@ -344,12 +367,13 @@ export const updateKnowledgeBaseWithText = async (replicaId, entryId, rawText) =
 
 /**
  * Gets the status of a knowledge base entry
- * @param {string} replicaId - The replica ID
+ * GET /v1/replicas/{replicaUUID}/knowledge-base/{id}
+ * @param {string} replicaUUID - The replica UUID
  * @param {string} knowledgeBaseID - The knowledge base entry ID
  * @returns {Promise<Object>} KB entry status and details
  */
-export const getKnowledgeBaseEntryStatus = async (replicaId, knowledgeBaseID) => {
-  console.log(`🔍 Checking KB entry status for replica ${replicaId}, entry ${knowledgeBaseID}`);
+export const getKnowledgeBaseEntryStatus = async (replicaUUID, knowledgeBaseID) => {
+  console.log(`🔍 Checking KB entry status for replica ${replicaUUID}, entry ${knowledgeBaseID}`);
   
   // Skip for mock entries
   if (String(knowledgeBaseID).startsWith('mock_kb_') || String(knowledgeBaseID).startsWith('temp_kb_')) {
@@ -362,7 +386,7 @@ export const getKnowledgeBaseEntryStatus = async (replicaId, knowledgeBaseID) =>
     };
   }
   
-  const url = `/v1/replicas/${replicaId}/knowledge-base/${knowledgeBaseID}`;
+  const url = `/v1/replicas/${replicaUUID}/knowledge-base/${knowledgeBaseID}`;
   console.log(`🔍 Checking status at: ${sensayConfig.baseUrl}${url}`);
   
   try {
@@ -400,21 +424,22 @@ export const getKnowledgeBaseEntryStatus = async (replicaId, knowledgeBaseID) =>
 
 /**
  * Get detailed information about a specific knowledge base entry
- * @param {string} replicaId - The replica UUID
+ * GET /v1/replicas/{replicaUUID}/knowledge-base/{id}
+ * @param {string} replicaUUID - The replica UUID
  * @param {string|number} entryId - The knowledge base entry ID
  * @returns {Promise<Object>} Complete KB entry details including type, status, content, and metadata
  */
-export const getKnowledgeBaseEntry = async (replicaId, entryId) => {
-  if (!replicaId) throw new Error('replicaId required');
-  if (!entryId) throw new Error('entryId required');
+export const getKnowledgeBaseEntry = async (replicaUUID, entryId) => {
+  if (!replicaUUID) throw new Error('replicaUUID is required');
+  if (!entryId) throw new Error('entryId is required');
   
-  console.log(`🔍 Fetching KB entry for replica ${replicaId}, entry ${entryId}`);
+  console.log(`🔍 Fetching KB entry for replica ${replicaUUID}, entry ${entryId}`);
   
   if (!sensayConfig.isProperlyConfigured()) {
     console.log(`⚠️ Knowledge base retrieval skipped - Sensay API not properly configured`);
     return { 
       id: entryId,
-      replicaUUID: replicaId,
+      replicaUUID: replicaUUID,
       type: 'text',
       status: 'READY',
       success: true,
@@ -432,7 +457,7 @@ export const getKnowledgeBaseEntry = async (replicaId, entryId) => {
     console.log(`⚠️ Returning mock data for mock/temp entry: ${entryId}`);
     return { 
       id: entryId,
-      replicaUUID: replicaId,
+      replicaUUID: replicaUUID,
       type: 'text',
       status: 'READY',
       success: true,
@@ -453,7 +478,7 @@ export const getKnowledgeBaseEntry = async (replicaId, entryId) => {
     };
   }
 
-  const url = `/v1/replicas/${replicaId}/knowledge-base/${entryId}`;
+  const url = `/v1/replicas/${replicaUUID}/knowledge-base/${entryId}`;
   console.log(`🔍 Fetching KB entry at: ${sensayConfig.baseUrl}${url}`);
 
   try {
@@ -554,20 +579,20 @@ export const uploadFileToSignedUrl = async (signedUrl, fileBuffer, contentType) 
 
 /**
  * Polls a knowledge base entry until it's ready or times out
- * @param {string} replicaId - The replica ID
+ * @param {string} replicaUUID - The replica UUID
  * @param {string} knowledgeBaseID - The KB entry ID
  * @param {number} maxAttempts - Maximum polling attempts (default: 60)
  * @param {number} intervalMs - Polling interval in milliseconds (default: 5000)
  * @returns {Promise<Object>} Final KB entry status
  */
-export const pollKnowledgeBaseEntryStatus = async (replicaId, knowledgeBaseID, maxAttempts = 60, intervalMs = 5000) => {
+export const pollKnowledgeBaseEntryStatus = async (replicaUUID, knowledgeBaseID, maxAttempts = 60, intervalMs = 5000) => {
   let attempts = 0;
   
-  console.log(`🔍 Starting to poll KB entry status for replica ${replicaId}, entry ${knowledgeBaseID}`);
+  console.log(`🔍 Starting to poll KB entry status for replica ${replicaUUID}, entry ${knowledgeBaseID}`);
   
   while (attempts < maxAttempts) {
     try {
-      const status = await getKnowledgeBaseEntryStatus(replicaId, knowledgeBaseID);
+      const status = await getKnowledgeBaseEntryStatus(replicaUUID, knowledgeBaseID);
       
       console.log(`📊 Poll attempt ${attempts + 1}/${maxAttempts}: Status = ${status.status}`);
       
@@ -599,16 +624,17 @@ export const pollKnowledgeBaseEntryStatus = async (replicaId, knowledgeBaseID, m
 
 /**
  * Sends a chat message to a replica
- * @param {string} replicaId - The replica ID
+ * POST /v1/replicas/{replicaUUID}/chat/completions
+ * @param {string} replicaUUID - The replica UUID
  * @param {string} message - The message to send
  * @param {string} userId - The user ID for authentication
  * @param {Array} [context=[]] - Conversation context
  * @param {boolean} [streaming=false] - Whether to use streaming response
  * @returns {Promise<Object>} Chat response
  */
-export const sendChatMessage = async (replicaId, message, userId, context = [], streaming = false) => {
+export const sendChatMessage = async (replicaUUID, message, userId, context = [], streaming = false) => {
   try {
-    const endpoint = sensayConfig.endpoints.chat.replace('{replicaId}', replicaId);
+    const endpoint = sensayConfig.endpoints.chat.replace('{replicaId}', replicaUUID);
     const headers = streaming 
       ? sensayConfig.headers.streaming(userId)
       : sensayConfig.headers.withUser(userId);
@@ -625,7 +651,7 @@ export const sendChatMessage = async (replicaId, message, userId, context = [], 
 
     // If we have context, we might need to format it differently
     // The API docs don't show how to send prior context, so we'll rely on chat history
-    console.log(`Sending chat message to replica ${replicaId}:`, { 
+    console.log(`Sending chat message to replica ${replicaUUID}:`, { 
       message: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
       streaming,
       endpoint 
@@ -655,7 +681,7 @@ export const sendChatMessage = async (replicaId, message, userId, context = [], 
 
 /**
  * Complete training workflow: create entry, add content, poll for completion
- * @param {string} replicaId - The replica ID
+ * @param {string} replicaUUID - The replica UUID
  * @param {Object} trainingData - Training data
  * @param {string} trainingData.title - Title for the KB entry
  * @param {string} [trainingData.description] - Description
@@ -663,7 +689,7 @@ export const sendChatMessage = async (replicaId, message, userId, context = [], 
  * @param {Object} [trainingData.file] - File data {buffer, filename, contentType}
  * @returns {Promise<Object>} Final training result
  */
-export const trainReplica = async (replicaId, trainingData) => {
+export const trainReplica = async (replicaUUID, trainingData) => {
   try {
     // 1. Create KB entry
     console.log('Creating knowledge base entry...');
@@ -684,14 +710,14 @@ export const trainReplica = async (replicaId, trainingData) => {
 
         textIncludedInCreate = Boolean(createPayload.text);
 
-        kbEntry = await createKnowledgeBaseEntry(replicaId, createPayload);
+        kbEntry = await createKnowledgeBaseEntry(replicaUUID, createPayload);
         break;
       } catch (err) {
         lastErr = err;
         const msg = err.message?.toLowerCase() || '';
         if (msg.includes('not found')) {
           attempts++;
-          console.warn(`KB create 404 for replica ${replicaId} (attempt ${attempts}) waiting 1s`);
+          console.warn(`KB create 404 for replica ${replicaUUID} (attempt ${attempts}) waiting 1s`);
           await new Promise(r => setTimeout(r, 1000));
           continue;
         }
@@ -712,7 +738,7 @@ export const trainReplica = async (replicaId, trainingData) => {
         console.log('Raw text was provided during create; skipping separate update');
       } else {
         console.log('Adding raw text to KB entry (update)...');
-        await updateKnowledgeBaseWithText(replicaId, entryId, trainingData.rawText);
+        await updateKnowledgeBaseWithText(replicaUUID, entryId, trainingData.rawText);
       }
     } else if (trainingData.file) {
       console.log('Uploading file to KB entry...');
@@ -733,7 +759,7 @@ export const trainReplica = async (replicaId, trainingData) => {
 
     // 3. Poll for completion
     console.log('Polling for training completion...');
-    const finalStatus = await pollKnowledgeBaseEntryStatus(replicaId, entryId);
+    const finalStatus = await pollKnowledgeBaseEntryStatus(replicaUUID, entryId);
     
     console.log('Training completed successfully');
     return finalStatus;
@@ -786,13 +812,13 @@ const handleSensayError = (error, message) => {
 };
 
 /**
- * Poll Sensay for replica availability (GET /v1/replicas/:id)
+ * Poll Sensay for replica availability (GET /v1/replicas/{replicaUUID})
  * Some downstream endpoints (KB) may 404 briefly right after creation.
  */
-export const waitForReplicaAvailable = async (replicaId, maxAttempts = 5, delayMs = 1000) => {
+export const waitForReplicaAvailable = async (replicaUUID, maxAttempts = 5, delayMs = 1000) => {
   for (let i = 0; i < maxAttempts; i++) {
     try {
-      const res = await sensayApi.get(`/v1/replicas/${replicaId}`, { headers: sensayConfig.headers.base });
+      const res = await sensayApi.get(`/v1/replicas/${replicaUUID}`, { headers: sensayConfig.headers.base });
       if (res.status >= 200 && res.status < 300) return res.data;
     } catch (err) {
       // Ignore 404/5xx until attempts exhausted
@@ -803,50 +829,154 @@ export const waitForReplicaAvailable = async (replicaId, maxAttempts = 5, delayM
 };
 
 /**
- * List knowledge base entries for a replica using the official API endpoint
- * @param {string} replicaId - The replica UUID
- * @param {Object} options - Query options (status, type, search, etc.)
- * @returns {Promise<Object>} KB entries with pagination info
+ * List all knowledge base entries belonging to a replica
+ * GET /v1/replicas/{replicaUUID}/knowledge-base
+ * @param {string} replicaUUID - The replica unique identifier (UUID)
+ * @param {Object} options - Query options
+ * @param {Array<string>|string} [options.status] - Filter by processing statuses (NEW, FILE_UPLOADED, RAW_TEXT, PROCESSED_TEXT, VECTOR_CREATED, READY, UNPROCESSABLE)
+ * @param {Array<string>|string} [options.type] - Filter by content type (file, text, website, youtube)
+ * @param {string} [options.search] - Filter by title, filename, or URL (min length 3)
+ * @param {string} [options.hasError] - Filter entries with errors ('true' or 'false')
+ * @param {number} [options.page] - Page number for pagination (default: 1)
+ * @param {number} [options.pageSize] - Max entries per page (0-100, default: 24)
+ * @param {string} [options.sortBy] - Sort criteria ('createdAt', default: 'createdAt')
+ * @param {string} [options.sortOrder] - Sort order ('asc' or 'desc', default: 'desc')
+ * @returns {Promise<Object>} { success: true, items: [...], total: number }
  */
-export const listKnowledgeBaseEntries = async (replicaId, options = {}) => {
-  if (!replicaId) throw new Error('replicaId required');
+export const listKnowledgeBaseEntries = async (replicaUUID, options = {}) => {
+  if (!replicaUUID) throw new Error('replicaUUID is required');
+  
   try {
     const params = new URLSearchParams();
     
-    // Add query parameters according to API documentation
-    if (options.status) params.append('status', Array.isArray(options.status) ? options.status.join(',') : options.status);
-    if (options.type) params.append('type', Array.isArray(options.type) ? options.type.join(',') : options.type);
-    if (options.search) params.append('search', options.search);
-    if (options.hasError) params.append('hasError', options.hasError);
-    if (options.page) params.append('page', options.page);
-    if (options.pageSize) params.append('pageSize', options.pageSize);
-    if (options.sortBy) params.append('sortBy', options.sortBy);
-    if (options.sortOrder) params.append('sortOrder', options.sortOrder);
+    // Validate and add query parameters according to API documentation
+    if (options.status) {
+      const validStatuses = ['NEW', 'FILE_UPLOADED', 'RAW_TEXT', 'PROCESSED_TEXT', 'VECTOR_CREATED', 'READY', 'UNPROCESSABLE'];
+      const statusArray = Array.isArray(options.status) ? options.status : [options.status];
+      const invalidStatuses = statusArray.filter(s => !validStatuses.includes(s));
+      if (invalidStatuses.length > 0) {
+        throw new Error(`Invalid status values: ${invalidStatuses.join(', ')}. Valid values are: ${validStatuses.join(', ')}`);
+      }
+      params.append('status', statusArray.join(','));
+    }
+    
+    if (options.type) {
+      const validTypes = ['file', 'text', 'website', 'youtube'];
+      const typeArray = Array.isArray(options.type) ? options.type : [options.type];
+      const invalidTypes = typeArray.filter(t => !validTypes.includes(t));
+      if (invalidTypes.length > 0) {
+        throw new Error(`Invalid type values: ${invalidTypes.join(', ')}. Valid values are: ${validTypes.join(', ')}`);
+      }
+      params.append('type', typeArray.join(','));
+    }
+    
+    if (options.search) {
+      if (typeof options.search !== 'string' || options.search.length < 3) {
+        throw new Error('Search parameter must be a string with minimum length of 3');
+      }
+      params.append('search', options.search);
+    }
+    
+    if (options.hasError !== undefined) {
+      if (options.hasError !== 'true' && options.hasError !== 'false') {
+        throw new Error('hasError parameter must be "true" or "false"');
+      }
+      params.append('hasError', options.hasError);
+    }
+    
+    if (options.page !== undefined) {
+      const page = Number(options.page);
+      if (!Number.isInteger(page) || page < 1) {
+        throw new Error('Page must be an integer >= 1');
+      }
+      params.append('page', page.toString());
+    }
+    
+    if (options.pageSize !== undefined) {
+      const pageSize = Number(options.pageSize);
+      if (!Number.isInteger(pageSize) || pageSize < 0 || pageSize > 100) {
+        throw new Error('PageSize must be an integer between 0 and 100');
+      }
+      params.append('pageSize', pageSize.toString());
+    }
+    
+    if (options.sortBy) {
+      if (options.sortBy !== 'createdAt') {
+        throw new Error('sortBy must be "createdAt"');
+      }
+      params.append('sortBy', options.sortBy);
+    }
+    
+    if (options.sortOrder) {
+      if (options.sortOrder !== 'asc' && options.sortOrder !== 'desc') {
+        throw new Error('sortOrder must be "asc" or "desc"');
+      }
+      params.append('sortOrder', options.sortOrder);
+    }
     
     const queryString = params.toString();
-    const url = `/v1/replicas/${replicaId}/knowledge-base${queryString ? `?${queryString}` : ''}`;
+    const url = `/v1/replicas/${replicaUUID}/knowledge-base${queryString ? `?${queryString}` : ''}`;
     
-    const res = await sensayApi.get(url, { headers: sensayConfig.headers.base });
-    return res.data;
+    const res = await sensayApi.get(url, { 
+      headers: {
+        ...sensayConfig.headers.base,
+        'X-API-Version': '2025-03-25'
+      }
+    });
+    
+    // API returns { success: true, items: [...], total: number }
+    if (res.data && res.data.success && Array.isArray(res.data.items)) {
+      return res.data;
+    } else {
+      throw new Error('Invalid response format from Sensay API');
+    }
   } catch (error) {
+    // Handle documented error responses
+    if (error.response?.status === 400) {
+      throw new Error(`Bad Request: ${error.response.data?.error || 'Invalid parameters'}`);
+    }
+    if (error.response?.status === 401) {
+      throw new Error('Unauthorized: Invalid API credentials');
+    }
+    if (error.response?.status === 404) {
+      throw new Error('Replica not found');
+    }
+    if (error.response?.status === 415) {
+      throw new Error('Unsupported Media Type');
+    }
+    if (error.response?.status === 500) {
+      throw new Error(`Internal Server Error: ${error.response.data?.error || 'Server error'}`);
+    }
+    
     console.error('Error listing KB entries:', error.message);
     throw handleSensayError(error, 'Failed to list knowledge base entries');
   }
 };
 
 /**
- * Delete a knowledge base entry using the official API endpoint
- * @param {string} replicaId - The replica UUID
+ * Delete a knowledge base entry
+ * DELETE /v1/replicas/{replicaUUID}/knowledge-base/{id}
+ * @param {string} replicaUUID - The replica UUID
  * @param {number} entryId - The knowledge base entry ID
  * @returns {Promise<Object>} Deletion result
  */
-export const deleteKnowledgeBaseEntry = async (replicaId, entryId) => {
-  if (!replicaId) throw new Error('replicaId required');
-  if (!entryId) throw new Error('entryId required');
+export const deleteKnowledgeBaseEntry = async (replicaUUID, entryId) => {
+  if (!replicaUUID) throw new Error('replicaUUID is required');
+  if (!entryId) throw new Error('entryId is required');
+  
   try {
-    const res = await sensayApi.delete(`/v1/replicas/${replicaId}/knowledge-base/${entryId}`, { 
-      headers: sensayConfig.headers.base 
+    const res = await sensayApi.delete(`/v1/replicas/${replicaUUID}/knowledge-base/${entryId}`, { 
+      headers: {
+        ...sensayConfig.headers.base,
+        'X-API-Version': '2025-03-25'
+      }
     });
+    
+    // API typically returns 204 No Content for successful deletion
+    if (res.status === 204 || res.status === 200) {
+      return { success: true, message: 'Knowledge base entry deleted successfully' };
+    }
+    
     return res.data || { success: true };
   } catch (error) {
     console.error('Error deleting KB entry:', error.message);
@@ -891,8 +1021,8 @@ export const updateReplica = async (replicaUUID, updateData) => {
  * training session functions can import them without failing when the
  * underlying Sensay API does not expose explicit session endpoints.
  */
-export const startTrainingSession = async (replicaId) => {
-  console.log(`Starting training session for replica ${replicaId}`);
+export const startTrainingSession = async (replicaUUID) => {
+  console.log(`Starting training session for replica ${replicaUUID}`);
   // Return a local session id; callers may immediately call completeTrainingSession
   return { success: true, sessionId: `local_session_${Date.now()}` };
 };
@@ -901,25 +1031,26 @@ export const startTrainingSession = async (replicaId) => {
  * Complete a training session placeholder. If you want real behavior, replace
  * this with a call into Sensay to finalize any queued training work.
  */
-export const completeTrainingSession = async (replicaId, sessionId) => {
-  console.log(`Completing training session ${sessionId} for replica ${replicaId}`);
+export const completeTrainingSession = async (replicaUUID, sessionId) => {
+  console.log(`Completing training session ${sessionId} for replica ${replicaUUID}`);
   // No-op completion that signals success; keeps route logic simple for now.
   return { success: true, sessionId, completedAt: new Date().toISOString() };
 };
 
 /**
- * Delete a replica in Sensay (thin wrapper). Returns Sensay response or a mock.
- * @param {string} replicaId
+ * Delete a replica in Sensay
+ * DELETE /v1/replicas/{replicaUUID}
+ * @param {string} replicaUUID - The replica UUID
  */
-export const deleteReplica = async (replicaId) => {
-  if (!replicaId) throw new Error('replicaId required');
+export const deleteReplica = async (replicaUUID) => {
+  if (!replicaUUID) throw new Error('replicaUUID is required');
   if (!sensayConfig.isProperlyConfigured()) {
-    console.log(`⚠️ Sensay not configured - mock delete for ${replicaId}`);
-    return { success: true, id: replicaId, message: 'Mock delete' };
+    console.log(`⚠️ Sensay not configured - mock delete for ${replicaUUID}`);
+    return { success: true, id: replicaUUID, message: 'Mock delete' };
   }
 
   try {
-    const res = await sensayApi.delete(`/v1/replicas/${replicaId}`, { headers: sensayConfig.headers.base });
+    const res = await sensayApi.delete(`/v1/replicas/${replicaUUID}`, { headers: sensayConfig.headers.base });
     return res.data || { success: true };
   } catch (error) {
     console.error('Error deleting replica in Sensay:', error.message);
@@ -929,25 +1060,269 @@ export const deleteReplica = async (replicaId) => {
 
 /**
  * Update a knowledge base entry (PATCH/PUT). This is a flexible helper used by routes.
- * @param {string} replicaId
- * @param {string} entryId
- * @param {Object} updateData
+ * PATCH /v1/replicas/{replicaUUID}/knowledge-base/{id}
+ * @param {string} replicaUUID - The replica UUID
+ * @param {string} entryId - The knowledge base entry ID
+ * @param {Object} updateData - Data to update
  */
-export const updateKnowledgeBaseEntry = async (replicaId, entryId, updateData) => {
-  if (!replicaId) throw new Error('replicaId required');
-  if (!entryId) throw new Error('entryId required');
+export const updateKnowledgeBaseEntry = async (replicaUUID, entryId, updateData) => {
+  if (!replicaUUID) throw new Error('replicaUUID is required');
+  if (!entryId) throw new Error('entryId is required');
 
   if (!sensayConfig.isProperlyConfigured()) {
-    console.log(`⚠️ Sensay not configured - mock update for ${entryId}`);
-    return { success: true, id: entryId, ...updateData };
+    console.log(`⚠️ Sensay not configured - mock update for KB entry ${entryId}`);
+    return { success: true, id: entryId, ...updateData, message: 'Mock update' };
   }
 
   try {
-    const url = `/v1/replicas/${replicaId}/knowledge-base/${entryId}`;
-    const res = await sensayApi.patch(url, updateData, { headers: sensayConfig.headers.base });
-    return res.data;
+    const res = await sensayApi.patch(`/v1/replicas/${replicaUUID}/knowledge-base/${entryId}`, updateData, { 
+      headers: {
+        ...sensayConfig.headers.base,
+        'X-API-Version': '2025-03-25'
+      }
+    });
+    return res.data || { success: true };
   } catch (error) {
     console.error('Error updating KB entry:', error.message);
     throw handleSensayError(error, 'Failed to update knowledge base entry');
+  }
+};
+
+/**
+ * Get current user information using organization service token & user ID
+ * GET /v1/users/me
+ * @param {string} userId - The user ID to authenticate the request
+ * @returns {Promise<Object|null>} User information or null if not found
+ */
+export const getCurrentSensayUser = async (userId) => {
+  if (!userId) throw new Error('userId required');
+  
+  try {
+    const headers = {
+      ...sensayConfig.headers.base,
+      'X-USER-ID': userId,
+      'X-API-Version': '2025-03-25'
+    };
+    
+    const res = await sensayApi.get('/v1/users/me', { headers });
+    
+    // API returns { success: true, id, email, name, linkedAccounts }
+    if (res.data && res.data.success) {
+      logger?.info?.(`Retrieved current Sensay user ${res.data.id}`) || console.log('Retrieved current user', res.data.id);
+      return res.data;
+    } else {
+      throw new Error('Invalid response format from Sensay API');
+    }
+  } catch (error) {
+    if (error.response?.status === 404) {
+      logger?.warn?.(`Sensay user not found: ${userId}`) || console.warn('Sensay user not found', userId);
+      return null;
+    }
+    logger?.warn?.(`Failed to get current Sensay user ${userId}: ${error.message}`) || console.warn('Failed to get current user', error.message);
+    throw handleSensayError(error, 'Failed to get current Sensay user');
+  }
+};
+
+/**
+ * Update current user in Sensay API
+ * @param {string} userId - The user ID to authenticate the request
+ * @param {Object} userData - User data to update
+ * @param {string} [userData.email] - Email address
+ * @param {string} [userData.name] - User name (max 50 chars, pattern: ^[a-zA-Z0-9\s().,'\-/]*$)
+ * @param {Array} [userData.linkedAccounts] - Array of linked account objects
+ * @returns {Promise<Object>} Updated user information
+ */
+export const updateCurrentSensayUser = async (userId, userData) => {
+  if (!userId) throw new Error('userId required');
+  
+  try {
+    // Validate name if provided
+    if (userData.name && userData.name.length > 50) {
+      userData.name = userData.name.substring(0, 50);
+    }
+    
+    if (userData.name && !/^[a-zA-Z0-9\s().,'\-/]*$/.test(userData.name)) {
+      // Clean the name to match the required pattern
+      userData.name = userData.name.replace(/[^a-zA-Z0-9\s().,'\-/]/g, '').trim();
+    }
+
+    const headers = sensayConfig.headers.withUser(userId);
+    const res = await sensayApi.put('/v1/users/me', { id: userId, ...userData }, { headers });
+    
+    logger?.info?.(`Updated current Sensay user ${userId}`) || console.log('Updated current user', userId);
+    return res.data;
+  } catch (error) {
+    if (error.response?.status === 400) {
+      logger?.warn?.(`Bad request updating Sensay user ${userId}: ${JSON.stringify(error.response.data)}`) || console.warn('Bad request updating user', error.response.data);
+      throw new Error(`Bad Request: ${error.response.data?.error || 'Invalid user data'}`);
+    }
+    if (error.response?.status === 409) {
+      logger?.warn?.(`Conflict updating Sensay user ${userId}: ${JSON.stringify(error.response.data)}`) || console.warn('Conflict updating user', error.response.data);
+      throw new Error(`Conflict: ${error.response.data?.error || 'Email or linked account already exists'}`);
+    }
+    logger?.warn?.(`Failed to update current Sensay user ${userId}: ${error.message}`) || console.warn('Failed to update current user', error.message);
+    throw handleSensayError(error, 'Failed to update current Sensay user');
+  }
+};
+
+/**
+ * Delete the current user permanently (cannot be recovered)
+ * DELETE /v1/users/me
+ * @param {string} userId - The user ID to authenticate the request
+ * @returns {Promise<Object>} Deletion result
+ */
+export const deleteCurrentSensayUser = async (userId) => {
+  if (!userId) throw new Error('userId required');
+  
+  try {
+    const headers = {
+      ...sensayConfig.headers.base,
+      'X-USER-ID': userId,
+      'X-API-Version': '2025-03-25'
+    };
+    
+    const res = await sensayApi.delete('/v1/users/me', { headers });
+    
+    // API returns 204 (no content) on successful deletion
+    if (res.status === 204) {
+      logger?.info?.(`Deleted current Sensay user ${userId}`) || console.log('Deleted current user', userId);
+      return { success: true, message: 'User deleted successfully' };
+    } else {
+      throw new Error('Unexpected response from deletion endpoint');
+    }
+  } catch (error) {
+    // Handle documented error responses
+    if (error.response?.status === 400) {
+      throw new Error(`Bad Request: ${error.response.data?.error || 'Invalid request'}`);
+    }
+    if (error.response?.status === 401) {
+      throw new Error('Unauthorized: Invalid API credentials');
+    }
+    if (error.response?.status === 404) {
+      logger?.warn?.(`Sensay user not found for deletion: ${userId}`) || console.warn('Sensay user not found for deletion', userId);
+      return { success: true, message: 'User not found (already deleted)' };
+    }
+    if (error.response?.status === 415) {
+      throw new Error('Unsupported Media Type');
+    }
+    if (error.response?.status === 500) {
+      throw new Error(`Internal Server Error: ${error.response.data?.error || 'Server error'}`);
+    }
+    
+    logger?.warn?.(`Failed to delete current Sensay user ${userId}: ${error.message}`) || console.warn('Failed to delete current user', error.message);
+    throw handleSensayError(error, 'Failed to delete current Sensay user');
+  }
+};
+
+/**
+ * Get a specific user by ID from Sensay API (organization service token required)
+ * @param {string} userId - The user ID to retrieve
+ * @returns {Promise<Object|null>} User information or null if not found
+ */
+export const getSensayUserById = async (userId) => {
+  if (!userId) throw new Error('userId required');
+  
+  try {
+    const res = await sensayApi.get(`/v1/users/${userId}`, { 
+      headers: sensayConfig.headers.base 
+    });
+    
+    logger?.info?.(`Retrieved Sensay user by ID ${userId}`) || console.log('Retrieved user by ID', userId);
+    return res.data;
+  } catch (error) {
+    if (error.response?.status === 404) {
+      logger?.warn?.(`Sensay user not found by ID: ${userId}`) || console.warn('Sensay user not found by ID', userId);
+      return null;
+    }
+    logger?.warn?.(`Failed to get Sensay user by ID ${userId}: ${error.message}`) || console.warn('Failed to get user by ID', error.message);
+    throw handleSensayError(error, 'Failed to get Sensay user by ID');
+  }
+};
+
+/**
+ * Sync local user data with Sensay user
+ * @param {Object} localUser - Local user object with sensayUserId
+ * @returns {Promise<Object>} Sync result with updated user data
+ */
+export const syncUserWithSensay = async (localUser) => {
+  if (!localUser) throw new Error('localUser required');
+  if (!localUser.sensayUserId) {
+    logger?.warn?.(`Cannot sync user ${localUser.id || localUser._id} - no sensayUserId`) || console.warn('Cannot sync user - no sensayUserId');
+    return { success: false, message: 'No Sensay user ID found' };
+  }
+
+  try {
+    // Get current user data from Sensay
+    const sensayUser = await getCurrentSensayUser(localUser.sensayUserId);
+    
+    if (!sensayUser) {
+      logger?.warn?.(`Sensay user ${localUser.sensayUserId} not found during sync`) || console.warn('Sensay user not found during sync');
+      return { success: false, message: 'Sensay user not found' };
+    }
+
+    // Compare and update if needed
+    const needsUpdate = (
+      sensayUser.email !== localUser.email ||
+      sensayUser.name !== `${localUser.firstName || ''} ${localUser.lastName || ''}`.trim()
+    );
+
+    if (needsUpdate) {
+      const fullName = `${localUser.firstName || ''} ${localUser.lastName || ''}`.trim();
+      const updateData = {
+        email: localUser.email,
+        name: fullName || localUser.email.split('@')[0]
+      };
+
+      const updatedUser = await updateCurrentSensayUser(localUser.sensayUserId, updateData);
+      
+      logger?.info?.(`Synced local user ${localUser.id || localUser._id} with Sensay user ${localUser.sensayUserId}`) || console.log('Synced user with Sensay');
+      return { success: true, message: 'User data synced', sensayUser: updatedUser };
+    }
+
+    return { success: true, message: 'User data already in sync', sensayUser };
+
+  } catch (error) {
+    logger?.error?.(`Failed to sync user ${localUser.id || localUser._id} with Sensay: ${error.message}`) || console.error('Failed to sync user with Sensay', error.message);
+    return { success: false, message: error.message, error };
+  }
+};
+
+/**
+ * Ensure a user exists in Sensay, creating if necessary
+ * Since the API doesn't support user search by email, we can only attempt creation
+ * @param {Object} userData - User data
+ * @param {string} userData.email - Email address
+ * @param {string} [userData.name] - Full name
+ * @param {string} [userData.id] - Preferred user ID
+ * @param {Array} [userData.linkedAccounts] - Array of linked account objects
+ * @returns {Promise<Object>} User creation result
+ */
+export const ensureSensayUser = async (userData) => {
+  if (!userData?.email) throw new Error('userData.email required');
+
+  try {
+    // Try to create the user
+    const sensayUser = await createSensayUser(userData);
+    
+    if (sensayUser && sensayUser.conflict) {
+      // User already exists but we can't retrieve it without knowing the user ID
+      // This is a limitation of the Sensay API - no user search endpoint
+      logger?.warn?.(`Sensay user already exists for ${userData.email} but cannot be retrieved without user ID`) || console.warn('Sensay user exists but cannot be retrieved');
+      return { 
+        success: false, 
+        message: 'User already exists in Sensay but cannot be retrieved. Manual linking may be required.',
+        conflict: true,
+        error: sensayUser.error
+      };
+    } else if (sensayUser && sensayUser.id) {
+      logger?.info?.(`Created new Sensay user ${sensayUser.id} for ${userData.email}`) || console.log('Created new Sensay user', sensayUser.id);
+      return { success: true, user: sensayUser, created: true };
+    } else {
+      throw new Error('Invalid response from Sensay user creation');
+    }
+
+  } catch (error) {
+    logger?.error?.(`Failed to ensure Sensay user for ${userData.email}: ${error.message}`) || console.error('Failed to ensure Sensay user', error.message);
+    throw error;
   }
 };

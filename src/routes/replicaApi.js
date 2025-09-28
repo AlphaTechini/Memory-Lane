@@ -16,6 +16,7 @@ import {
   completeTrainingSession
 } from '../services/sensayService.js';
 import { authenticateToken, optionalAuth } from '../middleware/auth.js';
+import { ensureSensayUser, validateSensayLink } from '../middleware/sensayAuth.js';
 import User from '../models/User.js';
 import Conversation from '../models/Conversation.js';
 import { REQUIRED_QUESTIONS, OPTIONAL_SEGMENTS, getQuestionText } from '../utils/questionBank.js';
@@ -113,24 +114,21 @@ async function replicaRoutes(fastify, options) {
    */
   fastify.post('/api/replicas', { 
     schema: createReplicaSchema,
-    preHandler: authenticateToken 
+    preHandler: [authenticateToken, ensureSensayUser({ required: true })]
   }, async (request, reply) => {
     try {
   const { name, description, template, relationship, requiredAnswers, optionalAnswers, selectedSegments, profileImage, coverageScore, greeting: userGreeting, preferredQuestion } = request.body;
       
-      // Load user and ensure they have a Sensay user ID
-      const user = await User.findById(request.user.id);
+      // Load user and check permissions
+      const user = request.user; // User is already loaded by middleware
+      
       // Disallow patient role from creating replicas
       if (user?.role === 'patient') {
         return reply.status(403).send({ success: false, error: 'Access denied: patients cannot create replicas' });
       }
-      if (!user || !user.sensayUserId) {
-        return reply.status(400).send({
-          success: false,
-          code: 'SENSAY_USER_MISSING',
-            error: 'Sensay user not linked for this account. Please contact support or retry later.'
-        });
-      }
+
+      // Sensay user is ensured by middleware, get from request
+      const sensayUserId = request.sensayUser?.id || user.sensayUserId;
 
       // Generate a slug from the name
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -146,7 +144,7 @@ async function replicaRoutes(fastify, options) {
         name,
         shortDescription,
         greeting,
-        ownerID: user.sensayUserId,
+        ownerID: sensayUserId,
         slug: `${slug}-${Date.now()}`, // Make it unique
         llm: {
           model: "gpt-4o" // Use gpt-4o which is allowed by the plan
@@ -749,7 +747,7 @@ async function replicaRoutes(fastify, options) {
    * Chat with a replica (protected route)
    */
   fastify.post('/api/replicas/:replicaId/chat', { 
-    preHandler: authenticateToken 
+    preHandler: [authenticateToken, validateSensayLink]
   }, async (request, reply) => {
     try {
       const { replicaId } = request.params;
@@ -767,15 +765,11 @@ async function replicaRoutes(fastify, options) {
         });
       }
       
-      if (!user.sensayUserId) {
-        return reply.status(400).send({ 
-          success: false, 
-          error: 'Sensay user ID missing. Please ensure your account is properly configured.' 
-        });
-      }
+      // Sensay user ID is validated by middleware
+      const sensayUserId = request.sensayUserId;
       
-  // Send chat message to Sensay using the Sensay user ID, not the Prisma-managed user ID
-      const sensayResponse = await sendChatMessage(replicaId, message, user.sensayUserId, context);
+      // Send chat message to Sensay using the Sensay user ID
+      const sensayResponse = await sendChatMessage(replicaId, message, sensayUserId, context);
       
       // Extract the content from Sensay API response
       // According to API docs: { success: true, content: "reply text" }
