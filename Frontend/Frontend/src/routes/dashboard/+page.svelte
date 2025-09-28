@@ -63,6 +63,21 @@
     }
   });
 
+  // Helper: mask email for debug display (e.g. j*****@domain.com)
+  function maskEmailForDisplay(email) {
+    if (!email || typeof email !== 'string') return 'null';
+    const parts = email.split('@');
+    if (parts.length !== 2) return email;
+    const local = parts[0];
+    const domain = parts[1];
+    if (!local) return email;
+    const first = local.charAt(0);
+    // show up to first+last letter if short local part
+    const last = local.length > 1 ? local.charAt(local.length - 1) : '';
+    const maskedMiddle = local.length > 2 ? '*'.repeat(Math.max(3, local.length - 2)) : '*';
+    return `${first}${maskedMiddle}${last}@${domain}`;
+  }
+
   const navigationItems = [
     {
       id: 'chatbot',
@@ -244,7 +259,7 @@
           <strong>Debug Info:</strong><br>
           Role: {userRole || 'null'}<br>
           Auth: {isAuth}<br>
-          User Email: {user?.email || 'null'}<br>
+          User Email: {user?.email ? maskEmailForDisplay(user.email) : (typeof localStorage !== 'undefined' && localStorage.getItem('userEmail') ? maskEmailForDisplay(localStorage.getItem('userEmail')) : 'null')}<br>
           <!-- User ID hidden for privacy -->
           Cached Token: {typeof localStorage !== 'undefined' ? (localStorage.getItem('authToken') ? 'exists' : 'missing') : 'unknown'}
         </div>
