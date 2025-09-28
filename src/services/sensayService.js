@@ -15,6 +15,15 @@ const sensayApi = axios.create({
   timeout: 30000,
 });
 
+// Test hooks: test code can set these to override behavior in unit-like smoke tests
+export let __testOverrideCreate = null;
+export let __testOverrideGet = null;
+
+// Setter helpers to allow tests to inject overrides (can't assign to imported bindings from other modules)
+export const setTestOverrideCreate = (fn) => { __testOverrideCreate = fn; };
+export const setTestOverrideGet = (fn) => { __testOverrideGet = fn; };
+export const clearTestOverrides = () => { __testOverrideCreate = null; __testOverrideGet = null; };
+
 /**
  * Create a Sensay user according to API documentation
  * POST /v1/users
@@ -26,6 +35,7 @@ const sensayApi = axios.create({
  * @returns {Promise<Object>} { id, email, name, linkedAccounts, success: true } or { conflict: true, error }
  */
 export const createSensayUser = async ({ email, name, id, linkedAccounts }) => {
+  if (__testOverrideCreate) return __testOverrideCreate({ email, name, id, linkedAccounts });
   try {
     if (!email) {
       throw new Error('Email is required for user creation');
@@ -69,8 +79,47 @@ export const createSensayUser = async ({ email, name, id, linkedAccounts }) => {
   } catch (error) {
     if (error.response?.status === 409) {
       // 409: User, email, or linked account already exists
-      logger?.warn?.(`Sensay user already exists for ${email}`) || console.warn('Sensay user conflict', email);
-      return { conflict: true, error: error.response.data };
+      const respData = error.response?.data || {};
+      logger?.warn?.(`Sensay user conflict for ${email}: ${JSON.stringify(respData)}`) || console.warn('Sensay user conflict', email, respData);
+
+      // Try to extract a Sensay user id from common fields in the error payload
+      const maybeId = respData.id || respData.user?.id || respData.existingUser?.id || respData.existingUserId || respData.userId || respData.data?.id || respData.uuid;
+
+      // Also check linkedAccounts array for an id field (some responses include this)
+      let linkedAccountId = null;
+      if (Array.isArray(respData.linkedAccounts)) {
+        for (const la of respData.linkedAccounts) {
+          if (la && (la.id || la.userId || la.uuid)) {
+            linkedAccountId = la.id || la.userId || la.uuid;
+            break;
+          }
+        }
+      }
+
+      const existingId = maybeId || linkedAccountId || null;
+
+      if (existingId) {
+        // Fetch the existing user directly using organization credentials
+        try {
+          const existingRes = await sensayApi.get(`/v1/users/${existingId}`, {
+            headers: {
+              ...sensayConfig.headers.base,
+              'X-API-Version': '2025-03-25'
+            }
+          });
+
+          if (existingRes?.data) {
+            logger?.info?.(`Found existing Sensay user ${existingId} for ${email}`) || console.log('Found existing Sensay user', existingId);
+            return existingRes.data;
+          }
+        } catch (fetchErr) {
+          // If fetching fails, fall back to returning conflict info
+          logger?.warn?.('Failed to fetch existing Sensay user by id', existingId, fetchErr.message) || console.warn('Failed fetch existing Sensay user', existingId, fetchErr.message);
+        }
+      }
+
+      // If we couldn't resolve an existing user id, return the conflict payload so callers can decide
+      return { conflict: true, error: respData };
     }
     logger?.warn?.(`Failed to create Sensay user for ${email}: ${error.message}`) || console.warn('Failed to create Sensay user', error.message);
     throw handleSensayError(error, 'Failed to create Sensay user');
@@ -119,6 +168,7 @@ export const listReplicas = async (ownerID) => {
  * @returns {Promise<Object|null>} User object or null if not found
  */
 export const getSensayUser = async (userId) => {
+  if (__testOverrideGet) return __testOverrideGet(userId);
   try {
     if (!userId || userId.length < 1) {
       throw new Error('userId is required and must have minimum length of 1');
@@ -1308,17 +1358,47 @@ export const ensureSensayUser = async (userData) => {
     const sensayUser = await createSensayUser(userData);
     
     if (sensayUser && sensayUser.conflict) {
-      // User already exists but we can't retrieve it without knowing the user ID
-      // This is a limitation of the Sensay API - no user search endpoint
-      logger?.warn?.(`Sensay user already exists for ${userData.email} but cannot be retrieved without user ID`) || console.warn('Sensay user exists but cannot be retrieved');
-      return { 
-        success: false, 
-        message: 'User already exists in Sensay but cannot be retrieved. Manual linking may be required.',
+      // We got a conflict from Sensay. Try to resolve it by extracting any ID-like
+      // field from the error payload and fetching the existing user directly.
+      const errPayload = sensayUser.error || {};
+      logger?.warn?.(`Sensay create user conflict for ${userData.email}: ${JSON.stringify(errPayload)}`) || console.warn('Sensay conflict payload', errPayload);
+
+      const maybeId = errPayload.id || errPayload.user?.id || errPayload.existingUser?.id || errPayload.existingUserId || errPayload.userId || errPayload.data?.id || errPayload.uuid;
+
+      // Check linked accounts array for a possible id
+      let linkedAccountId = null;
+      if (Array.isArray(errPayload.linkedAccounts)) {
+        for (const la of errPayload.linkedAccounts) {
+          if (la && (la.id || la.userId || la.uuid)) {
+            linkedAccountId = la.id || la.userId || la.uuid;
+            break;
+          }
+        }
+      }
+
+      const existingId = maybeId || linkedAccountId || null;
+
+      if (existingId) {
+        try {
+          const existingUser = await getSensayUser(existingId);
+          if (existingUser) {
+            logger?.info?.(`Resolved existing Sensay user ${existingId} for ${userData.email}`) || console.log('Resolved existing Sensay user', existingId);
+            return { success: true, user: existingUser, created: false, resolvedFromConflict: true };
+          }
+        } catch (fetchErr) {
+          logger?.warn?.('Failed to fetch Sensay user for id extracted from conflict payload', existingId, fetchErr.message) || console.warn('Failed fetch for conflict id', existingId, fetchErr.message);
+        }
+      }
+
+      // Couldn't resolve the existing user; return conflict so the caller can decide
+      return {
+        success: false,
+        message: 'User already exists in Sensay but we could not resolve their id automatically.',
         conflict: true,
         error: sensayUser.error
       };
     } else if (sensayUser && sensayUser.id) {
-      logger?.info?.(`Created new Sensay user ${sensayUser.id} for ${userData.email}`) || console.log('Created new Sensay user', sensayUser.id);
+      logger?.info?.(`Created or retrieved Sensay user ${sensayUser.id} for ${userData.email}`) || console.log('Created or retrieved Sensay user', sensayUser.id);
       return { success: true, user: sensayUser, created: true };
     } else {
       throw new Error('Invalid response from Sensay user creation');
