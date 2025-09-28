@@ -1,197 +1,398 @@
-<!-- Onboarding: choose Caretaker or Patient -->
+<!-- Signup page moved to root as the default landing page -->
 <script>
+  import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import { apiUrl } from '$lib/utils/api.js';
 
-  let showPatientCard = false;
-  let patientEmail = '';
-  let loading = false;
-  let message = '';
-  let error = '';
+  let email = $state('');
+  let password = $state('');
+  let confirmPassword = $state('');
+  let firstName = $state('');
+  let lastName = $state('');
+  let loading = $state(false);
+  let error = $state('');
+  let showPassword = $state(false);
+  let showConfirmPassword = $state(false);
+  let showLoginSuggestion = $state(false);
+  let userType = $state('caretaker');
 
-  function signInAsCaretaker() {
-    // Use existing login flow
-    goto('/login');
-  }
+  const isCaretaker = $derived(userType === 'caretaker');
 
-  function signInAsPatientCard() {
-    showPatientCard = true;
-    message = '';
-    error = '';
-  }
+  // Validation patterns
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const namePattern = /^[A-Za-z\s'-]+$/;
 
-  // Generate a temporary password for patient signup (server requires password)
-  function generateTempPassword() {
-    // Simple random string - short lived since patient will verify via OTP
-    return Math.random().toString(36).slice(-10) + 'A1!';
-  }
+  // Derived validity flags
+  const emailValid = $derived(emailPattern.test(email));
+  const firstNameValid = $derived(!!firstName && namePattern.test(firstName));
+  const lastNameValid = $derived(!lastName || namePattern.test(lastName));
 
-  async function submitPatientEmail(event) {
+  // Check if already logged in
+  $effect(() => {
+    if (browser) {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        goto('/dashboard');
+      }
+    }
+  });
+
+  // Password validation
+  const passwordValid = $derived(password.length >= 6);
+  const passwordsMatch = $derived(password === confirmPassword);
+  const formValid = $derived(
+    emailValid &&
+    password &&
+    confirmPassword &&
+    firstNameValid &&
+    lastNameValid &&
+    passwordValid &&
+    passwordsMatch
+  );
+
+  onMount(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode');
+    if (mode === 'patient') {
+      userType = 'patient';
+    } else if (mode === 'caretaker') {
+      userType = 'caretaker';
+    }
+  });
+
+  async function handleSignup(event) {
     event.preventDefault();
-    error = '';
-    message = '';
 
-    if (!patientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patientEmail)) {
-      error = 'Please enter a valid email address';
+    if (userType === 'patient') {
+      goToPatientLogin();
       return;
+    }
+    
+    if (!formValid) {
+      // Set a descriptive error (do not send request)
+      if (!emailValid) error = 'Please enter a valid email address';
+      else if (!firstNameValid) error = 'First name can only contain letters, spaces, apostrophes and hyphens';
+      else if (!lastNameValid) error = 'Last name can only contain letters, spaces, apostrophes and hyphens';
+      else if (!passwordValid) error = 'Password must be at least 6 characters';
+      else if (!passwordsMatch) error = 'Passwords do not match';
+      else error = 'Please correct the highlighted errors';
+      return; // Prevent network call
     }
 
     loading = true;
+    error = '';
+
     try {
-      const tempPassword = generateTempPassword();
-      const resp = await fetch(apiUrl('/auth/signup'), {
+      const response = await fetch(apiUrl('/auth/signup'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: patientEmail, password: tempPassword, role: 'patient' })
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          email, 
+          password, 
+          firstName, 
+          lastName,
+          role: 'caretaker'
+        })
       });
 
-      const data = await resp.json();
-      if (resp.ok && data.success) {
-        // Save email for OTP verification step and redirect
-        localStorage.setItem('userEmail', patientEmail);
+      const data = await response.json();
 
-        const successMessage = data.message
-          || (data.reusedAccount
-            ? 'Welcome back! Check your email for the verification code to continue.'
-            : 'A verification code was sent to the email. Redirecting to verification...');
-
-        message = successMessage;
-        error = '';
-
-        // If OTP could not be sent, inform the user but still keep flow alive
-        if (data.otpSent === false) {
-          error = 'We could not automatically send a verification code. Please try resending from the next screen or contact your caretaker.';
-        }
-
-        setTimeout(() => goto('/verify-otp'), data.otpSent === false ? 1600 : 900);
+      if (response.ok && data.success) {
+        // Caretaker needs OTP verification
+        localStorage.setItem('userEmail', email);
+        goto('/verify-otp');
       } else {
-        // If user already exists, treat this as a request to send OTP and continue
-        if (data.message && data.message.includes('already exists')) {
-          // Call resend-otp to send a fresh verification code (or login OTP)
-          try {
-            const resendResp = await fetch(apiUrl('/auth/resend-otp'), {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: patientEmail })
-            });
-            const resendData = await resendResp.json();
-            if (resendResp.ok && resendData.success) {
-              localStorage.setItem('userEmail', patientEmail);
-              message = 'Welcome back! A verification code was sent to your email. Redirecting to verification...';
-              setTimeout(() => goto('/verify-otp'), 700);
-            } else {
-              error = resendData.message || 'Failed to send verification code. Please try again.';
-            }
-          } catch (e) {
-            console.error('Failed to resend verification code on caretaker login:', e);
-            error = 'Network error when requesting verification code. Please try again.';
-          }
+        // Check if this is an existing user error with suggested action
+        if (data.suggestedAction === 'login') {
+          error = data.message || 'Account already exists';
+          showLoginSuggestion = true;
         } else {
-          // Handle the specific patient account already exists message from backend
-          if (data.accountType === 'patient') {
-            error = '';
-            // Try to send OTP anyway for convenience
-            try {
-              const resendResp = await fetch(apiUrl('/auth/resend-otp'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: patientEmail })
-              });
-              const resendData = await resendResp.json();
-              if (resendResp.ok && resendData.success) {
-                localStorage.setItem('userEmail', patientEmail);
-                message = resendData.message || 'A verification code was sent to your email. Redirecting to verification...';
-                setTimeout(() => goto('/verify-otp'), 700);
-                return;
-              }
-            } catch (e) {
-              console.error('Resending verification code for patient failed:', e);
-            }
-            error = data.message || 'We could not automatically send a verification code. Please try again or contact your caretaker.';
-          } else {
-            error = data.message || 'Unable to sign in at this time. Please contact your caretaker for assistance.';
-          }
+          error = data.message || 'Signup failed';
+          showLoginSuggestion = false;
         }
       }
     } catch (err) {
-      console.error('Caretaker login request failed:', err);
+      console.error('Signup request failed:', err);
       error = 'Network error. Please try again.';
     } finally {
       loading = false;
     }
   }
+
+  function togglePasswordVisibility() {
+    showPassword = !showPassword;
+  }
+
+  function toggleConfirmPasswordVisibility() {
+    showConfirmPassword = !showConfirmPassword;
+  }
+
+  function goToPatientLogin() {
+    goto('/login?mode=patient');
+  }
 </script>
 
 <svelte:head>
-  <title>Welcome - Memory Lane</title>
+  <title>Sign Up - Memory Lane</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-  <div class="w-full max-w-2xl p-6">
-    <nav class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Memory Lane</h1>
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+  <!-- Navigation -->
+  <nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Memory Lane</h1>
+      </div>
       <ThemeToggle />
-    </nav>
-
-    <!-- Platform Description -->
-    <div class="text-center mb-8">
-      <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">Preserving Memories, Connecting Hearts</h2>
-      <p class="text-lg text-gray-700 dark:text-gray-300 mb-4 max-w-4xl mx-auto">
-        Memory Lane helps families stay connected when memory challenges make communication difficult. Our AI-powered platform creates digital replicas that preserve precious memories, personalities, and conversations.
-      </p>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto text-sm">
-        <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-          <div class="font-semibold text-blue-800 dark:text-blue-300 mb-2">For Memory Care</div>
-          <p class="text-blue-700 dark:text-blue-400">Helps patients with dementia, Alzheimer's, and other memory conditions maintain meaningful connections with their digital replicas.</p>
-        </div>
-        <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-          <div class="font-semibold text-green-800 dark:text-green-300 mb-2">Preserve Personalities</div>
-          <p class="text-green-700 dark:text-green-400">Capture the unique voice, memories, and personality traits of loved ones before they're lost to time.</p>
-        </div>
-        <div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
-          <div class="font-semibold text-purple-800 dark:text-purple-300 mb-2">Stay Connected</div>
-          <p class="text-purple-700 dark:text-purple-400">Enable patients to interact with familiar personalities when direct communication becomes challenging.</p>
-        </div>
-      </div>
     </div>
+  </nav>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col">
-        <h2 class="text-lg font-semibold mb-4">Sign in as Caretaker</h2>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Use your existing account to sign in and manage patient replicas.</p>
-        <div class="mt-auto">
-          <button onclick={signInAsCaretaker} class="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700">Sign in as Caretaker</button>
-        </div>
+  <!-- Main Content -->
+  <main class="flex items-center justify-center min-h-[calc(100vh-80px)] px-4 py-12">
+    <div class="w-full max-w-md">
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <!-- Add your site logo at Frontend/Frontend/static/logo.png -->
+        <img src="/logo.png" alt="Memory Lane logo" class="mx-auto mb-4 h-14 w-auto" />
+        <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Create Account</h2>
+        <p class="text-gray-600 dark:text-gray-400 mb-2">Memory Lane is a caregiver-curated reminiscence platform that turns family photos and notes into personalized, role-based conversational replicas so patients can revisit memories in a safe, familiar voice.</p>
+        <p class="text-gray-600 dark:text-gray-400">Join Memory Lane and start building your digital replica</p>
       </div>
 
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col">
-        <h2 class="text-lg font-semibold mb-4">Sign in as Patient</h2>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Patients sign in with email only. We'll send a verification code to their email.</p>
+      <!-- Signup Form -->
+      <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="px-6 pt-6 pb-4 bg-gray-50/60 dark:bg-gray-900/20">
+          <div class="flex rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-1">
+            <button
+              type="button"
+              onclick={() => userType = 'caretaker'}
+              class="flex-1 text-center py-2 px-3 rounded-md text-sm font-medium transition-colors {userType === 'caretaker' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+            >
+              Caretaker
+            </button>
+            <button
+              type="button"
+              onclick={() => userType = 'patient'}
+              class="flex-1 text-center py-2 px-3 rounded-md text-sm font-medium transition-colors {userType === 'patient' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+            >
+              Patient
+            </button>
+          </div>
+        </div>
 
-        {#if !showPatientCard}
-          <button onclick={signInAsPatientCard} class="w-full py-2 px-4 bg-green-600 text-white rounded-md hover:bg-green-700">Sign in as Patient</button>
-        {:else}
-          <form onsubmit={submitPatientEmail} class="space-y-4">
+        {#if isCaretaker}
+        <form onsubmit={handleSignup} class="p-6 space-y-6 border-t border-gray-200 dark:border-gray-700">
+          <!-- Name Fields -->
+          <div class="grid grid-cols-2 gap-4">
             <div>
-              <label for="patientEmailInput" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Patient Email</label>
-              <input id="patientEmailInput" type="email" bind:value={patientEmail} required class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="patient@example.com" />
+              <label for="firstName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                First Name *
+              </label>
+              <input
+                type="text"
+                id="firstName"
+                bind:value={firstName}
+                required
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                placeholder="First name"
+              />
             </div>
-
-            {#if error}
-              <div class="text-sm text-red-600">{error}</div>
-            {/if}
-            {#if message}
-              <div class="text-sm text-green-600">{message}</div>
-            {/if}
-
-            <div class="flex gap-2">
-              <button type="submit" class="flex-1 py-2 px-4 bg-green-600 text-white rounded-md hover:bg-green-700" disabled={loading}>{loading ? 'Sending...' : 'Continue'}</button>
-              <button type="button" class="py-2 px-4 bg-gray-200 dark:bg-gray-700 rounded-md" onclick={() => showPatientCard = false}>Cancel</button>
+            <div>
+              <label for="lastName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Last Name
+              </label>
+              <input
+                type="text"
+                id="lastName"
+                bind:value={lastName}
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                placeholder="Last name"
+              />
+              {#if lastName && !lastNameValid}
+                <p class="mt-1 text-sm text-red-600 dark:text-red-400">Only letters, spaces, ' and - allowed</p>
+              {/if}
             </div>
-          </form>
+          </div>
+
+          <!-- Email Field -->
+          <div>
+            <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Email Address *
+            </label>
+            <input
+              type="email"
+              id="email"
+              bind:value={email}
+              required
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              placeholder="Enter your email"
+            />
+            {#if email && !emailValid}
+              <p class="mt-1 text-sm text-red-600 dark:text-red-400">Invalid email format</p>
+            {/if}
+          </div>
+
+          <!-- Password Field -->
+          <div>
+            <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Password *
+            </label>
+            <div class="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                bind:value={password}
+                required
+                class="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                placeholder="Enter your password"
+              />
+              <button
+                type="button"
+                onclick={togglePasswordVisibility}
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                {#if showPassword}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                {:else}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                {/if}
+              </button>
+            </div>
+            {#if password && !passwordValid}
+              <p class="mt-1 text-sm text-red-600 dark:text-red-400">Password must be at least 6 characters</p>
+            {/if}
+          </div>
+
+          <!-- Confirm Password Field -->
+          <div>
+            <label for="confirmPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Confirm Password *
+            </label>
+            <div class="relative">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                id="confirmPassword"
+                bind:value={confirmPassword}
+                required
+                class="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                placeholder="Confirm your password"
+              />
+              <button
+                type="button"
+                onclick={toggleConfirmPasswordVisibility}
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                {#if showConfirmPassword}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                {:else}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                {/if}
+              </button>
+            </div>
+            {#if confirmPassword && !passwordsMatch}
+              <p class="mt-1 text-sm text-red-600 dark:text-red-400">Passwords do not match</p>
+            {/if}
+          </div>
+
+          <!-- Error Message -->
+          {#if error}
+            <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
+              <p class="text-red-600 dark:text-red-400 text-sm">{error}</p>
+              {#if showLoginSuggestion}
+                <div class="mt-2">
+                  <button
+                    type="button"
+                    onclick={() => goto('/login')}
+                    class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition-colors"
+                  >
+                    Go to Login Page
+                  </button>
+                </div>
+              {/if}
+            </div>
+          {/if}
+
+          <!-- Submit Button -->
+          <button
+            type="submit"
+            disabled={loading || !formValid}
+            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
+          >
+            {#if loading}
+              <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Creating account...
+            {:else}
+              Create Account
+            {/if}
+          </button>
+        </form>
+        {:else}
+        <div class="p-6 space-y-4 border-t border-gray-200 dark:border-gray-700">
+          <div class="bg-blue-50 dark:bg-blue-900/25 border border-blue-200 dark:border-blue-700 rounded-md p-4 text-sm text-blue-800 dark:text-blue-200">
+            <p class="font-medium">Are you a patient?</p>
+            <p class="mt-1">Use the sign in flow instead. We'll verify that your caretaker has already added you to Memory Lane.</p>
+          </div>
+          <button
+            type="button"
+            onclick={goToPatientLogin}
+            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+          >
+            Go to Patient Sign In
+          </button>
+          <p class="text-xs text-gray-500 dark:text-gray-400 text-center">
+            Once your caretaker invites you, your email will unlock patient access through the sign in page.
+          </p>
+        </div>
         {/if}
+
+        <!-- Footer Links -->
+        <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 rounded-b-lg">
+          <div class="text-center space-y-3">
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              Already have an account?
+              <a href="/login" class="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
+                Sign in
+              </a>
+            </p>
+            
+            <!-- Explore Without Signup -->
+            <div class="border-t border-gray-200 dark:border-gray-600 pt-3">
+              <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                Want to explore first?
+              </p>
+              <button
+                onclick={() => goto('/dashboard')}
+                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+                Explore without signup
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
+  </main>
 </div>
