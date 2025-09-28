@@ -259,7 +259,9 @@
           <strong>Debug Info:</strong><br>
           Role: {userRole || 'null'}<br>
           Auth: {isAuth}<br>
-          User Email: {user?.email ? maskEmailForDisplay(user.email) : (typeof localStorage !== 'undefined' && localStorage.getItem('userEmail') ? maskEmailForDisplay(localStorage.getItem('userEmail')) : 'null')}<br>
+          {#if user?.email || (typeof localStorage !== 'undefined' && localStorage.getItem('userEmail'))}
+            User Email: {user?.email ? maskEmailForDisplay(user.email) : maskEmailForDisplay(localStorage.getItem('userEmail'))}<br>
+          {/if}
           <!-- User ID hidden for privacy -->
           Cached Token: {typeof localStorage !== 'undefined' ? (localStorage.getItem('authToken') ? 'exists' : 'missing') : 'unknown'}
         </div>
