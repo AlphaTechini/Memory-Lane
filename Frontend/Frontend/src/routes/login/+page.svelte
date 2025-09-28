@@ -1,6 +1,7 @@
 <script>
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import { apiUrl } from '$lib/utils/api.js';
 
@@ -18,6 +19,16 @@
       if (token) {
         goto('/dashboard');
       }
+    }
+  });
+
+  onMount(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode');
+    if (mode === 'patient') {
+      userType = 'patient';
+    } else if (mode === 'caretaker') {
+      userType = 'caretaker';
     }
   });
 

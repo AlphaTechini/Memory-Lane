@@ -774,7 +774,7 @@ async function replicaRoutes(fastify, options) {
         });
       }
       
-      // Send chat message to Sensay using the Sensay user ID, not MongoDB user ID
+  // Send chat message to Sensay using the Sensay user ID, not the Prisma-managed user ID
       const sensayResponse = await sendChatMessage(replicaId, message, user.sensayUserId, context);
       
       // Extract the content from Sensay API response

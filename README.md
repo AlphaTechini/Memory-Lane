@@ -123,8 +123,8 @@ LOG_LEVEL=info
 ```
 
 Notes:
-- Run `npx prisma migrate deploy` after setting up your Postgres database to ensure tables and indexes exist.
-- Unique constraints (e.g., `User.email`) are enforced via Prisma migrations; keep your schema in version control.
+- Run `npx prisma db push` after setting up your Postgres database to ensure tables and indexes exist.
+- Unique constraints (e.g., `User.email`) are defined directly in the Prisma schema; keep the schema in version control and rerun `db push` whenever it changes.
 - Configure connection pooling (e.g., Fly's PgBouncer) for high-concurrency scenarios if needed.
 
 ## 6. Data Models (Schemas)
@@ -361,7 +361,7 @@ Recommendations:
 - If `ORIGIN_REGISTRATION_SECRET` is unset, registration endpoints remain effectively disabled (401).
 
 ## 15.8 Fly.io Postgres Integration
-Deploying on Fly with a managed Postgres instance is a three-step flow: provision the database, attach it to the app (which seeds `DATABASE_URL`), then run Prisma migrations. The project’s `fly.toml` already wires a `release_command` (`npx prisma migrate deploy`) so every deploy replays pending migrations automatically once the secret exists.
+Deploying on Fly with a managed Postgres instance is a three-step flow: provision the database, attach it to the app (which seeds `DATABASE_URL`), then sync the schema with Prisma. The project’s `fly.toml` already wires a `release_command` (`npx prisma db push`) so every deploy reapplies the current schema automatically once the secret exists.
 
 1. Create a dedicated Fly Postgres cluster (pick a region close to your app):
 ```powershell
@@ -370,7 +370,7 @@ flyctl postgres create --name built-with-sensay-db --region fra --vm-size shared
 
 2. Attach the database to this app so Fly injects `DATABASE_URL` (and connection pool secrets) automatically:
 ```powershell
-flyctl postgres attach --postgres-app built-with-sensay-db --app built-with-sensay-api
+flyctl postgres attach built-with-sensay-db --app built-with-sensay-api
 ```
 
 3. (Optional) Inspect secrets to confirm the URL is present:
@@ -378,7 +378,7 @@ flyctl postgres attach --postgres-app built-with-sensay-db --app built-with-sens
 flyctl secrets list --app built-with-sensay-api
 ```
 
-4. Deploy; the release phase now runs Prisma migrations inside the image before traffic shifts:
+4. Deploy; the release phase now runs `prisma db push` inside the image before traffic shifts:
 ```powershell
 flyctl deploy
 ```
@@ -390,7 +390,7 @@ $env:DATABASE_URL="postgresql://flycast:<password>@127.0.0.1:15432/<database>?ss
 npx prisma studio
 ```
 
-If you prefer a separate shadow database for `prisma migrate dev`, set `SHADOW_DATABASE_URL` via `flyctl secrets set`. Otherwise, the provided workflow (`migrate deploy`) is migration-safe in CI/CD while keeping production credentials off developer machines.
+If you later switch back to Prisma migrations, add `SHADOW_DATABASE_URL` via `flyctl secrets set` so `prisma migrate dev` has an isolated database. The current workflow keeps production credentials off developer machines while ensuring schema updates ship with `prisma db push`.
 
 ## 15. Troubleshooting
 | Symptom | Likely Cause | Action |

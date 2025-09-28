@@ -234,7 +234,7 @@ server.setErrorHandler((error, request, reply) => {
     server.log.error(error);
   }
   
-  // MongoDB/Mongoose errors
+  // Validation errors surfaced via the Prisma compatibility layer
   if (error.name === 'ValidationError') {
     const errors = Object.values(error.errors).map(err => err.message);
     reply.code(400).send({

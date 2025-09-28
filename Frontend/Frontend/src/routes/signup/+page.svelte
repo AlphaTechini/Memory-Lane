@@ -1,6 +1,7 @@
 <script>
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import { apiUrl } from '$lib/utils/api.js';
 
@@ -14,6 +15,9 @@
   let showPassword = $state(false);
   let showConfirmPassword = $state(false);
   let showLoginSuggestion = $state(false);
+  let userType = $state('caretaker');
+
+  const isCaretaker = $derived(userType === 'caretaker');
 
   // Validation patterns
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -47,8 +51,23 @@
     passwordsMatch
   );
 
+  onMount(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode');
+    if (mode === 'patient') {
+      userType = 'patient';
+    } else if (mode === 'caretaker') {
+      userType = 'caretaker';
+    }
+  });
+
   async function handleSignup(event) {
     event.preventDefault();
+
+    if (userType === 'patient') {
+      goToPatientLogin();
+      return;
+    }
     
     if (!formValid) {
       // Set a descriptive error (do not send request)
@@ -74,32 +93,24 @@
           email, 
           password, 
           firstName, 
-          lastName 
+          lastName,
+          role: 'caretaker'
         })
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
-        if (userType === 'patient') {
-          // Patient gets direct access - store token and redirect
-          localStorage.setItem('authToken', data.token);
-          if (data.patient) {
-            localStorage.setItem('userData', JSON.stringify(data.patient));
-          }
-          goto('/dashboard');
-        } else {
-          // Caretaker needs OTP verification
-          localStorage.setItem('userEmail', email);
-          goto('/verify-otp');
-        }
+        // Caretaker needs OTP verification
+        localStorage.setItem('userEmail', email);
+        goto('/verify-otp');
       } else {
         // Check if this is an existing user error with suggested action
         if (data.suggestedAction === 'login') {
           error = data.message || 'Account already exists';
           showLoginSuggestion = true;
         } else {
-          error = data.message || (userType === 'patient' ? 'Patient signup failed' : 'Signup failed');
+          error = data.message || 'Signup failed';
           showLoginSuggestion = false;
         }
       }
@@ -117,6 +128,10 @@
 
   function toggleConfirmPasswordVisibility() {
     showConfirmPassword = !showConfirmPassword;
+  }
+
+  function goToPatientLogin() {
+    goto('/login?mode=patient');
   }
 </script>
 
@@ -145,8 +160,28 @@
       </div>
 
       <!-- Signup Form -->
-      <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700">
-        <form onsubmit={handleSignup} class="p-6 space-y-6">
+      <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="px-6 pt-6 pb-4 bg-gray-50/60 dark:bg-gray-900/20">
+          <div class="flex rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-1">
+            <button
+              type="button"
+              onclick={() => userType = 'caretaker'}
+              class="flex-1 text-center py-2 px-3 rounded-md text-sm font-medium transition-colors {userType === 'caretaker' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+            >
+              Caretaker
+            </button>
+            <button
+              type="button"
+              onclick={() => userType = 'patient'}
+              class="flex-1 text-center py-2 px-3 rounded-md text-sm font-medium transition-colors {userType === 'patient' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
+            >
+              Patient
+            </button>
+          </div>
+        </div>
+
+        {#if isCaretaker}
+        <form onsubmit={handleSignup} class="p-6 space-y-6 border-t border-gray-200 dark:border-gray-700">
           <!-- Name Fields -->
           <div class="grid grid-cols-2 gap-4">
             <div>
@@ -306,6 +341,24 @@
             {/if}
           </button>
         </form>
+        {:else}
+        <div class="p-6 space-y-4 border-t border-gray-200 dark:border-gray-700">
+          <div class="bg-blue-50 dark:bg-blue-900/25 border border-blue-200 dark:border-blue-700 rounded-md p-4 text-sm text-blue-800 dark:text-blue-200">
+            <p class="font-medium">Are you a patient?</p>
+            <p class="mt-1">Use the sign in flow instead. We'll verify that your caretaker has already added you to Memory Lane.</p>
+          </div>
+          <button
+            type="button"
+            onclick={goToPatientLogin}
+            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+          >
+            Go to Patient Sign In
+          </button>
+          <p class="text-xs text-gray-500 dark:text-gray-400 text-center">
+            Once your caretaker invites you, your email will unlock patient access through the sign in page.
+          </p>
+        </div>
+        {/if}
 
         <!-- Footer Links -->
         <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 rounded-b-lg">

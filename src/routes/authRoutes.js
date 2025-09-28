@@ -282,9 +282,21 @@ async function authRoutes(fastify, options) {
     config: { rateLimit: { max: 20, timeWindow: '10 minutes' } }
   }, async (request, reply) => {
     try {
-      fastify.log.info('Signup request body:', request.body);
+      const signupSummary = {
+        email: typeof request.body?.email === 'string' ? request.body.email.trim().toLowerCase() : undefined,
+        hasPassword: Boolean(request.body?.password),
+        hasNames: Boolean(request.body?.firstName || request.body?.lastName),
+        role: request.body?.role || 'caretaker'
+      };
+
+      fastify.log.info({ reqId: request.id, route: 'auth/signup', payload: signupSummary }, 'Signup request received');
       const result = await authService.signUp(request.body);
-      fastify.log.info('Signup result:', result);
+      fastify.log.info({
+        reqId: request.id,
+        route: 'auth/signup',
+        success: result.success,
+        status: result.statusCode || (result.success ? 201 : 400)
+      }, 'Signup result');
       
       if (result.success) {
         const status = result.statusCode || 201;
@@ -293,7 +305,7 @@ async function authRoutes(fastify, options) {
         reply.code(400).send(result);
       }
     } catch (error) {
-      fastify.log.error('Signup error:', error);
+      fastify.log.error({ reqId: request.id, route: 'auth/signup', err: error, message: error?.message }, 'Signup handler failed');
       reply.code(500).send({
         success: false,
         message: 'Internal server error during signup',
@@ -311,7 +323,12 @@ async function authRoutes(fastify, options) {
     config: { rateLimit: { max: 40, timeWindow: '5 minutes' } }
   }, async (request, reply) => {
     try {
+      const loginSummary = {
+        email: typeof request.body?.email === 'string' ? request.body.email.trim().toLowerCase() : undefined
+      };
+      fastify.log.info({ reqId: request.id, route: 'auth/login', payload: loginSummary }, 'Login request received');
       const result = await authService.login(request.body);
+      fastify.log.info({ reqId: request.id, route: 'auth/login', success: result.success }, 'Login result');
       
       if (result.success) {
         reply.code(200).send(result);
@@ -324,7 +341,7 @@ async function authRoutes(fastify, options) {
         }
       }
     } catch (error) {
-      fastify.log.error('Login error:', error);
+      fastify.log.error({ reqId: request.id, route: 'auth/login', err: error, message: error?.message }, 'Login handler failed');
       reply.code(500).send({
         success: false,
         message: 'Internal server error during login',
@@ -351,7 +368,7 @@ async function authRoutes(fastify, options) {
         reply.code(400).send(result);
       }
     } catch (error) {
-      fastify.log.error('Patient signup error:', error);
+      fastify.log.error({ reqId: request.id, route: 'auth/patient-signup', err: error, message: error?.message }, 'Patient signup handler failed');
       reply.code(500).send({
         success: false,
         message: 'Internal server error during patient signup',
@@ -370,19 +387,20 @@ async function authRoutes(fastify, options) {
   }, async (request, reply) => {
     try {
       const { email } = request.body;
-      fastify.log.info(`Patient login attempt for: ${email}`);
+      const safeEmail = typeof email === 'string' ? email.trim().toLowerCase() : undefined;
+      fastify.log.info({ reqId: request.id, route: 'auth/patient-login', email: safeEmail }, 'Patient login request received');
       const result = await authService.patientLogin(email);
-      
-      fastify.log.info(`Patient login result for ${email}:`, result);
-      
+
+      fastify.log.info({ reqId: request.id, route: 'auth/patient-login', email: safeEmail, success: result.success }, 'Patient login result');
+
       if (result.success) {
         reply.code(200).send(result);
       } else {
-        fastify.log.warn(`Patient login failed for ${email}:`, result);
+        fastify.log.warn({ reqId: request.id, route: 'auth/patient-login', email: safeEmail, result }, 'Patient login failed');
         reply.code(400).send(result);
       }
     } catch (error) {
-      fastify.log.error('Patient login error:', error);
+      fastify.log.error({ reqId: request.id, route: 'auth/patient-login', err: error, message: error?.message }, 'Patient login handler failed');
       reply.code(500).send({
         success: false,
         message: 'Internal server error during patient login',
@@ -409,7 +427,7 @@ async function authRoutes(fastify, options) {
         reply.code(400).send(result);
       }
     } catch (error) {
-      fastify.log.error('OTP verification error:', error);
+      fastify.log.error({ reqId: request.id, route: 'auth/verify-otp', err: error, message: error?.message }, 'OTP verification handler failed');
       reply.code(500).send({
         success: false,
         message: 'Internal server error during OTP verification',
@@ -436,7 +454,7 @@ async function authRoutes(fastify, options) {
         reply.code(400).send(result);
       }
     } catch (error) {
-      fastify.log.error('Resend OTP error:', error);
+      fastify.log.error({ reqId: request.id, route: 'auth/resend-otp', err: error, message: error?.message }, 'Resend OTP handler failed');
       reply.code(500).send({
         success: false,
         message: 'Internal server error during OTP resend',
@@ -460,7 +478,7 @@ async function authRoutes(fastify, options) {
         reply.code(400).send(result);
       }
     } catch (error) {
-      fastify.log.error('Verification error:', error);
+      fastify.log.error({ reqId: request.id, route: 'auth/verify', err: error, message: error?.message }, 'Verification handler failed');
       reply.code(500).send({
         success: false,
         message: 'Internal server error during verification',

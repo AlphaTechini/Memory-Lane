@@ -138,6 +138,8 @@ class AuthService {
    * @returns {Object} Registration result
    */
   async signUp(userData) {
+    const signupEmail = userData?.email || null;
+
     try {
   const { email, password, firstName, lastName, role } = userData;
 
@@ -262,9 +264,17 @@ class AuthService {
       };
 
     } catch (error) {
-      // Handle MongoDB duplicate key error
-      if (error.code === 11000) {
-        console.warn(`[signup] duplicate key error for ${userData.email}`, error.keyValue);
+      logger.error('[signup] unexpected failure', {
+        email: signupEmail,
+        code: error?.code,
+        name: error?.name,
+        message: error?.message,
+        meta: error?.meta,
+        stack: error?.stack
+      });
+
+      // Handle Prisma unique constraint errors (email already exists)
+      if (error?.code === 'P2002' && Array.isArray(error?.meta?.target) && error.meta.target.includes('User_email_key')) {
         return {
           success: false,
           message: 'User with this email already exists',
@@ -272,8 +282,27 @@ class AuthService {
         };
       }
 
-      // Handle mongoose validation errors
-      if (error.name === 'ValidationError') {
+      // Handle Prisma validation errors (e.g., field length)
+      if (error?.code === 'P2000') {
+        return {
+          success: false,
+          message: 'Invalid data provided',
+          errors: ['One of the fields is too long or has invalid data']
+        };
+      }
+
+  // Handle Prisma unique constraint errors alongside legacy shims
+      if (error?.code === 11000) {
+        console.warn(`[signup] duplicate key error for ${signupEmail}`, error.keyValue);
+        return {
+          success: false,
+          message: 'User with this email already exists',
+          errors: ['Email is already registered']
+        };
+      }
+
+  // Handle validation errors coming from the Prisma compatibility layer
+      if (error?.name === 'ValidationError') {
         const errors = Object.values(error.errors).map(err => err.message);
         return {
           success: false,
