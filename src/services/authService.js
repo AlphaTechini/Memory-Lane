@@ -638,7 +638,12 @@ class AuthService {
       }
 
       // Verify OTP code
-      if (user.otpCode !== otpCode) {
+      // Normalize types and whitespace to avoid mismatch between stored and submitted codes
+      const submittedOtp = String(otpCode).trim();
+      const storedOtp = user.otpCode != null ? String(user.otpCode).trim() : '';
+
+      if (storedOtp !== submittedOtp) {
+        logger?.warn?.(`OTP mismatch for ${normalizedEmail}: stored='${storedOtp.replace(/./g, '*')}' submitted='${submittedOtp.replace(/./g, '*')}`) || console.warn('OTP mismatch', normalizedEmail);
         return {
           success: false,
           message: 'Invalid OTP',
