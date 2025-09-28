@@ -315,6 +315,34 @@ async function authRoutes(fastify, options) {
   });
 
   /**
+   * POST /auth/debug/get-otp
+   * Debug-only: return stored OTP for an email when a valid secret header is provided.
+   * NOTE: This endpoint is gated by the DEBUG_OTP_SECRET env var and should be removed after debugging.
+   */
+  fastify.post('/auth/debug/get-otp', async (request, reply) => {
+    try {
+      const secret = process.env.DEBUG_OTP_SECRET;
+      const provided = request.headers['x-debug-otp-secret'];
+
+      if (!secret || !provided || provided !== secret) {
+        return reply.code(403).send({ success: false, message: 'Not allowed' });
+      }
+
+      const { email } = request.body || {};
+      if (!email) return reply.code(400).send({ success: false, message: 'Email required' });
+
+      const User = (await import('../models/User.js')).default;
+      const user = await User.findByEmail(email);
+      if (!user) return reply.code(404).send({ success: false, message: 'User not found' });
+
+      return reply.send({ success: true, otp: user.otpCode, otpExpires: user.otpExpires });
+    } catch (error) {
+      fastify.log.error({ msg: 'Debug OTP error', err: error?.message, stack: error?.stack });
+      return reply.code(500).send({ success: false, message: 'Server error' });
+    }
+  });
+
+  /**
    * POST /auth/login
    * Login user
    */
