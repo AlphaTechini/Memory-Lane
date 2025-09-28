@@ -268,6 +268,17 @@ class AuthService {
       
       const sensaySuccess = await createSensayUserWithRetry();
       if (!sensaySuccess) {
+        // Persist a troubleshooting field on the user so we can inspect failures later
+        try {
+          savedUser.sensayError = savedUser.sensayError || {};
+          savedUser.sensayError.createdAt = new Date();
+          savedUser.sensayError.message = 'Sensay user creation failed after retries';
+          await savedUser.save();
+        } catch (persistErr) {
+          // Non-fatal but log so we can surface any DB save issues
+          logger?.warn?.(`Failed to persist sensayError for user ${savedUser._id}: ${persistErr.message}`) || console.warn('Failed to persist sensayError', persistErr.message);
+        }
+
         logger?.error?.(`CRITICAL: User ${savedUser._id} (${savedUser.email}) created without Sensay user ID. Replica creation will fail until manually resolved.`) || console.error('CRITICAL: User created without Sensay ID');
       }
 
@@ -297,6 +308,8 @@ class AuthService {
         success: true,
         message: 'User registered successfully. Please check your email for verification code.',
         user: savedUser.toJSON(),
+        sensayLinked: Boolean(savedUser.sensayUserId),
+        sensayError: savedUser.sensayError || null,
         otpSent: otpResult.otpSent,
         emailPreviewURL: otpResult.emailPreviewURL // For development
       };
