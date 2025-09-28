@@ -44,31 +44,34 @@ export default async function albumsRoutes(fastify, options) {
   });
 
   // List albums -> GET /gallery/albums
-  fastify.get('/', { preHandler: authenticateToken }, async (request, reply) => {
+  fastify.get('/', { preHandler: [authenticateToken, requireGalleryAccess()] }, async (request, reply) => {
     try {
-      const requestUser = await User.findById(request.user.id).select('email role albums');
-      if (!requestUser) return reply.code(404).send({ success: false, message: 'User not found', errors: ['User account not found'] });
-
-      let targetUser = requestUser;
-
-      // If user is a patient, find their caretaker's albums
-      if (requestUser.role === 'patient') {
-        const caretaker = await User.findOne({ 
-          whitelistedPatients: requestUser.email.toLowerCase() 
-        }).select('email albums');
-        
-        if (!caretaker) {
-          return reply.code(403).send({ 
-            success: false, 
-            message: 'No caretaker found for this patient',
-            errors: ['Patient must be whitelisted by a caretaker to access albums'] 
-          });
-        }
-        
-        targetUser = caretaker;
+      const access = request.galleryAccess;
+      
+      if (!access.canRead) {
+        return reply.code(403).send({ 
+          success: false, 
+          message: access.error || 'Access denied to this gallery',
+          errors: ['Gallery access denied'] 
+        });
       }
 
-      reply.send({ success: true, message: 'Albums retrieved successfully', data: { albums: targetUser.albums || [], count: targetUser.albums ? targetUser.albums.length : 0 } });
+      // Use the owner from gallery access (could be caretaker for whitelisted patients)
+      const targetUser = await User.findById(access.owner._id).select('albums');
+      if (!targetUser) {
+        return reply.code(404).send({ success: false, message: 'Gallery owner not found', errors: ['Owner account not found'] });
+      }
+
+      reply.send({ 
+        success: true, 
+        message: 'Albums retrieved successfully', 
+        data: { 
+          albums: targetUser.albums || [], 
+          count: targetUser.albums ? targetUser.albums.length : 0,
+          isOwner: access.isOwner,
+          isWhitelisted: access.isWhitelisted
+        } 
+      });
     } catch (error) {
       fastify.log.error(error, 'Albums retrieval error');
       reply.code(500).send({ success: false, message: 'Failed to retrieve albums', errors: ['Internal server error'] });

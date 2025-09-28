@@ -18,6 +18,7 @@ import {
 import { authenticateToken, optionalAuth } from '../middleware/auth.js';
 import { ensureSensayUser, validateSensayLink } from '../middleware/sensayAuth.js';
 import User from '../models/User.js';
+import Patient from '../models/Patient.js';
 import Conversation from '../models/Conversation.js';
 import { REQUIRED_QUESTIONS, OPTIONAL_SEGMENTS, getQuestionText } from '../utils/questionBank.js';
 import { sensayConfig } from '../config/sensay.js';
@@ -566,24 +567,59 @@ async function replicaRoutes(fastify, options) {
     try {
       const user = await User.findById(request.user.id).select('email role replicas');
       
-      // For patients, redirect to accessible replicas
+      // For patients, get accessible replicas from their caretaker
       if (user.role === 'patient') {
-        // Find caretaker and get accessible replicas
-        const caretaker = await User.findOne({ 
-          whitelistedPatients: user.email.toLowerCase() 
-        }).select('replicas');
+        let accessibleReplicas = [];
         
-        if (!caretaker) {
-          return { 
-            success: true, 
-            replicas: [] 
-          };
+        // Method 1: Check via Patient model
+        const patientRecord = await Patient.findByEmail(user.email);
+        if (patientRecord && patientRecord.caretaker) {
+          const caretaker = await User.findById(patientRecord.caretaker).select('replicas');
+          if (caretaker && caretaker.replicas) {
+            // Filter to only allowed replicas
+            accessibleReplicas = caretaker.replicas.filter(replica => 
+              patientRecord.allowedReplicas.includes(replica.replicaId)
+            );
+          }
         }
-
-        // Filter caretaker's replicas to only those where patient is whitelisted
-        const accessibleReplicas = caretaker.replicas?.filter(replica => 
-          replica.whitelistEmails && replica.whitelistEmails.includes(user.email)
-        ) || [];
+        
+        // Method 2: Fallback - check whitelistedPatients in User model
+        if (accessibleReplicas.length === 0) {
+          const caretaker = await User.findOne({ 
+            whitelistedPatients: user.email.toLowerCase() 
+          }).select('replicas');
+          
+          if (caretaker && caretaker.replicas) {
+            // Filter caretaker's replicas to only those where patient is whitelisted
+            accessibleReplicas = caretaker.replicas.filter(replica => 
+              replica.whitelistEmails && replica.whitelistEmails.includes(user.email.toLowerCase())
+            );
+          }
+        }
+        
+        // Method 3: Final fallback - search all users for replicas with this patient whitelisted
+        if (accessibleReplicas.length === 0) {
+          const usersWithPatientReplicas = await User.find({
+            'replicas.whitelistEmails': user.email.toLowerCase()
+          }).select('replicas');
+          
+          for (const userWithReplicas of usersWithPatientReplicas) {
+            for (const replica of userWithReplicas.replicas) {
+              if (replica.whitelistEmails && replica.whitelistEmails.includes(user.email.toLowerCase())) {
+                accessibleReplicas.push({
+                  ...replica.toObject(),
+                  isPatientAccess: true
+                });
+              }
+            }
+          }
+        } else {
+          // Mark replicas as patient access
+          accessibleReplicas = accessibleReplicas.map(replica => ({
+            ...replica.toObject(),
+            isPatientAccess: true
+          }));
+        }
 
         return { 
           success: true, 
@@ -731,12 +767,53 @@ async function replicaRoutes(fastify, options) {
   }, async (request, reply) => {
     try {
       const { replicaId } = request.params;
-      const user = await User.findById(request.user.id).select('replicas');
-      const replica = user?.replicas?.find(r => r.replicaId === replicaId);
-      if (!replica) {
-        return reply.status(404).send({ success: false, error: 'Replica not found' });
+      const user = await User.findById(request.user.id).select('replicas email role');
+      
+      // First check if user owns the replica
+      let replica = user?.replicas?.find(r => r.replicaId === replicaId);
+      let isOwner = Boolean(replica);
+      
+      // If not found and user is a patient, check if they have access via whitelist
+      if (!replica && user.role === 'patient') {
+        // Check via Patient model
+        const patientRecord = await Patient.findByEmail(user.email);
+        if (patientRecord && patientRecord.allowedReplicas.includes(replicaId)) {
+          // Find the caretaker's replica
+          const caretaker = await User.findById(patientRecord.caretaker).select('replicas');
+          if (caretaker) {
+            replica = caretaker.replicas?.find(r => r.replicaId === replicaId);
+          }
+        }
+        
+        // Fallback: check if patient is whitelisted in any caretaker's replica
+        if (!replica) {
+          const caretakerWithReplica = await User.findOne({
+            'replicas.replicaId': replicaId,
+            'replicas.whitelistEmails': user.email.toLowerCase()
+          }).select('replicas');
+          
+          if (caretakerWithReplica) {
+            replica = caretakerWithReplica.replicas?.find(r => 
+              r.replicaId === replicaId && 
+              r.whitelistEmails && 
+              r.whitelistEmails.includes(user.email.toLowerCase())
+            );
+          }
+        }
       }
-      return { success: true, replica };
+      
+      if (!replica) {
+        return reply.status(404).send({ success: false, error: 'Replica not found or access denied' });
+      }
+      
+      return { 
+        success: true, 
+        replica: {
+          ...replica.toObject(),
+          isOwner,
+          isPatientAccess: !isOwner
+        }
+      };
     } catch (error) {
       fastify.log.error(error, 'Error fetching replica');
       return reply.status(500).send({ success: false, error: 'Failed to fetch replica' });
@@ -754,14 +831,53 @@ async function replicaRoutes(fastify, options) {
       const { message, context = [], conversationId } = request.body;
       const userId = request.user.id;
       
-      // Verify user owns this replica
-      const user = await User.findById(userId);
-      const userReplica = user?.replicas?.find(r => r.replicaId === replicaId);
+      // Verify user has access to this replica (owner or whitelisted patient)
+      const user = await User.findById(userId).select('replicas email role');
+      let userReplica = user?.replicas?.find(r => r.replicaId === replicaId);
+      let isOwner = Boolean(userReplica);
+      let caretakerUserId = userId; // Default to current user
+      
+      // If not owner and user is a patient, check if they have whitelist access
+      if (!userReplica && user.role === 'patient') {
+        // Check via Patient model
+        const patientRecord = await Patient.findByEmail(user.email);
+        if (patientRecord && patientRecord.allowedReplicas.includes(replicaId)) {
+          // Find the caretaker's replica
+          const caretaker = await User.findById(patientRecord.caretaker).select('replicas sensayUserId');
+          if (caretaker) {
+            userReplica = caretaker.replicas?.find(r => r.replicaId === replicaId);
+            caretakerUserId = caretaker._id;
+            // Override sensay user ID to use caretaker's
+            request.sensayUserId = caretaker.sensayUserId;
+          }
+        }
+        
+        // Fallback: check if patient is whitelisted in any caretaker's replica
+        if (!userReplica) {
+          const caretakerWithReplica = await User.findOne({
+            'replicas.replicaId': replicaId,
+            'replicas.whitelistEmails': user.email.toLowerCase()
+          }).select('replicas sensayUserId');
+          
+          if (caretakerWithReplica) {
+            userReplica = caretakerWithReplica.replicas?.find(r => 
+              r.replicaId === replicaId && 
+              r.whitelistEmails && 
+              r.whitelistEmails.includes(user.email.toLowerCase())
+            );
+            if (userReplica) {
+              caretakerUserId = caretakerWithReplica._id;
+              // Override sensay user ID to use caretaker's
+              request.sensayUserId = caretakerWithReplica.sensayUserId;
+            }
+          }
+        }
+      }
       
       if (!userReplica) {
         return reply.status(403).send({ 
           success: false, 
-          error: 'Access denied: Replica not found or not owned by user' 
+          error: 'Access denied: Replica not found or no access permitted' 
         });
       }
       
@@ -775,7 +891,7 @@ async function replicaRoutes(fastify, options) {
       // According to API docs: { success: true, content: "reply text" }
       const replyText = sensayResponse?.content || sensayResponse?.response?.content || 'Sorry, I could not process that.';
       
-      // Save conversation to database
+      // Save conversation to database (use actual user ID, not caretaker's)
       let conversation;
       if (conversationId) {
         // Continue existing conversation
@@ -789,10 +905,11 @@ async function replicaRoutes(fastify, options) {
       if (!conversation) {
         // Create new conversation
         conversation = new Conversation({
-          userId,
+          userId, // Always use the actual user ID (patient or caretaker)
           replicaId,
           messages: [],
-          isActive: true
+          isActive: true,
+          isPatientChat: !isOwner // Flag to indicate if this is a patient accessing via whitelist
         });
       }
       

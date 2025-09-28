@@ -220,15 +220,39 @@ export default async function photosRoutes(fastify, options) {
   });
 
   // GET /gallery/photos -> registered under /gallery prefix
-  fastify.get('/photos', { preHandler: authenticateToken }, async (request, reply) => {
+  fastify.get('/photos', { preHandler: [authenticateToken, requireGalleryAccess()] }, async (request, reply) => {
     try {
       const { albumId, standalone } = request.query;
-      const user = await User.findById(request.user.id).select('photos albums');
-      if (!user) return reply.code(404).send({ success: false, message: 'User not found' });
-      let photos = user.photos || [];
+      const access = request.galleryAccess;
+      
+      if (!access.canRead) {
+        return reply.code(403).send({ 
+          success: false, 
+          message: access.error || 'Access denied to this gallery',
+          errors: ['Gallery access denied'] 
+        });
+      }
+
+      // Use the owner from gallery access (could be caretaker for whitelisted patients)
+      const targetUser = await User.findById(access.owner._id).select('photos albums');
+      if (!targetUser) {
+        return reply.code(404).send({ success: false, message: 'Gallery owner not found' });
+      }
+
+      let photos = targetUser.photos || [];
       if (albumId) photos = photos.filter(photo => photo.albumId && photo.albumId.toString() === albumId);
       else if (standalone) photos = photos.filter(photo => !photo.albumId);
-      reply.send({ success: true, message: 'Photos retrieved successfully', data: { photos, count: photos.length } });
+      
+      reply.send({ 
+        success: true, 
+        message: 'Photos retrieved successfully', 
+        data: { 
+          photos, 
+          count: photos.length,
+          isOwner: access.isOwner,
+          isWhitelisted: access.isWhitelisted
+        } 
+      });
     } catch (error) {
       fastify.log.error(error, 'Photos retrieval error');
       reply.code(500).send({ success: false, message: 'Failed to retrieve photos' });

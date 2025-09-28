@@ -16,9 +16,9 @@ export async function checkGalleryAccess(requestUserId, ownerUserId = null) {
   // Handle patient access using the new Patient model
   // Check if this is a patient trying to access their caretaker's gallery
   const patientRecord = await Patient.findByEmail(requestUser.email);
-  if (patientRecord && !ownerUserId) {
+  if (patientRecord) {
     // Find the caretaker for this patient
-    const caretaker = await User.findById(patientRecord.caretaker).select('email role');
+    const caretaker = await User.findById(patientRecord.caretaker).select('email role albums photos');
     
     if (!caretaker) {
       return {
@@ -33,9 +33,10 @@ export async function checkGalleryAccess(requestUserId, ownerUserId = null) {
       };
     }
     
+    // Patient should access their caretaker's gallery, not their own
     return {
       canRead: true,
-      canWrite: false, // Patients cannot edit galleries 
+      canWrite: false, // Patients can view but not edit galleries 
       canDelete: false, // Patients cannot delete anything
       user: requestUser,
       owner: caretaker,
@@ -70,13 +71,35 @@ export async function checkGalleryAccess(requestUserId, ownerUserId = null) {
   if (isWhitelisted) {
     return {
       canRead: true,
-      canWrite: true, // Can edit/update photos and albums
+      canWrite: false, // Patients can view but not edit/update photos and albums
       canDelete: false, // Cannot delete anything
       user: requestUser,
       owner: ownerUser,
       isOwner: false,
       isWhitelisted: true
     };
+  }
+
+  // Additional check: if this is a patient role user, check if they're whitelisted in any caretaker's replica
+  if (requestUser.role === 'patient') {
+    const caretakerWithPatient = await User.findOne({
+      $or: [
+        { whitelistedPatients: requestUser.email.toLowerCase() },
+        { 'replicas.whitelistEmails': requestUser.email.toLowerCase() }
+      ]
+    }).select('email role albums photos');
+    
+    if (caretakerWithPatient) {
+      return {
+        canRead: true,
+        canWrite: false, // Patients can view but not edit
+        canDelete: false, // Cannot delete anything
+        user: requestUser,
+        owner: caretakerWithPatient,
+        isOwner: false,
+        isWhitelisted: true
+      };
+    }
   }
 
   // No access
