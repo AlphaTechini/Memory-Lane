@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 
-  import { isAuthenticated, verifyAuth, logout, requireAuthForAction, apiCall } from '$lib/auth.js';
+  import { isAuthenticated, verifyAuth, logout, requireAuthForAction, apiCall, getUserRole } from '$lib/auth.js';
 
   let isAuth = $state(false);
   let user = $state(null);
@@ -27,17 +27,29 @@
               userRole = user.role;
               console.log('Dashboard: userRole from cached user:', userRole);
             } else {
-              // Fallback to API call
+              // Try cached role first (fast, resilient to temporary API errors)
               try {
-                const response = await apiCall('/api/auth/me', { method: 'GET' });
-                if (response.ok) {
-                  const userData = await response.json();
-                  userRole = userData.user?.role || 'caretaker';
-                  console.log('Dashboard: userRole from API:', userRole);
+                const cached = getUserRole();
+                if (cached) {
+                  userRole = cached;
+                  console.log('Dashboard: userRole from cache fallback:', userRole);
+                } else {
+                  // Fallback to API call when cache is empty
+                  try {
+                    const response = await apiCall('/api/auth/me', { method: 'GET' });
+                    if (response.ok) {
+                      const userData = await response.json();
+                      userRole = userData.user?.role || 'caretaker';
+                      console.log('Dashboard: userRole from API:', userRole);
+                    }
+                  } catch (error) {
+                    console.error('Failed to load user role:', error);
+                    userRole = 'caretaker'; // Default to caretaker
+                  }
                 }
-              } catch (error) {
-                console.error('Failed to load user role:', error);
-                userRole = 'caretaker'; // Default to caretaker
+              } catch (err) {
+                console.error('Failed to read cached role:', err);
+                userRole = 'caretaker';
               }
             }
           }
