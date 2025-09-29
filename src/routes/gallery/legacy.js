@@ -3,13 +3,21 @@ import { requireGalleryAccess } from '../../middleware/galleryAuth.js';
 import { uploadImage, validateImageFile } from '../../services/cloudinaryService.js';
 import User from '../../models/User.js';
 
+const isUuid = (v) => {
+  if (!v || typeof v !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+};
+
 export default async function legacyRoutes(fastify, options) {
   fastify.post('/gallery/upload', { preHandler: authenticateToken }, async (request, reply) => {
     try {
       fastify.log.info('Starting legacy gallery upload process');
       if (!request.isMultipart()) return reply.code(400).send({ success: false, message: 'Request must be multipart/form-data', errors: ['Invalid content type'] });
-      const user = await User.findById(request.user.id);
-      if (!user) return reply.code(404).send({ success: false, message: 'User not found' });
+  const userIdRaw = request.user?.id || request.user?._id;
+  if (!isUuid(String(userIdRaw))) return reply.code(401).send({ success: false, message: 'Invalid authentication token' });
+
+  const user = await User.findById(String(userIdRaw));
+  if (!user) return reply.code(404).send({ success: false, message: 'User not found' });
 
       const files = [];
       for await (const part of request.parts()) {
@@ -50,8 +58,11 @@ export default async function legacyRoutes(fastify, options) {
   // GET /gallery - combined gallery endpoint for backward compatibility
   fastify.get('/gallery', { preHandler: authenticateToken }, async (request, reply) => {
     try {
-      const requestUser = await User.findById(request.user.id).select('email role albums photos gallery');
-      if (!requestUser) return reply.code(404).send({ success: false, message: 'User not found', errors: ['User account not found'] });
+  const requestUserIdRaw = request.user?.id || request.user?._id;
+  if (!isUuid(String(requestUserIdRaw))) return reply.code(401).send({ success: false, message: 'Invalid authentication token' });
+
+  const requestUser = await User.findById(String(requestUserIdRaw)).select('email role albums photos gallery');
+  if (!requestUser) return reply.code(404).send({ success: false, message: 'User not found', errors: ['User account not found'] });
 
       let targetUser = requestUser;
 
@@ -59,8 +70,9 @@ export default async function legacyRoutes(fastify, options) {
       if (requestUser.role === 'patient') {
         fastify.log.info(`Patient ${requestUser.email} accessing gallery, looking for caretaker`);
         
+        const email = (requestUser.email || '').toLowerCase();
         const caretaker = await User.findOne({ 
-          whitelistedPatients: requestUser.email.toLowerCase() 
+          whitelistedPatients: email
         }).select('email albums photos gallery');
         
         if (!caretaker) {

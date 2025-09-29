@@ -29,6 +29,16 @@ import { sensayConfig } from '../config/sensay.js';
  * @param {object} options - Plugin options
  */
 async function replicaRoutes(fastify, options) {
+  const isUuid = (s) => typeof s === 'string' && /^[0-9a-fA-F\-]{36}$/.test(s);
+
+  const getValidatedRequestUserId = (request, reply) => {
+    const uid = request.user?.id;
+    if (!isUuid(uid)) {
+      reply.code(401).send({ success:false, error:'Invalid user id in token' });
+      return null;
+    }
+    return uid;
+  };
   // Safe wrapper for creating empty KB entry
   const createKnowledgeBaseEntrySafe = async (replicaId, data) => {
     return await createKnowledgeBaseEntry(replicaId, data);
@@ -431,16 +441,23 @@ async function replicaRoutes(fastify, options) {
    */
   fastify.post('/api/replicas/reconcile', { preHandler: [authenticateToken, requireCaretaker] }, async (request, reply) => {
     try {
-      const user = await User.findById(request.user.id).select('email role sensayUserId replicas');
+  const userId = getValidatedRequestUserId(request, reply);
+  if (!userId) return;
+  const user = await User.findById(userId).select('email role sensayUserId replicas');
       
       // For patients, use their caretaker's Sensay user ID
       let targetUser = user;
       let targetSensayUserId = user.sensayUserId;
       
       if (user.role === 'patient') {
-        // Find caretaker for this patient
+        // Find caretaker for this patient - sanitize email first
+        const patientEmail = typeof user.email === 'string' ? user.email.toLowerCase() : '';
+        if (!patientEmail) {
+          return reply.status(400).send({ success:false, error:'Invalid patient email' });
+        }
+
         const caretaker = await User.findOne({ 
-          whitelistedPatients: user.email.toLowerCase() 
+          whitelistedPatients: patientEmail
         }).select('sensayUserId replicas');
         
         if (!caretaker?.sensayUserId) {
@@ -565,7 +582,9 @@ async function replicaRoutes(fastify, options) {
     preHandler: authenticateToken 
   }, async (request, reply) => {
     try {
-      const user = await User.findById(request.user.id).select('email role replicas');
+  const userId = getValidatedRequestUserId(request, reply);
+  if (!userId) return;
+  const user = await User.findById(userId).select('email role replicas');
       
       // For patients, get accessible replicas from their caretaker
       if (user.role === 'patient') {
@@ -585,9 +604,19 @@ async function replicaRoutes(fastify, options) {
         
         // Method 2: Fallback - check whitelistedPatients in User model
         if (accessibleReplicas.length === 0) {
-          const caretaker = await User.findOne({ 
-            whitelistedPatients: user.email.toLowerCase() 
-          }).select('replicas');
+          const patientEmail = typeof user.email === 'string' ? user.email.toLowerCase() : '';
+          if (patientEmail) {
+            const caretaker = await User.findOne({ 
+              whitelistedPatients: patientEmail
+            }).select('replicas');
+
+            if (caretaker && caretaker.replicas) {
+              // Filter caretaker's replicas to only those where patient is whitelisted
+              accessibleReplicas = caretaker.replicas.filter(replica => 
+                replica.whitelistEmails && replica.whitelistEmails.includes(patientEmail)
+              );
+            }
+          }
           
           if (caretaker && caretaker.replicas) {
             // Filter caretaker's replicas to only those where patient is whitelisted
@@ -767,7 +796,14 @@ async function replicaRoutes(fastify, options) {
   }, async (request, reply) => {
     try {
       const { replicaId } = request.params;
-      const user = await User.findById(request.user.id).select('replicas email role');
+
+      // Validate replicaId - expect a short alphanumeric id (no operator characters)
+      if (!replicaId || typeof replicaId !== 'string' || !/^[A-Za-z0-9_-]{6,128}$/.test(replicaId)) {
+        return reply.status(400).send({ success: false, error: 'Invalid replica id' });
+      }
+  const userId = getValidatedRequestUserId(request, reply);
+  if (!userId) return;
+  const user = await User.findById(userId).select('replicas email role');
       
       // First check if user owns the replica
       let replica = user?.replicas?.find(r => r.replicaId === replicaId);
@@ -828,6 +864,9 @@ async function replicaRoutes(fastify, options) {
   }, async (request, reply) => {
     try {
       const { replicaId } = request.params;
+      if (!replicaId || typeof replicaId !== 'string' || !/^[A-Za-z0-9_-]{6,128}$/.test(replicaId)) {
+        return reply.status(400).send({ success: false, error: 'Invalid replica id' });
+      }
       const { message, context = [], conversationId } = request.body;
       const userId = request.user.id;
       
@@ -854,21 +893,24 @@ async function replicaRoutes(fastify, options) {
         
         // Fallback: check if patient is whitelisted in any caretaker's replica
         if (!userReplica) {
-          const caretakerWithReplica = await User.findOne({
-            'replicas.replicaId': replicaId,
-            'replicas.whitelistEmails': user.email.toLowerCase()
-          }).select('replicas sensayUserId');
+          const patientEmail = typeof user.email === 'string' ? user.email.toLowerCase() : '';
+          if (patientEmail) {
+            const caretakerWithReplica = await User.findOne({
+              'replicas.replicaId': replicaId,
+              'replicas.whitelistEmails': patientEmail
+            }).select('replicas sensayUserId');
           
-          if (caretakerWithReplica) {
+            if (caretakerWithReplica) {
             userReplica = caretakerWithReplica.replicas?.find(r => 
               r.replicaId === replicaId && 
-              r.whitelistEmails && 
-              r.whitelistEmails.includes(user.email.toLowerCase())
+                r.whitelistEmails && 
+                r.whitelistEmails.includes(patientEmail)
             );
             if (userReplica) {
               caretakerUserId = caretakerWithReplica._id;
               // Override sensay user ID to use caretaker's
               request.sensayUserId = caretakerWithReplica.sensayUserId;
+            }
             }
           }
         }
@@ -893,10 +935,10 @@ async function replicaRoutes(fastify, options) {
       
       // Save conversation to database (use actual user ID, not caretaker's)
       let conversation;
-      if (conversationId) {
-        // Continue existing conversation
+      if (conversationId && typeof conversationId === 'string' && /^[0-9a-fA-F\-]{36}$/.test(conversationId)) {
+        // Continue existing conversation (conversationId validated as UUID)
         conversation = await Conversation.findOne({ 
-          _id: conversationId, 
+          id: conversationId, 
           userId, 
           replicaId 
         });
@@ -979,7 +1021,12 @@ async function replicaRoutes(fastify, options) {
   fastify.post('/api/replicas/:replicaId/training-sessions', { preHandler: [authenticateToken, requireCaretaker] }, async (request, reply) => {
     try {
       const { replicaId } = request.params;
-      const user = await User.findById(request.user.id);
+      if (!replicaId || typeof replicaId !== 'string' || !/^[A-Za-z0-9_-]{6,128}$/.test(replicaId)) {
+        return reply.status(400).send({ success: false, error: 'Invalid replica id' });
+      }
+  const userId = getValidatedRequestUserId(request, reply);
+  if (!userId) return;
+  const user = await User.findById(userId);
       const owned = user?.replicas?.some(r => r.replicaId === replicaId);
       if (!owned) {
         return reply.status(403).send({ success:false, error:'Replica not owned' });
@@ -1006,12 +1053,20 @@ async function replicaRoutes(fastify, options) {
    */
   fastify.post('/api/replicas/:replicaId/training-sessions/:sessionId/complete', { preHandler: [authenticateToken, requireCaretaker] }, async (request, reply) => {
     try {
-      const { replicaId } = request.params;
+      const { replicaId, sessionId } = request.params;
+      if (!replicaId || typeof replicaId !== 'string' || !/^[A-Za-z0-9_-]{6,128}$/.test(replicaId)) {
+        return reply.status(400).send({ success: false, error: 'Invalid replica id' });
+      }
+      if (!sessionId || typeof sessionId !== 'string' || sessionId.length > 200) {
+        return reply.status(400).send({ success: false, error: 'Invalid session id' });
+      }
       const { rawText, title } = request.body || {};
       if (!rawText || !rawText.trim()) {
         return reply.status(400).send({ success:false, error:'rawText required' });
       }
-      const user = await User.findById(request.user.id);
+  const userId = getValidatedRequestUserId(request, reply);
+  if (!userId) return;
+  const user = await User.findById(userId);
       const owned = user?.replicas?.some(r => r.replicaId === replicaId);
       if (!owned) {
         return reply.status(403).send({ success:false, error:'Replica not owned' });
@@ -1105,10 +1160,13 @@ async function replicaRoutes(fastify, options) {
    * Delete a replica (protected route - caretakers only)
    */
   fastify.delete('/api/replicas/:replicaId', { 
-    preHandler: authenticateToken 
+    preHandler: [authenticateToken, requireCaretaker]
   }, async (request, reply) => {
     try {
       const { replicaId } = request.params;
+      if (!replicaId || typeof replicaId !== 'string' || !/^[A-Za-z0-9_-]{6,128}$/.test(replicaId)) {
+        return reply.status(400).send({ success: false, error: 'Invalid replica id' });
+      }
       const userId = request.user.id;
       
       // Get user details to check role
@@ -1392,8 +1450,13 @@ async function replicaRoutes(fastify, options) {
       if (!hasContent) {
         return reply.status(400).send({ success:false, error:'At least one of text, url, or filename is required' });
       }
-      // Verify ownership
-      const user = await User.findById(request.user.id).select('replicas');
+      // Validate replicaId and verify ownership
+      if (!replicaId || typeof replicaId !== 'string' || !/^[A-Za-z0-9_-]{6,128}$/.test(replicaId)) {
+        return reply.status(400).send({ success:false, error:'Invalid replica id' });
+      }
+      const userId = getValidatedRequestUserId(request, reply);
+      if (!userId) return;
+      const user = await User.findById(userId).select('replicas');
       if (!user?.replicas?.some(r => r.replicaId === replicaId)) {
         return reply.status(403).send({ success:false, error:'Replica not owned' });
       }
@@ -1451,7 +1514,12 @@ async function replicaRoutes(fastify, options) {
   fastify.get('/api/replicas/:replicaId/kb', { preHandler: authenticateToken }, async (request, reply) => {
     try {
       const { replicaId } = request.params;
-      const user = await User.findById(request.user.id).select('replicas');
+      if (!replicaId || typeof replicaId !== 'string' || !/^[A-Za-z0-9_-]{6,128}$/.test(replicaId)) {
+        return reply.status(400).send({ success:false, error:'Invalid replica id' });
+      }
+      const userId = getValidatedRequestUserId(request, reply);
+      if (!userId) return;
+      const user = await User.findById(userId).select('replicas');
       if (!user?.replicas?.some(r => r.replicaId === replicaId)) {
         return reply.status(403).send({ success:false, error:'Replica not owned' });
       }
@@ -1467,9 +1535,17 @@ async function replicaRoutes(fastify, options) {
   fastify.get('/api/replicas/:replicaId/kb/:entryId', { preHandler: authenticateToken }, async (request, reply) => {
     try {
       const { replicaId, entryId } = request.params;
-      
+      if (!replicaId || typeof replicaId !== 'string' || !/^[A-Za-z0-9_-]{6,128}$/.test(replicaId)) {
+        return reply.status(400).send({ success:false, error:'Invalid replica id' });
+      }
+      if (!entryId || typeof entryId !== 'string' || entryId.length > 200) {
+        return reply.status(400).send({ success:false, error:'Invalid entry id' });
+      }
+
       // Verify user owns this replica
-      const user = await User.findById(request.user.id).select('replicas');
+      const userId = getValidatedRequestUserId(request, reply);
+      if (!userId) return;
+      const user = await User.findById(userId).select('replicas');
       if (!user?.replicas?.some(r => r.replicaId === replicaId)) {
         return reply.status(403).send({ 
           success: false, 
@@ -1645,9 +1721,17 @@ async function replicaRoutes(fastify, options) {
     try {
       const { replicaId, entryId } = request.params;
       const updateData = request.body;
+      if (!replicaId || typeof replicaId !== 'string' || !/^[A-Za-z0-9_-]{6,128}$/.test(replicaId)) {
+        return reply.status(400).send({ success:false, error:'Invalid replica id' });
+      }
+      if (!entryId || typeof entryId !== 'string' || entryId.length > 200) {
+        return reply.status(400).send({ success:false, error:'Invalid entry id' });
+      }
       
       // Verify user owns this replica
-      const user = await User.findById(request.user.id).select('replicas');
+      const userId = getValidatedRequestUserId(request, reply);
+      if (!userId) return;
+      const user = await User.findById(userId).select('replicas');
       if (!user?.replicas?.some(r => r.replicaId === replicaId)) {
         return reply.status(403).send({ 
           success: false, 

@@ -2,6 +2,12 @@ import { getCurrentSensayUser, ensureSensayUser as ensureSensayUserService } fro
 import logger from '../utils/logger.js';
 import User from '../models/User.js';
 
+// Simple UUID v4-ish validator to avoid passing arbitrary objects into DB lookups
+const isUuid = (v) => {
+  if (!v || typeof v !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+};
+
 /**
  * Middleware to ensure user has a valid Sensay user ID and is properly linked
  * This middleware should be used on routes that require Sensay functionality (like replica creation)
@@ -28,12 +34,19 @@ export const ensureSensayUser = (options = {}) => {
         });
       }
 
-      const userId = request.user.id || request.user._id;
+      const userIdRaw = request.user.id || request.user._id;
+
+      if (!isUuid(String(userIdRaw))) {
+        logger?.warn?.(`Invalid user id in request token: ${String(userIdRaw)}`) || console.warn('Invalid user id in request token');
+        return reply.status(401).send({ success: false, message: 'Invalid authentication token' });
+      }
+
+      const userId = String(userIdRaw);
       let user = request.user;
 
       // If user object doesn't have sensayUserId, fetch from database
-      if (!user.sensayUserId) {
-        const dbUser = await User.findById(userId);
+  if (!user.sensayUserId) {
+          const dbUser = await User.findById(userId);
         if (dbUser) {
           user = dbUser;
           request.user = dbUser; // Update request.user with complete data
@@ -58,14 +71,14 @@ export const ensureSensayUser = (options = {}) => {
         }
 
         // Auto-create Sensay user
-        logger?.info?.(`Creating missing Sensay user for ${user.email}`) || console.log('Creating missing Sensay user');
+          logger?.info?.(`Creating missing Sensay user for ${user.email}`) || console.log('Creating missing Sensay user');
         
         try {
           const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
           const sensayResult = await ensureSensayUserService({
             email: user.email,
             name: fullName || user.email.split('@')[0],
-            id: userId.toString()
+            id: userId
           });
 
           if (sensayResult.success && sensayResult.user) {
@@ -215,7 +228,14 @@ export const validateSensayLink = async (request, reply) => {
       });
     }
 
-    const userId = request.user.id || request.user._id;
+    const userIdRaw = request.user.id || request.user._id;
+
+    if (!isUuid(String(userIdRaw))) {
+      logger?.warn?.(`Invalid user id in request token: ${String(userIdRaw)}`) || console.warn('Invalid user id in request token');
+      return reply.status(401).send({ success: false, message: 'Invalid authentication token' });
+    }
+
+    const userId = String(userIdRaw);
     let user = request.user;
 
     // If user object doesn't have sensayUserId, fetch from database
@@ -259,7 +279,17 @@ export const addSensayUser = async (request, reply) => {
       return ;
     }
 
-    const userId = request.user.id || request.user._id;
+    const userIdRaw = request.user.id || request.user._id;
+
+    if (!isUuid(String(userIdRaw))) {
+      logger?.warn?.(`Invalid user id in request token: ${String(userIdRaw)}`) || console.warn('Invalid user id in request token');
+      // don't fail requests here; just treat as no-sensay-user
+      request.sensayUser = null;
+      request.sensayUserId = null;
+      return;
+    }
+
+    const userId = String(userIdRaw);
     let user = request.user;
 
     // If user object doesn't have sensayUserId, fetch from database

@@ -44,6 +44,19 @@ export const authenticateToken = async (request, reply) => {
 
     // Verify token
     const decoded = authService.verifyToken(token);
+
+    // Basic validation of token payload to prevent injection via crafted token fields
+    const isSafeUuid = id => typeof id === 'string' && /^[0-9a-fA-F\-]{36}$/.test(id);
+    if (!decoded || !decoded.id || typeof decoded.id !== 'string') {
+      reply.code(401).send({ success: false, message: 'Invalid token payload', errors: ['Malformed token payload'] });
+      return;
+    }
+
+    // If token type indicates caretaker/patient ensure id looks like a UUID (Prisma UUID format)
+    if (!isSafeUuid(decoded.id)) {
+      reply.code(401).send({ success: false, message: 'Invalid token id format', errors: ['Malformed user id in token'] });
+      return;
+    }
     
     // Check if this is a patient token
     if (decoded.type === 'patient') {

@@ -1,6 +1,11 @@
-import { authenticateToken, validatePatientCaretakerRelationship } from '../../middleware/auth.js';
+import { authenticateToken, requireCaretaker, validatePatientCaretakerRelationship } from '../../middleware/auth.js';
 import { requireGalleryAccess } from '../../middleware/galleryAuth.js';
 import User from '../../models/User.js';
+
+const isUuid = (v) => {
+  if (!v || typeof v !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+};
 
 export default async function albumsRoutes(fastify, options) {
   // Create album -> POST /gallery/albums (registered under /gallery prefix)
@@ -16,12 +21,15 @@ export default async function albumsRoutes(fastify, options) {
         }
       }
     },
-    preHandler: [authenticateToken, requireCaretaker]
+    preHandler: [authenticateToken, validatePatientCaretakerRelationship]
   }, async (request, reply) => {
     try {
       const { name, description, dateOfMemory } = request.body;
 
-      const user = await User.findById(request.user.id);
+      const userIdRaw = request.user?.id || request.user?._id;
+      if (!isUuid(String(userIdRaw))) return reply.code(401).send({ success: false, message: 'Invalid authentication token' });
+
+      const user = await User.findById(String(userIdRaw));
       if (!user) {
         return reply.code(404).send({ success: false, message: 'User not found', errors: ['User account not found'] });
       }
@@ -57,7 +65,11 @@ export default async function albumsRoutes(fastify, options) {
       }
 
       // Use the owner from gallery access (could be caretaker for whitelisted patients)
-      const targetUser = await User.findById(access.owner._id).select('albums');
+      if (!access || !access.owner || !isUuid(String(access.owner._id))) {
+        return reply.code(404).send({ success: false, message: 'Gallery owner not found', errors: ['Owner account not found'] });
+      }
+
+      const targetUser = await User.findById(String(access.owner._id)).select('albums');
       if (!targetUser) {
         return reply.code(404).send({ success: false, message: 'Gallery owner not found', errors: ['Owner account not found'] });
       }
@@ -89,8 +101,11 @@ export default async function albumsRoutes(fastify, options) {
     try {
       const { albumId } = request.params;
       const updates = request.body;
-      const user = await User.findById(request.user.id);
-      if (!user) return reply.code(404).send({ success: false, message: 'User not found' });
+  const userIdRaw = request.user?.id || request.user?._id;
+  if (!isUuid(String(userIdRaw))) return reply.code(401).send({ success: false, message: 'Invalid authentication token' });
+
+  const user = await User.findById(String(userIdRaw));
+  if (!user) return reply.code(404).send({ success: false, message: 'User not found' });
       const album = user.albums.id(albumId);
       if (!album) return reply.code(404).send({ success: false, message: 'Album not found' });
       if (updates.name) album.name = updates.name;
@@ -118,7 +133,11 @@ export default async function albumsRoutes(fastify, options) {
       const access = request.galleryAccess;
       
       // Use the owner from gallery access
-      const user = await User.findById(access.owner._id);
+      if (!access || !access.owner || !isUuid(String(access.owner._id))) {
+        return reply.code(404).send({ success: false, message: 'User not found' });
+      }
+
+      const user = await User.findById(String(access.owner._id));
       if (!user) return reply.code(404).send({ success: false, message: 'User not found' });
       const album = user.albums.id(albumId);
       if (!album) return reply.code(404).send({ success: false, message: 'Album not found' });

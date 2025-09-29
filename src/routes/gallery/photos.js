@@ -1,7 +1,12 @@
-import { authenticateToken, validatePatientCaretakerRelationship } from '../../middleware/auth.js';
+import { authenticateToken, requireCaretaker, validatePatientCaretakerRelationship } from '../../middleware/auth.js';
 import { requireGalleryAccess } from '../../middleware/galleryAuth.js';
 import { uploadImage, validateImageFile } from '../../services/cloudinaryService.js';
 import User from '../../models/User.js';
+
+const isUuid = (v) => {
+  if (!v || typeof v !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+};
 
 export default async function photosRoutes(fastify, options) {
   // Upload photos -> POST /gallery/photos
@@ -22,9 +27,15 @@ export default async function photosRoutes(fastify, options) {
         fastify.log.warn(hdrErr, 'Failed to log request headers');
       }
 
-      const user = await User.findById(request.user.id);
+      const userIdRaw = request.user?.id || request.user?._id;
+      if (!isUuid(String(userIdRaw))) {
+        fastify.log.error(`Invalid user id in request token: ${String(userIdRaw)}`);
+        return reply.code(401).send({ success: false, message: 'Invalid authentication token' });
+      }
+
+      const user = await User.findById(String(userIdRaw));
       if (!user) {
-        fastify.log.error(`User not found: ${request.user.id}`);
+        fastify.log.error(`User not found: ${String(userIdRaw)}`);
         return reply.code(404).send({ success: false, message: 'User not found' });
       }
 
@@ -234,7 +245,11 @@ export default async function photosRoutes(fastify, options) {
       }
 
       // Use the owner from gallery access (could be caretaker for whitelisted patients)
-      const targetUser = await User.findById(access.owner._id).select('photos albums');
+      if (!access || !access.owner || !isUuid(String(access.owner._id))) {
+        return reply.code(404).send({ success: false, message: 'Gallery owner not found' });
+      }
+
+      const targetUser = await User.findById(String(access.owner._id)).select('photos albums');
       if (!targetUser) {
         return reply.code(404).send({ success: false, message: 'Gallery owner not found' });
       }
@@ -267,8 +282,11 @@ export default async function photosRoutes(fastify, options) {
     try {
       const { photoId } = request.params;
       const { description, albumId, removeFromAlbum } = request.body;
-      const user = await User.findById(request.user.id);
-      if (!user) return reply.code(404).send({ success: false, message: 'User not found' });
+  const userIdRaw = request.user?.id || request.user?._id;
+  if (!isUuid(String(userIdRaw))) return reply.code(401).send({ success: false, message: 'Invalid authentication token' });
+
+  const user = await User.findById(String(userIdRaw));
+  if (!user) return reply.code(404).send({ success: false, message: 'User not found' });
       const photo = user.photos.id(photoId);
       if (!photo) return reply.code(404).send({ success: false, message: 'Photo not found' });
       if (description !== undefined) photo.description = description;
@@ -306,8 +324,10 @@ export default async function photosRoutes(fastify, options) {
       const access = request.galleryAccess;
       
       // Use the owner from gallery access (could be different from request.user for whitelisted patients)
-      const user = await User.findById(access.owner._id);
-      if (!user) return reply.code(404).send({ success: false, message: 'User not found' });
+  if (!access || !access.owner || !isUuid(String(access.owner._id))) return reply.code(404).send({ success: false, message: 'User not found' });
+
+  const user = await User.findById(String(access.owner._id));
+  if (!user) return reply.code(404).send({ success: false, message: 'User not found' });
       
       const photo = user.photos.id(photoId);
       if (!photo) return reply.code(404).send({ success: false, message: 'Photo not found' });

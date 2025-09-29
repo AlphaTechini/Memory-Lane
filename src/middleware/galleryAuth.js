@@ -8,6 +8,13 @@ import Patient from '../models/Patient.js';
  * @returns {Promise<{canRead: boolean, canWrite: boolean, canDelete: boolean, user: Object, owner: Object}>}
  */
 export async function checkGalleryAccess(requestUserId, ownerUserId = null) {
+  // Basic validation helpers
+  const isUuid = (s) => typeof s === 'string' && /^[0-9a-fA-F\-]{36}$/.test(s);
+
+  if (!isUuid(requestUserId)) {
+    throw new Error('Invalid request user id format');
+  }
+
   const requestUser = await User.findById(requestUserId).select('email role');
   if (!requestUser) {
     throw new Error('Request user not found');
@@ -58,14 +65,22 @@ export async function checkGalleryAccess(requestUserId, ownerUserId = null) {
     };
   }
 
-  const ownerUser = await User.findById(ownerUserId).select('email role whitelistedPatients');
+  // Validate ownerUserId before using it in a DB query
+  if (ownerUserId && ownerUserId !== requestUserId && !isUuid(ownerUserId)) {
+    throw new Error('Invalid owner user id format');
+  }
+
+  const ownerUser = ownerUserId ? await User.findById(ownerUserId).select('email role whitelistedPatients') : null;
+  if (!ownerUser && ownerUserId) {
+    throw new Error('Gallery owner not found');
+  }
   if (!ownerUser) {
     throw new Error('Gallery owner not found');
   }
 
   // Check if the request user's email is whitelisted by the owner
-  const isWhitelisted = ownerUser.whitelistedPatients && 
-    ownerUser.whitelistedPatients.includes(requestUser.email.toLowerCase());
+  const isWhitelisted = ownerUser && ownerUser.whitelistedPatients && 
+    ownerUser.whitelistedPatients.includes(String(requestUser.email).toLowerCase());
 
   // Allow whitelisted users to access gallery regardless of role (they become patients when whitelisted)
   if (isWhitelisted) {
@@ -82,24 +97,29 @@ export async function checkGalleryAccess(requestUserId, ownerUserId = null) {
 
   // Additional check: if this is a patient role user, check if they're whitelisted in any caretaker's replica
   if (requestUser.role === 'patient') {
-    const caretakerWithPatient = await User.findOne({
-      $or: [
-        { whitelistedPatients: requestUser.email.toLowerCase() },
-        { 'replicas.whitelistEmails': requestUser.email.toLowerCase() }
-      ]
-    }).select('email role albums photos');
-    
-    if (caretakerWithPatient) {
-      return {
-        canRead: true,
-        canWrite: false, // Patients can view but not edit
-        canDelete: false, // Cannot delete anything
-        user: requestUser,
-        owner: caretakerWithPatient,
-        isOwner: false,
-        isWhitelisted: true
-      };
+    const patientEmail = typeof requestUser.email === 'string' ? requestUser.email.toLowerCase() : '';
+    if (patientEmail) {
+      const caretakerWithPatient = await User.findOne({
+        $or: [
+          { whitelistedPatients: patientEmail },
+          { 'replicas.whitelistEmails': patientEmail }
+        ]
+      }).select('email role albums photos');
+
+      if (caretakerWithPatient) {
+        return {
+          canRead: true,
+          canWrite: false, // Patients can view but not edit
+          canDelete: false, // Cannot delete anything
+          user: requestUser,
+          owner: caretakerWithPatient,
+          isOwner: false,
+          isWhitelisted: true
+        };
+      }
     }
+    
+    // fall through if no caretaker found
   }
 
   // No access

@@ -2,6 +2,12 @@ import { authenticateToken, requireCaretaker } from '../middleware/auth.js';
 import { uploadImage, deleteImage, validateImageFile } from '../services/cloudinaryService.js';
 import User from '../models/User.js';
 
+// Simple UUID v4-ish validator to avoid passing arbitrary objects into DB lookups
+const isUuid = (v) => {
+  if (!v || typeof v !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+};
+
 /**
  * Replica profile picture management routes
  * All routes are protected and require authentication
@@ -50,9 +56,15 @@ async function replicaImageRoutes(fastify, options) {
       // Validate file
       validateImageFile(file);
 
+      // Validate request user id before DB lookup
+      const userIdRaw = request.user?.id || request.user?._id;
+      if (!isUuid(String(userIdRaw))) {
+        return reply.code(401).send({ success: false, message: 'Invalid authentication token' });
+      }
+
       // Get current user
-      const user = await User.findById(request.user.id);
-      
+      const user = await User.findById(String(userIdRaw));
+
       if (!user) {
         return reply.code(404).send({
           success: false,
@@ -154,8 +166,13 @@ async function replicaImageRoutes(fastify, options) {
     }
   }, async (request, reply) => {
     try {
-      const user = await User.findById(request.user.id).select('replicaImageUrl replicaImageId');
-      
+      const userIdRaw = request.user?.id || request.user?._id;
+      if (!isUuid(String(userIdRaw))) {
+        return reply.code(401).send({ success: false, message: 'Invalid authentication token' });
+      }
+
+      const user = await User.findById(String(userIdRaw)).select('replicaImageUrl replicaImageId');
+
       if (!user) {
         return reply.code(404).send({
           success: false,
@@ -211,8 +228,14 @@ async function replicaImageRoutes(fastify, options) {
     }
   }, async (request, reply) => {
     try {
-      const user = await User.findById(request.user.id);
-      
+      const userIdRaw = request.user?.id || request.user?._id;
+
+      if (!isUuid(String(userIdRaw))) {
+        return reply.code(401).send({ success: false, message: 'Invalid authentication token' });
+      }
+
+      const user = await User.findById(String(userIdRaw));
+
       if (!user) {
         return reply.code(404).send({
           success: false,
