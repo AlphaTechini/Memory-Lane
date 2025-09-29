@@ -21,11 +21,14 @@
   >
     <!-- Message bubble -->
     <div
-      class="px-4 py-3 rounded-2xl shadow-sm break-words transition-all duration-200"
+      class="px-4 py-3 rounded-2xl shadow-sm break-words transition-all duration-200 border"
       class:bg-blue-500={isUser}
       class:text-white={isUser}
+      class:border-blue-500={isUser}
       class:bg-gray-100={!isUser}
       class:dark:bg-gray-700={!isUser}
+      class:border-gray-200={!isUser}
+      class:dark:border-gray-600={!isUser}
       class:text-gray-900={!isUser}
       class:dark:text-gray-100={!isUser}
       class:rounded-br-md={isUser}

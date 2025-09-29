@@ -1281,10 +1281,10 @@
         <div class="space-y-4">
           {#each chatMessages as message (message.id)}
             <div class="flex {message.sender === 'user' ? 'justify-end' : 'justify-start'}">
-              <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg {
+              <div class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow-sm {
                 message.sender === 'user' 
                   ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+                  : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600'
               }">
                 {message.text}
               </div>

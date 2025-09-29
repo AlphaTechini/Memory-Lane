@@ -1,8 +1,13 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  
-  const { album, showControls = true, canDelete = true } = $props();
-  
+
+  // Explicit, reactive props
+  export let album;
+  export let showControls = true;
+  export let canDelete = true;
+  // Optional photos array passed from parent so we can compute counts from actual photos
+  export let photos = [];
+
   const dispatch = createEventDispatcher();
   
   function handleEdit() {

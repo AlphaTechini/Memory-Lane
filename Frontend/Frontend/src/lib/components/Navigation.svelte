@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { checkAuthStatus, apiCall } from '$lib/auth.js';
+  import ThemeToggle from './ThemeToggle.svelte';
   
   let currentPath = $state('');
   let isAuthenticated = $state(false);
@@ -125,6 +126,9 @@
     </div>
     
     <div class="flex items-center gap-2 lg:gap-4">
+      <!-- Theme Toggle -->
+      <ThemeToggle />
+      
       <!-- Mobile menu button -->
       <button
         onclick={() => showMobileMenu = !showMobileMenu}
