@@ -49,8 +49,11 @@ export default async function legacyRoutes(fastify, options) {
           const chunks = [];
           for await (const c of file) chunks.push(c);
           const fileBuffer = Buffer.concat(chunks);
-          const cloudinaryResult = await uploadImage(fileBuffer, { folder: `users/${request.user.id}/photos` });
-          const photoData = { imageUrl: cloudinaryResult.url, imageId: cloudinaryResult.public_id, originalName: file.filename, uploadedAt: new Date() };
+          const ownerFolder = `users/${user.id || user._id}/photos`;
+          const cloudinaryResult = await uploadImage(fileBuffer, { folder: ownerFolder });
+          const generateUuid = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; const v = c === 'x' ? r : (r&0x3|0x8); return v.toString(16); });
+          const pid = generateUuid();
+          const photoData = { _id: pid, id: pid, imageUrl: cloudinaryResult.url, imageId: cloudinaryResult.public_id, originalName: file.filename, uploadedAt: new Date() };
           user.photos.push(photoData);
           uploadResults.push(user.photos[user.photos.length - 1]);
         } catch (error) {

@@ -208,7 +208,12 @@ export default async function photosRoutes(fastify, options) {
           const result = await attemptUpload(buffer, { folder: `users/${ownerUser.id}/photos` }, 3);
           fastify.log.info({ imageId: result.public_id, imageUrl: result.url, bytes: result.bytes, fullResult: result }, 'Cloudinary upload finished for file');
 
+          // Ensure photo objects have stable IDs so they can be referenced by albums and frontend
+          const generateUuid = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; const v = c === 'x' ? r : (r&0x3|0x8); return v.toString(16); });
+          const pid = generateUuid();
           const photoData = { 
+            _id: pid,
+            id: pid,
             imageUrl: result.url, 
             imageId: result.public_id, 
             originalName: partFile.filename, 
