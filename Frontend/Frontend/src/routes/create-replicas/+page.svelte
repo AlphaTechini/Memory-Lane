@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { wizardStore } from '$lib/stores/wizardStore.js';
   import { replicasStore } from '$lib/stores/replicasStore.js';
-  import { requireAuthForAction, checkAuthStatus, apiCall } from '$lib/auth.js';
+  import { requireAuthForAction, checkAuthStatus, apiCall, getUserRole, verifyAuth } from '$lib/auth.js';
   import BackNavigation from '$lib/components/BackNavigation.svelte';
   
   import Step1Basics from '$lib/components/wizard/Step1Basics.svelte';
@@ -12,6 +12,18 @@
   import Step4OptionalQuestions from '$lib/components/wizard/Step4OptionalQuestions.svelte';
   import Step5ProfileImage from '$lib/components/wizard/Step5ProfileImage.svelte';
   import Step7ReviewSubmit from '$lib/components/wizard/Step7ReviewSubmit.svelte';
+
+  // Check role on mount - redirect patients
+  onMount(async () => {
+    const user = await verifyAuth();
+    const userRole = user?.role || getUserRole() || 'caretaker';
+    
+    if (userRole === 'patient') {
+      console.log('Patients cannot create replicas, redirecting to dashboard');
+      goto('/dashboard');
+      return;
+    }
+  });
 
   let state = $state({
     currentStep: 0, // 0 = template selection before existing steps

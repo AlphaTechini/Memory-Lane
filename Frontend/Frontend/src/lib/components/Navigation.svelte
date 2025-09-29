@@ -93,6 +93,19 @@
               <span class="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full"></span>
             {/if}
           </button>
+          
+          <button
+            onclick={() => goto('/manage-patients')}
+            class="px-3 py-2 text-sm font-medium rounded-md transition-colors relative
+              {currentPath.startsWith('/manage-patients') 
+                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
+                : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'}"
+          >
+            Manage Patients
+            {#if !isAuthenticated}
+              <span class="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full"></span>
+            {/if}
+          </button>
         {/if}
         
         
@@ -184,6 +197,16 @@
                 : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'}"
           >
             Create Replica
+          </button>
+          
+          <button
+            onclick={() => { goto('/manage-patients'); showMobileMenu = false; }}
+            class="w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors
+              {currentPath.startsWith('/manage-patients') 
+                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
+                : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'}"
+          >
+            Manage Patients
           </button>
         {/if}
         

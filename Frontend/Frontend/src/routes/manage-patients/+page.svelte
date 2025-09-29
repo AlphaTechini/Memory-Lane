@@ -2,12 +2,13 @@
 <script>
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
-  import { verifyAuth, getAuthToken, apiCall } from '$lib/auth.js';
+  import { verifyAuth, getAuthToken, apiCall, getUserRole } from '$lib/auth.js';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import BackNavigation from '$lib/components/BackNavigation.svelte';
 
   let isAuth = $state(false);
   let user = $state(null);
+  let userRole = $state(null);
   let authChecked = $state(false);
   let replicas = $state([]);
   let loading = $state(false);
@@ -26,6 +27,14 @@
         if (!user) {
           // No cached user and no valid token -> redirect to login
           goto('/login');
+          return;
+        }
+
+        // Check user role - patients can't access this page
+        userRole = user.role || getUserRole() || 'caretaker';
+        if (userRole === 'patient') {
+          console.log('Patients cannot access manage-patients page, redirecting to dashboard');
+          goto('/dashboard');
           return;
         }
 
