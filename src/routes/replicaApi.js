@@ -582,85 +582,42 @@ async function replicaRoutes(fastify, options) {
     preHandler: authenticateToken 
   }, async (request, reply) => {
     try {
-  const userId = getValidatedRequestUserId(request, reply);
-  if (!userId) return;
-  const user = await User.findById(userId).select('email role replicas');
+      // Handle patient tokens differently
+      if (request.isPatient) {
+        // For patients, get accessible replicas from their caretaker
+        const patientData = request.user;
+        
+        if (!patientData.caretakerId || !patientData.allowedReplicas) {
+          return reply.send({ success: true, replicas: [] });
+        }
+        
+        const caretaker = await User.findById(patientData.caretakerId).select('replicas');
+        if (!caretaker || !caretaker.replicas) {
+          return reply.send({ success: true, replicas: [] });
+        }
+        
+        // Filter to only allowed replicas
+        const accessibleReplicas = caretaker.replicas.filter(replica => 
+          patientData.allowedReplicas.includes(replica.replicaId)
+        );
+        
+        return reply.send({ success: true, replicas: accessibleReplicas });
+      }
       
-      // For patients, get accessible replicas from their caretaker
-      if (user.role === 'patient') {
-        let accessibleReplicas = [];
-        
-        // Method 1: Check via Patient model
-        const patientRecord = await Patient.findByEmail(user.email);
-        if (patientRecord && patientRecord.caretaker) {
-          const caretaker = await User.findById(patientRecord.caretaker).select('replicas');
-          if (caretaker && caretaker.replicas) {
-            // Filter to only allowed replicas
-            accessibleReplicas = caretaker.replicas.filter(replica => 
-              patientRecord.allowedReplicas.includes(replica.replicaId)
-            );
-          }
-        }
-        
-        // Method 2: Fallback - check whitelistedPatients in User model
-        if (accessibleReplicas.length === 0) {
-          const patientEmail = typeof user.email === 'string' ? user.email.toLowerCase() : '';
-          if (patientEmail) {
-            const caretaker = await User.findOne({ 
-              whitelistedPatients: patientEmail
-            }).select('replicas');
-
-            if (caretaker && caretaker.replicas) {
-              // Filter caretaker's replicas to only those where patient is whitelisted
-              accessibleReplicas = caretaker.replicas.filter(replica => 
-                replica.whitelistEmails && replica.whitelistEmails.includes(patientEmail)
-              );
-            }
-          }
-          
-          if (caretaker && caretaker.replicas) {
-            // Filter caretaker's replicas to only those where patient is whitelisted
-            accessibleReplicas = caretaker.replicas.filter(replica => 
-              replica.whitelistEmails && replica.whitelistEmails.includes(user.email.toLowerCase())
-            );
-          }
-        }
-        
-        // Method 3: Final fallback - search all users for replicas with this patient whitelisted
-        if (accessibleReplicas.length === 0) {
-          const usersWithPatientReplicas = await User.find({
-            'replicas.whitelistEmails': user.email.toLowerCase()
-          }).select('replicas');
-          
-          for (const userWithReplicas of usersWithPatientReplicas) {
-            for (const replica of userWithReplicas.replicas) {
-              if (replica.whitelistEmails && replica.whitelistEmails.includes(user.email.toLowerCase())) {
-                accessibleReplicas.push({
-                  ...replica.toObject(),
-                  isPatientAccess: true
-                });
-              }
-            }
-          }
-        } else {
-          // Mark replicas as patient access
-          accessibleReplicas = accessibleReplicas.map(replica => ({
-            ...replica.toObject(),
-            isPatientAccess: true
-          }));
-        }
-
-        return { 
-          success: true, 
-          replicas: accessibleReplicas 
-        };
+      // Handle caretaker tokens
+      const userId = getValidatedRequestUserId(request, reply);
+      if (!userId) return;
+      const user = await User.findById(userId).select('email role replicas');
+      
+      if (!user) {
+        return reply.code(404).send({ success: false, error: 'User not found' });
       }
       
       // For caretakers, return their own replicas
-      return { 
+      return reply.send({ 
         success: true, 
         replicas: user?.replicas || [] 
-      };
+      });
     } catch (error) {
       fastify.log.error(error, 'Error fetching user replicas');
       

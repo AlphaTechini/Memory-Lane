@@ -10,7 +10,9 @@ const isUuid = (v) => {
 
 export default async function photosRoutes(fastify, options) {
   // Upload photos -> POST /gallery/photos
-  fastify.post('/photos', { preHandler: [authenticateToken, requireCaretaker] }, async (request, reply) => {
+  // Allow both caretakers and patients to upload. If the requester is a patient, map uploads
+  // to their assigned caretaker account (so photos and albums live under the caretaker).
+  fastify.post('/photos', { preHandler: [authenticateToken] }, async (request, reply) => {
     try {
       fastify.log.info('Starting photo upload process');
 
@@ -27,16 +29,30 @@ export default async function photosRoutes(fastify, options) {
         fastify.log.warn(hdrErr, 'Failed to log request headers');
       }
 
-      const userIdRaw = request.user?.id || request.user?._id;
-      if (!isUuid(String(userIdRaw))) {
-        fastify.log.error(`Invalid user id in request token: ${String(userIdRaw)}`);
+      // Determine the gallery owner: caretakers upload to their own account; patients upload
+      // to their assigned caretaker's account.
+      let ownerIdRaw;
+      if (request.isPatient) {
+        // Ensure patient has an assigned caretaker
+        const caretakerId = request.user?.caretakerId;
+        if (!caretakerId) {
+          fastify.log.warn(`Patient ${request.user?.email} attempted upload without caretaker`);
+          return reply.code(403).send({ success: false, message: 'No caretaker assigned', errors: ['Patient must be linked to a caretaker to upload images'] });
+        }
+        ownerIdRaw = caretakerId;
+      } else {
+        ownerIdRaw = request.user?.id || request.user?._id;
+      }
+
+      if (!isUuid(String(ownerIdRaw))) {
+        fastify.log.error(`Invalid owner id for gallery operations: ${String(ownerIdRaw)}`);
         return reply.code(401).send({ success: false, message: 'Invalid authentication token' });
       }
 
-      const user = await User.findById(String(userIdRaw));
-      if (!user) {
-        fastify.log.error(`User not found: ${String(userIdRaw)}`);
-        return reply.code(404).send({ success: false, message: 'User not found' });
+      const ownerUser = await User.findById(String(ownerIdRaw));
+      if (!ownerUser) {
+        fastify.log.error(`Gallery owner not found: ${String(ownerIdRaw)}`);
+        return reply.code(404).send({ success: false, message: 'Gallery owner not found' });
       }
 
       let albumId = null;
@@ -74,10 +90,10 @@ export default async function photosRoutes(fastify, options) {
         return reply.code(400).send({ success: false, message: 'No valid files provided', errors: ['At least one image file is required'] });
       }
 
-      // Validate album if albumId is provided
+      // Validate album if albumId is provided (albums belong to the ownerUser)
       let album = null;
       if (albumId) {
-        album = user.albums.id(albumId);
+        album = ownerUser.albums.id(albumId);
         if (!album) {
           fastify.log.error(`Album not found: ${albumId}`);
           return reply.code(404).send({ success: false, message: 'Album not found' });
@@ -188,7 +204,8 @@ export default async function photosRoutes(fastify, options) {
           validateImageFile(partFile, buffer);
           fastify.log.info({ filename: partFile.filename }, 'File validation passed');
 
-          const result = await attemptUpload(buffer, { folder: `users/${request.user.id}/photos` }, 3);
+          // Store files under the owner's folder (caretaker) so all gallery data is centralized
+          const result = await attemptUpload(buffer, { folder: `users/${ownerUser.id}/photos` }, 3);
           fastify.log.info({ imageId: result.public_id, imageUrl: result.url, bytes: result.bytes, fullResult: result }, 'Cloudinary upload finished for file');
 
           const photoData = { 
@@ -200,9 +217,10 @@ export default async function photosRoutes(fastify, options) {
             dateOfMemory: dateOfMemory || undefined,
             uploadedAt: new Date() 
           };
-          user.photos.push(photoData);
-          const newPhoto = user.photos[user.photos.length - 1];
-          if (album) album.photos.push(newPhoto._id);
+          ownerUser.photos.push(photoData);
+          const newPhoto = ownerUser.photos[ownerUser.photos.length - 1];
+          // Ensure album references are updated on the ownerUser
+          if (album) album.photos.push(newPhoto._id || newPhoto.id);
           uploadResults.push(newPhoto);
         } catch (err) {
           // Log full error and try to serialize rich error info from Cloudinary if present
@@ -220,9 +238,9 @@ export default async function photosRoutes(fastify, options) {
         }
       }
 
-      if (uploadResults.length === 0) return reply.code(400).send({ success: false, message: 'No files uploaded', errors });
+  if (uploadResults.length === 0) return reply.code(400).send({ success: false, message: 'No files uploaded', errors });
 
-      await user.save();
+  await ownerUser.save();
       reply.send({ success: true, message: 'Files uploaded', data: { photos: uploadResults, errors } });
     } catch (error) {
       request.log.error(error, 'Gallery upload failed');
