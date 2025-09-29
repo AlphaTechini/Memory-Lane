@@ -263,6 +263,8 @@ export const validateSensayLink = async (request, reply) => {
                 // Use caretaker's Sensay user id for downstream calls on behalf of patient
                 request.sensayUserId = caretaker.sensayUserId;
                 request.sensayUser = { id: caretaker.sensayUserId };
+                // Log for debugging patient->caretaker Sensay flow
+                logger?.info?.(`Patient ${patientEmail} using caretaker's Sensay user ID ${caretaker.sensayUserId}`) || console.log(`Patient ${patientEmail} using caretaker's Sensay user ID ${caretaker.sensayUserId}`);
                 // keep request.user as the patient (so DB saves go to patient when appropriate)
                 return;
               }

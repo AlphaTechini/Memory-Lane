@@ -817,17 +817,19 @@ async function replicaRoutes(fastify, options) {
    * Chat with a replica (protected route)
    */
   fastify.post('/api/replicas/:replicaId/chat', { 
-    preHandler: [authenticateToken]
+    preHandler: [authenticateToken, validateSensayLink]
   }, async (request, reply) => {
     try {
       const { replicaId } = request.params;
       if (!replicaId || typeof replicaId !== 'string' || !/^[A-Za-z0-9_-]{6,128}$/.test(replicaId)) {
         return reply.status(400).send({ success: false, error: 'Invalid replica id' });
       }
-  const { message, context = [], conversationId } = request.body;
-  // Validate and extract user id from the request (reply will be sent on failure)
-  const userId = getValidatedRequestUserId(request, reply);
-  if (!userId) return; // getValidatedRequestUserId already sent a reply
+      const { message, context = [], conversationId } = request.body;
+      const userId = request.user?.id;
+      
+      if (!userId) {
+        return reply.status(401).send({ success: false, error: 'User ID not found in token' });
+      }
       
       // Verify user has access to this replica (owner or whitelisted patient)
       const user = await User.findById(userId).select('replicas email role');
