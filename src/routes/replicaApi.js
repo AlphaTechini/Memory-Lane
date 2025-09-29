@@ -824,11 +824,17 @@ async function replicaRoutes(fastify, options) {
       if (!replicaId || typeof replicaId !== 'string' || !/^[A-Za-z0-9_-]{6,128}$/.test(replicaId)) {
         return reply.status(400).send({ success: false, error: 'Invalid replica id' });
       }
-      const { message, context = [], conversationId } = request.body;
-      const userId = request.user.id;
+  const { message, context = [], conversationId } = request.body;
+  // Validate and extract user id from the request (reply will be sent on failure)
+  const userId = getValidatedRequestUserId(request, reply);
+  if (!userId) return; // getValidatedRequestUserId already sent a reply
       
       // Verify user has access to this replica (owner or whitelisted patient)
       const user = await User.findById(userId).select('replicas email role');
+      if (!user) {
+        // Defensive: token may be valid but user removed from DB
+        return reply.status(401).send({ success: false, error: 'User not found' });
+      }
       let userReplica = user?.replicas?.find(r => r.replicaId === replicaId);
       let isOwner = Boolean(userReplica);
       let caretakerUserId = userId; // Default to current user
