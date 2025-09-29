@@ -1,6 +1,7 @@
 import { getCurrentSensayUser, ensureSensayUser as ensureSensayUserService } from '../services/sensayService.js';
 import logger from '../utils/logger.js';
 import User from '../models/User.js';
+import Patient from '../models/Patient.js';
 
 // Simple UUID v4-ish validator to avoid passing arbitrary objects into DB lookups
 const isUuid = (v) => {
@@ -247,7 +248,32 @@ export const validateSensayLink = async (request, reply) => {
       }
     }
 
+    // If no sensayUserId on the current user, try to resolve via patient->caretaker linkage
     if (!user.sensayUserId) {
+      try {
+        // If this token represents a patient, attempt to resolve the caretaker's sensayUserId
+        const isPatientToken = request.user && request.user.role === 'patient';
+        if (isPatientToken) {
+          const patientEmail = typeof request.user.email === 'string' ? request.user.email.toLowerCase() : null;
+          if (patientEmail) {
+            const patientRecord = await Patient.findByEmail(patientEmail);
+            if (patientRecord && patientRecord.caretaker) {
+              const caretaker = await User.findById(patientRecord.caretaker).select('sensayUserId');
+              if (caretaker && caretaker.sensayUserId) {
+                // Use caretaker's Sensay user id for downstream calls on behalf of patient
+                request.sensayUserId = caretaker.sensayUserId;
+                request.sensayUser = { id: caretaker.sensayUserId };
+                // keep request.user as the patient (so DB saves go to patient when appropriate)
+                return;
+              }
+            }
+          }
+        }
+      } catch (resolveErr) {
+        logger?.warn?.(`Failed to resolve caretaker sensayUserId for patient ${request.user?.email}: ${resolveErr.message}`) || console.warn('Failed to resolve caretaker sensayUserId', resolveErr.message);
+      }
+
+      // If we still don't have a sensayUserId, fail as before
       return reply.status(400).send({
         success: false,
         message: 'Sensay user not linked for this account. Please contact support or retry later.',

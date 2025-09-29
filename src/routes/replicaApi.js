@@ -817,7 +817,7 @@ async function replicaRoutes(fastify, options) {
    * Chat with a replica (protected route)
    */
   fastify.post('/api/replicas/:replicaId/chat', { 
-    preHandler: [authenticateToken, validateSensayLink]
+    preHandler: [authenticateToken]
   }, async (request, reply) => {
     try {
       const { replicaId } = request.params;
@@ -880,8 +880,25 @@ async function replicaRoutes(fastify, options) {
         });
       }
       
-      // Sensay user ID is validated by middleware
-      const sensayUserId = request.sensayUserId;
+      // Get sensayUserId - either from override (for patients) or from user record
+      let sensayUserId = request.sensayUserId;
+      if (!sensayUserId) {
+        // For caretakers, get their own sensayUserId
+        if (user.sensayUserId) {
+          sensayUserId = user.sensayUserId;
+        } else {
+          // If user doesn't have sensayUserId, fetch full user record
+          const fullUser = await User.findById(userId).select('sensayUserId');
+          sensayUserId = fullUser?.sensayUserId;
+        }
+      }
+      
+      if (!sensayUserId) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Sensay user not linked for this account. Please contact support.'
+        });
+      }
       
       // Send chat message to Sensay using the Sensay user ID
       const sensayResponse = await sendChatMessage(replicaId, message, sensayUserId, context);
