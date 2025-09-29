@@ -38,8 +38,11 @@
                   try {
                     const response = await apiCall('/api/auth/me', { method: 'GET' });
                     if (response.ok) {
-                      const userData = await response.json();
-                      userRole = userData.user?.role || 'caretaker';
+                const data = await response.json();
+                const resolved = data.user || data.patient || data;
+                // persist normalized userData shape for other components
+                try { localStorage.setItem('userData', JSON.stringify(resolved)); } catch (e) {}
+                userRole = resolved?.role || 'caretaker';
                       console.log('Dashboard: userRole from API:', userRole);
                     }
                   } catch (error) {

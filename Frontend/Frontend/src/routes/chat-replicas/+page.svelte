@@ -517,8 +517,14 @@
 
   function startGenericChat() {
     selectedReplica = null;
-    chatMessages = [];
     currentConversationId = null; // Reset conversation ID for generic chat
+    // Seed a helpful assistant intro so users immediately see guidance
+    chatMessages = [{
+      id: Date.now(),
+      text: `Hello — I'm Memory Lane. I can explain how our reminiscence replicas and Memory Lane features help people with dementia, amnesia, or other memory concerns. We use familiar photos, stories, and consistent, trusted voices to gently stimulate recall, reduce anxiety, and encourage meaningful engagement. Caregivers can curate content to make conversations safe and comforting. Ask me how to get started or how Memory Lane can support a loved one.`,
+      sender: 'bot',
+      timestamp: new Date()
+    }];
   }
 
   async function sendMessage(text) {
@@ -1097,7 +1103,7 @@
                 </div>
                 <div>
                   <h4 class="font-medium text-gray-900 dark:text-gray-100">Generic Chatbot</h4>
-                  <p class="text-sm text-gray-600 dark:text-gray-400">Chat with AI assistant</p>
+                  <p class="text-sm text-gray-600 dark:text-gray-400">Ask about Memory Lane, reminiscence therapy, or how our replicas support people with memory loss.</p>
                 </div>
               </div>
             </button>

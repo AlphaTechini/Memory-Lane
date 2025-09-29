@@ -63,7 +63,9 @@
           // Patient gets direct access - store token and redirect
           localStorage.setItem('authToken', data.token);
           if (data.patient) {
-            localStorage.setItem('userData', JSON.stringify(data.patient));
+            // Normalize patient shape to match caretaker `user` shape expected by the app
+            const normalized = { ...data.patient, role: 'patient' };
+            localStorage.setItem('userData', JSON.stringify(normalized));
           }
           
           // Check for redirect after login
@@ -78,7 +80,8 @@
           // Caretaker login - store token and user data
           localStorage.setItem('authToken', data.token);
           if (data.user) {
-            localStorage.setItem('userData', JSON.stringify(data.user));
+            const normalized = { ...data.user, role: data.user.role || 'caretaker' };
+            localStorage.setItem('userData', JSON.stringify(normalized));
           }
           
           // Check if user is verified

@@ -1,7 +1,7 @@
 <script>
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { checkAuthStatus, apiCall } from '$lib/auth.js';
+  import { checkAuthStatus, apiCall, getUserRole } from '$lib/auth.js';
   import ThemeToggle from './ThemeToggle.svelte';
   
   let currentPath = $state('');
@@ -12,6 +12,12 @@
   $effect(() => {
     currentPath = $page.url.pathname;
     isAuthenticated = checkAuthStatus();
+    // Use cached role immediately to avoid UI flash, then refresh from API
+    try {
+      userRole = getUserRole();
+    } catch (e) {
+      userRole = null;
+    }
     loadUserRole();
     showMobileMenu = false; // Close mobile menu on navigation
   });
@@ -25,12 +31,21 @@
     try {
       const response = await apiCall('/api/auth/me', { method: 'GET' });
       if (response.ok) {
-        const userData = await response.json();
-        userRole = userData.user?.role || 'caretaker';
+        const data = await response.json();
+        // API may return { user: {...} } or { patient: {...} }
+        const resolved = data.user || data.patient || data;
+        // Update cached userData in a consistent shape
+        try { localStorage.setItem('userData', JSON.stringify(resolved)); } catch (e) {}
+        userRole = resolved?.role || 'caretaker';
       }
     } catch (error) {
       console.error('Failed to load user role:', error);
-      userRole = 'caretaker'; // Default to caretaker
+      // Preserve any cached role if API fails, otherwise default to caretaker
+      try {
+        userRole = getUserRole() || 'caretaker';
+      } catch {
+        userRole = 'caretaker';
+      }
     }
   }
 

@@ -189,7 +189,14 @@
 
   function normalizeReplica(replica) {
     if (!replica) return null;
-    const id = replica.replicaId || replica.id || replica.uuid;
+    // Accept many possible id fields returned by different environments
+    const id = replica.replicaId
+      || replica.id
+      || replica.uuid
+      || replica._id
+      || replica._key
+      || (replica.data && (replica.data.id || replica.data.uuid || replica.data.replicaId))
+      || (replica.replica && (replica.replica.id || replica.replica.uuid || replica.replica.replicaId));
     if (!id) return null;
     return {
       ...replica,
@@ -406,7 +413,24 @@
 
       const normalizedReplica = normalizeReplica(result.replica);
       if (!normalizedReplica) {
-        throw new Error('Replica created but response was missing an id');
+        // Be tolerant: construct a provisional/pending id so the UX can continue.
+        // This can happen when the backend returns an unexpected shape; the UI will
+        // still persist the replica info to sessionStorage and redirect to chat.
+        const provisionalId = result?.replica?.id
+          || result?.replica?.replicaId
+          || result?.replica?.uuid
+          || result?.id
+          || `pending_${Date.now()}`;
+
+        const provisional = {
+          ...(result.replica || {}),
+          id: provisionalId,
+          pending: true,
+          name: (result.replica && (result.replica.name || result.replica.title)) || 'Replica'
+        };
+
+        await handleSuccessfulReplica(provisional, result?.replica?.trainingCount ?? 0);
+        return;
       }
 
       await handleSuccessfulReplica(normalizedReplica, result?.replica?.trainingCount ?? 0);
