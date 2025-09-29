@@ -777,7 +777,19 @@ export const sendChatMessage = async (replicaUUID, message, userId, context = []
     return response.data;
   } catch (error) {
     console.error('Error sending chat message:', error.message);
-    console.error('Error details:', error.response?.data || error);
+    // Log masked headers for debugging
+    try {
+      const sentHeaders = headers || {};
+      const masked = { ...sentHeaders };
+      if (masked['X-ORGANIZATION-SECRET']) masked['X-ORGANIZATION-SECRET'] = '***REDACTED***';
+      if (masked['X-USER-ID'] && typeof masked['X-USER-ID'] === 'string' && masked['X-USER-ID'].length > 6) {
+        const v = masked['X-USER-ID'];
+        masked['X-USER-ID'] = `${v.slice(0,3)}...${v.slice(-3)}`;
+      }
+      console.error('Error details:', error.response?.data || error, 'Sent headers:', masked);
+    } catch (logErr) {
+      console.error('Failed to log masked headers:', logErr.message);
+    }
     throw handleSensayError(error, 'Failed to send chat message');
   }
 };

@@ -248,43 +248,20 @@ export const validateSensayLink = async (request, reply) => {
       }
     }
 
-    // If no sensayUserId on the current user, try to resolve via patient->caretaker linkage
-    if (!user.sensayUserId) {
-      try {
-        // If this token represents a patient, attempt to resolve the caretaker's sensayUserId
-        const isPatientToken = request.user && request.user.role === 'patient';
-        if (isPatientToken) {
-          const patientEmail = typeof request.user.email === 'string' ? request.user.email.toLowerCase() : null;
-          if (patientEmail) {
-            const patientRecord = await Patient.findByEmail(patientEmail);
-            if (patientRecord && patientRecord.caretaker) {
-              const caretaker = await User.findById(patientRecord.caretaker).select('sensayUserId');
-              if (caretaker && caretaker.sensayUserId) {
-                // Use caretaker's Sensay user id for downstream calls on behalf of patient
-                request.sensayUserId = caretaker.sensayUserId;
-                request.sensayUser = { id: caretaker.sensayUserId };
-                // Log for debugging patient->caretaker Sensay flow
-                logger?.info?.(`Patient ${patientEmail} using caretaker's Sensay user ID ${caretaker.sensayUserId}`) || console.log(`Patient ${patientEmail} using caretaker's Sensay user ID ${caretaker.sensayUserId}`);
-                // keep request.user as the patient (so DB saves go to patient when appropriate)
-                return;
-              }
-            }
-          }
-        }
-      } catch (resolveErr) {
-        logger?.warn?.(`Failed to resolve caretaker sensayUserId for patient ${request.user?.email}: ${resolveErr.message}`) || console.warn('Failed to resolve caretaker sensayUserId', resolveErr.message);
-      }
-
-      // If we still don't have a sensayUserId, fail as before
+    // Set user identifier for Sensay API calls
+    // Sensay will handle authorization (owner/whitelist) validation internally
+    const sensayUserId = user.sensayUserId || user.email || user.id;
+    
+    if (!sensayUserId) {
       return reply.status(400).send({
         success: false,
-        message: 'Sensay user not linked for this account. Please contact support or retry later.',
-        error: 'SENSAY_USER_NOT_LINKED',
-        suggestedAction: 'contact_support'
+        message: 'Unable to identify user for Sensay API call',
+        error: 'USER_ID_REQUIRED'
       });
     }
-
-    request.sensayUserId = user.sensayUserId;
+    
+    request.sensayUserId = sensayUserId;
+    logger?.info?.(`Prepared Sensay API call for user: ${user.email} (ID: ${sensayUserId})`) || console.log(`Prepared Sensay API call for user: ${user.email}`);
     ;
   } catch (error) {
     logger?.error?.(`Sensay link validation error: ${error.message}`) || console.error('Sensay link validation error', error.message);

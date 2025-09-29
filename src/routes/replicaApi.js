@@ -18,6 +18,7 @@ import {
 import { authenticateToken, optionalAuth, requireCaretaker, requirePatient, validatePatientCaretakerRelationship } from '../middleware/auth.js';
 import { ensureSensayUser, validateSensayLink } from '../middleware/sensayAuth.js';
 import User from '../models/User.js';
+import crypto from 'crypto';
 import Patient from '../models/Patient.js';
 import Conversation from '../models/Conversation.js';
 import { REQUIRED_QUESTIONS, OPTIONAL_SEGMENTS, getQuestionText } from '../utils/questionBank.js';
@@ -822,127 +823,160 @@ async function replicaRoutes(fastify, options) {
     try {
       const { replicaId } = request.params;
       if (!replicaId || typeof replicaId !== 'string' || !/^[A-Za-z0-9_-]{6,128}$/.test(replicaId)) {
+        fastify.log.error(`[CHAT DEBUG] Invalid replica ID: ${replicaId}`);
         return reply.status(400).send({ success: false, error: 'Invalid replica id' });
       }
       const { message, context = [], conversationId } = request.body;
       const userId = request.user?.id;
       
+      fastify.log.info(`[CHAT DEBUG] Step 1: User ID from token: ${userId}`);
+      
       if (!userId) {
+        fastify.log.error(`[CHAT DEBUG] 401 - No user ID in token`);
         return reply.status(401).send({ success: false, error: 'User ID not found in token' });
       }
       
-      // Verify user has access to this replica (owner or whitelisted patient)
-      const user = await User.findById(userId).select('replicas email role');
-      if (!user) {
-        // Defensive: token may be valid but user removed from DB
-        return reply.status(401).send({ success: false, error: 'User not found' });
-      }
-      let userReplica = user?.replicas?.find(r => r.replicaId === replicaId);
-      let isOwner = Boolean(userReplica);
-      let caretakerUserId = userId; // Default to current user
-      
-      // If not owner and user is a patient, check if they have whitelist access
-      if (!userReplica && user.role === 'patient') {
-        // Check via Patient model
-        const patientRecord = await Patient.findByEmail(user.email);
-        if (patientRecord && patientRecord.allowedReplicas.includes(replicaId)) {
-          // Find the caretaker's replica
-          const caretaker = await User.findById(patientRecord.caretaker).select('replicas sensayUserId');
-          if (caretaker) {
-            userReplica = caretaker.replicas?.find(r => r.replicaId === replicaId);
-            caretakerUserId = caretaker._id;
-            // Override sensay user ID to use caretaker's
-            request.sensayUserId = caretaker.sensayUserId;
-          }
-        }
-        
-        // Fallback: check if patient is whitelisted in any caretaker's replica
-        if (!userReplica) {
-          const patientEmail = typeof user.email === 'string' ? user.email.toLowerCase() : '';
-          if (patientEmail) {
-            const caretakerWithReplica = await User.findOne({
-              'replicas.replicaId': replicaId,
-              'replicas.whitelistEmails': patientEmail
-            }).select('replicas sensayUserId');
-          
-            if (caretakerWithReplica) {
-            userReplica = caretakerWithReplica.replicas?.find(r => 
-              r.replicaId === replicaId && 
-                r.whitelistEmails && 
-                r.whitelistEmails.includes(patientEmail)
-            );
-            if (userReplica) {
-              caretakerUserId = caretakerWithReplica._id;
-              // Override sensay user ID to use caretaker's
-              request.sensayUserId = caretakerWithReplica.sensayUserId;
-            }
-            }
-          }
-        }
-      }
-      
-      if (!userReplica) {
-        return reply.status(403).send({ 
-          success: false, 
-          error: 'Access denied: Replica not found or no access permitted' 
-        });
-      }
-      
-      // Get sensayUserId - either from override (for patients) or from user record
-      let sensayUserId = request.sensayUserId;
-      if (!sensayUserId) {
-        // For caretakers, get their own sensayUserId
-        if (user.sensayUserId) {
-          sensayUserId = user.sensayUserId;
+      // Get user details for conversation saving
+      // Support both caretaker User records and Patient tokens (request.isPatient)
+      let user;
+      if (request.isPatient) {
+        // For patient tokens, authenticateToken already populated request.user with patient info.
+        // Refresh from DB where possible; if missing, fall back to token-provided data.
+        const patient = await Patient.findById(userId);
+        if (!patient) {
+          fastify.log.warn(`[CHAT DEBUG] Patient DB lookup returned null for ${userId}; falling back to token data`);
+          const tokenPatient = request.user || {};
+          user = {
+            id: tokenPatient.id || tokenPatient._id || userId,
+            email: tokenPatient.email || null,
+            role: 'patient',
+            firstName: tokenPatient.firstName || null,
+            lastName: tokenPatient.lastName || null,
+            caretakerId: tokenPatient.caretakerId || tokenPatient.caretaker || null,
+            allowedReplicas: tokenPatient.allowedReplicas || []
+          };
         } else {
-          // If user doesn't have sensayUserId, fetch full user record
-          const fullUser = await User.findById(userId).select('sensayUserId');
-          sensayUserId = fullUser?.sensayUserId;
+          // Ensure the patient has a linked User record for DB FK constraints.
+          if (!patient.userId) {
+            fastify.log.info(`[CHAT DEBUG] Patient ${patient.email} missing linked User; creating one`);
+            try {
+              // Prisma User model requires a non-null password field. Generate a random one for linked user.
+              const randomPassword = crypto.randomBytes(16).toString('hex');
+              const created = await User.create({
+                email: patient.email,
+                role: 'patient',
+                firstName: patient.firstName,
+                lastName: patient.lastName,
+                password: randomPassword
+              });
+              patient.userId = created.id;
+              await patient.save();
+              fastify.log.info(`[CHAT DEBUG] Linked User ${created.id} created for patient ${patient.email}`);
+            } catch (err) {
+              fastify.log.error(err, `Failed to create linked User for patient ${patient.email}`);
+              return reply.status(500).send({ success: false, error: 'Failed to create linked user for patient' });
+            }
+          }
+
+          user = {
+            id: patient._id,
+            email: patient.email,
+            role: 'patient',
+            firstName: patient.firstName,
+            lastName: patient.lastName,
+            caretakerId: patient.caretaker,
+            linkedUserId: patient.userId
+          };
+        }
+      } else {
+        user = await User.findById(userId).select('email role firstName lastName sensayUserId');
+        if (!user) {
+          fastify.log.error(`[CHAT DEBUG] 401 - User not found in database: ${userId}`);
+          return reply.status(401).send({ success: false, error: 'User not found' });
         }
       }
+      fastify.log.info(`[CHAT DEBUG] Step 2: User lookup result: ${user ? `${user.email} (${user.role})` : 'null'}`);
+
+      // Resolve sensayUserId to send to Sensay API.
+      // For patient tokens, prefer the caretaker's Sensay user ID if available (caretaker typically owns the replica).
+      let sensayUserId = null;
+      if (user.role === 'patient') {
+        // Try caretaker's sensayUserId first
+        if (user.caretakerId) {
+          const caretaker = await User.findById(user.caretakerId).select('sensayUserId email');
+          if (caretaker && caretaker.sensayUserId) {
+            sensayUserId = caretaker.sensayUserId;
+            fastify.log.info(`[CHAT DEBUG] Using caretaker's Sensay ID ${sensayUserId} for patient ${user.email}`);
+          }
+        }
+        // Fallbacks: middleware-provided sensayUserId (which may be patient email) or patient email/id
+        if (!sensayUserId) sensayUserId = request.sensayUserId || user.email || user.id;
+      } else {
+        // Non-patient (caretaker) prefer middleware or user's sensayUserId, then email or id
+        sensayUserId = request.sensayUserId || user.sensayUserId || user.email || user.id;
+      }
+      fastify.log.info(`[CHAT DEBUG] Step 3: Sensay user ID resolved: ${sensayUserId}`);
+      fastify.log.info(`Chat request: ${user.email} (${user.role}) -> replica ${replicaId} via Sensay ID ${sensayUserId}`);
       
       if (!sensayUserId) {
-        return reply.status(400).send({
-          success: false,
-          error: 'Sensay user not linked for this account. Please contact support.'
-        });
+        fastify.log.error(`[CHAT DEBUG] 401 - No Sensay user ID available for request`);
+        return reply.status(401).send({ success: false, error: 'Sensay user ID not available' });
       }
       
       // Send chat message to Sensay using the Sensay user ID
+      fastify.log.info(`[CHAT DEBUG] Step 4: Calling Sensay API...`);
       const sensayResponse = await sendChatMessage(replicaId, message, sensayUserId, context);
+      
+      fastify.log.info(`[CHAT DEBUG] Step 5: Sensay API response received:`, sensayResponse);
       
       // Extract the content from Sensay API response
       // According to API docs: { success: true, content: "reply text" }
       const replyText = sensayResponse?.content || sensayResponse?.response?.content || 'Sorry, I could not process that.';
       
-      // Save conversation to database (use actual user ID, not caretaker's)
+      fastify.log.info(`[CHAT DEBUG] Step 6: Extracted reply text: ${replyText}`);
+      
+      // Determine owner user id for DB FK operations.
+      // For patients use the linked User id (created above) so Conversation.userId FK points to an actual User row.
+      let ownerUserId = userId;
+      if (user.role === 'patient') {
+        ownerUserId = user.linkedUserId || user.userId || ownerUserId;
+      }
+
+      // Save conversation to database - each user (patient/caretaker) has separate conversations
       let conversation;
       if (conversationId && typeof conversationId === 'string' && /^[0-9a-fA-F\-]{36}$/.test(conversationId)) {
         // Continue existing conversation (conversationId validated as UUID)
+        // Note: This automatically ensures user can only access their own conversations
         conversation = await Conversation.findOne({ 
-          id: conversationId, 
-          userId, 
+          _id: conversationId, 
+          userId: ownerUserId, // Critical: user can only access their own conversations
           replicaId 
         });
+        
+        fastify.log.info(`[CHAT DEBUG] Found existing conversation: ${conversationId} for ${user.email} (${user.role})`);
       }
       
       if (!conversation) {
-        // Create new conversation
+        // Create new conversation - separate for each user (patient and caretaker have independent chats)
         conversation = new Conversation({
-          userId, // Always use the actual user ID (patient or caretaker)
+          userId: ownerUserId, // Each user gets their own conversation history (linked User id for patients)
           replicaId,
           messages: [],
           isActive: true,
-          isPatientChat: !isOwner // Flag to indicate if this is a patient accessing via whitelist
+          lastMessageAt: new Date(),
+          title: null // Will be set from first message
         });
+        
+        fastify.log.info(`[CHAT DEBUG] Created new conversation for ${user.email} (${user.role}) with replica ${replicaId}`);
       }
       
-      // Add user message
+      // Add user message with metadata
       const userMessage = {
         id: Date.now().toString(),
         text: message,
         sender: 'user',
-        timestamp: new Date()
+        timestamp: new Date(),
+        userRole: user.role // Track whether message came from patient or caretaker
       };
       conversation.messages.push(userMessage);
       
@@ -955,12 +989,19 @@ async function replicaRoutes(fastify, options) {
       };
       conversation.messages.push(botMessage);
       
-      // Update conversation title if it's the first message
-      if (conversation.messages.length === 2) {
+      // Update conversation metadata
+      conversation.lastMessageAt = new Date();
+      
+      // Set conversation title from first message if not set
+      if (!conversation.title && message.trim()) {
         conversation.title = message.substring(0, 50) + (message.length > 50 ? '...' : '');
       }
       
+      fastify.log.info(`[CHAT DEBUG] Saving conversation with ${conversation.messages.length} messages for ${user.email} (${user.role})`);
+      
       await conversation.save();
+      
+      fastify.log.info(`[CHAT DEBUG] Successfully saved conversation ${conversation._id} for ${user.email}`);
       
       return { 
         success: true, 
@@ -992,6 +1033,225 @@ async function replicaRoutes(fastify, options) {
       return reply.status(500).send({ 
         success: false,
         error: 'Internal server error while processing chat message'
+      });
+    }
+  });
+
+  /**
+   * Get conversation history for a user with a specific replica
+   * Each user (patient/caretaker) has separate conversation history
+   */
+  fastify.get('/api/replicas/:replicaId/conversations', { 
+    preHandler: [authenticateToken]
+  }, async (request, reply) => {
+    try {
+      const { replicaId } = request.params;
+      if (!replicaId || typeof replicaId !== 'string' || !/^[A-Za-z0-9_-]{6,128}$/.test(replicaId)) {
+        return reply.status(400).send({ success: false, error: 'Invalid replica id' });
+      }
+      
+      const tokenUserId = request.user?.id;
+      if (!tokenUserId) {
+        return reply.status(401).send({ success: false, error: 'User ID not found in token' });
+      }
+
+      // Resolve ownerUserId for DB queries: for patients use patient.userId (linked User), otherwise token id
+      let ownerUserId = tokenUserId;
+      let user = await User.findById(tokenUserId).select('email role');
+      if (!user && request.isPatient) {
+        // Try to resolve patient and its linked user
+        const patient = await Patient.findById(tokenUserId);
+        if (patient && patient.userId) {
+          ownerUserId = patient.userId;
+          user = await User.findById(ownerUserId).select('email role');
+        }
+      }
+
+      if (!user) {
+        return reply.status(401).send({ success: false, error: 'User not found' });
+      }
+
+      // Get all conversations for this user with this replica
+      const conversations = await Conversation.find({
+        userId: ownerUserId,
+        replicaId,
+        isActive: true
+      }).sort({ lastMessageAt: -1, createdAt: -1 });
+      
+      fastify.log.info(`[CONVERSATIONS] Retrieved ${conversations.length} conversations for ${user.email} (${user.role}) with replica ${replicaId}`);
+      
+      // Format conversations for client
+      const formattedConversations = conversations.map(conv => ({
+        id: conv._id,
+        conversationId: conv._id,
+        title: conv.title || 'Untitled Conversation',
+        messages: conv.messages || [],
+        lastMessageAt: conv.lastMessageAt,
+        createdAt: conv.createdAt,
+        messageCount: (conv.messages || []).length,
+        userRole: user.role // Include user role for client context
+      }));
+      
+      return { 
+        success: true,
+        conversations: formattedConversations,
+        totalCount: formattedConversations.length,
+        userInfo: {
+          role: user.role,
+          email: user.email
+        }
+      };
+    } catch (error) {
+      fastify.log.error(error, 'Error retrieving conversations');
+      return reply.status(500).send({ 
+        success: false,
+        error: 'Internal server error while retrieving conversations'
+      });
+    }
+  });
+
+  /**
+   * Get all conversations for a user (across all replicas they have access to)
+   */
+  fastify.get('/api/conversations', { 
+    preHandler: [authenticateToken]
+  }, async (request, reply) => {
+    try {
+      const tokenUserId = request.user?.id;
+      if (!tokenUserId) {
+        return reply.status(401).send({ success: false, error: 'User ID not found in token' });
+      }
+
+      // Resolve ownerUserId for DB queries
+      let ownerUserId = tokenUserId;
+      let user = await User.findById(tokenUserId).select('email role');
+      if (!user && request.isPatient) {
+        const patient = await Patient.findById(tokenUserId);
+        if (patient && patient.userId) {
+          ownerUserId = patient.userId;
+          user = await User.findById(ownerUserId).select('email role');
+        }
+      }
+
+      if (!user) {
+        return reply.status(401).send({ success: false, error: 'User not found' });
+      }
+
+      const conversations = await Conversation.find({
+        userId: ownerUserId,
+        isActive: true
+      }).sort({ lastMessageAt: -1, createdAt: -1 });
+      
+      fastify.log.info(`[ALL CONVERSATIONS] Retrieved ${conversations.length} total conversations for ${user.email} (${user.role})`);
+      
+      // Format conversations for client
+      const formattedConversations = conversations.map(conv => ({
+        id: conv._id,
+        conversationId: conv._id,
+        replicaId: conv.replicaId,
+        title: conv.title || 'Untitled Conversation',
+        lastMessage: conv.messages && conv.messages.length > 0 
+          ? conv.messages[conv.messages.length - 1] 
+          : null,
+        lastMessageAt: conv.lastMessageAt,
+        createdAt: conv.createdAt,
+        messageCount: (conv.messages || []).length,
+        userRole: user.role
+      }));
+      
+      return { 
+        success: true,
+        conversations: formattedConversations,
+        totalCount: formattedConversations.length,
+        userInfo: {
+          role: user.role,
+          email: user.email
+        }
+      };
+    } catch (error) {
+      fastify.log.error(error, 'Error retrieving all conversations');
+      return reply.status(500).send({ 
+        success: false,
+        error: 'Internal server error while retrieving conversations'
+      });
+    }
+  });
+
+  /**
+   * Get a specific conversation by ID
+   * Users can only access their own conversations (automatic separation by userId)
+   */
+  fastify.get('/api/conversations/:conversationId', { 
+    preHandler: [authenticateToken]
+  }, async (request, reply) => {
+    try {
+      const { conversationId } = request.params;
+      if (!conversationId || typeof conversationId !== 'string' || !/^[0-9a-fA-F\-]{36}$/.test(conversationId)) {
+        return reply.status(400).send({ success: false, error: 'Invalid conversation id' });
+      }
+      
+      const tokenUserId = request.user?.id;
+      if (!tokenUserId) {
+        return reply.status(401).send({ success: false, error: 'User ID not found in token' });
+      }
+
+      // Resolve ownerUserId for DB queries
+      let ownerUserId = tokenUserId;
+      let user = await User.findById(tokenUserId).select('email role');
+      if (!user && request.isPatient) {
+        const patient = await Patient.findById(tokenUserId);
+        if (patient && patient.userId) {
+          ownerUserId = patient.userId;
+          user = await User.findById(ownerUserId).select('email role');
+        }
+      }
+
+      if (!user) {
+        return reply.status(401).send({ success: false, error: 'User not found' });
+      }
+
+      // Get conversation - user can only access their own conversations
+      const conversation = await Conversation.findOne({
+        _id: conversationId,
+        userId: ownerUserId, // Critical: ensures users can only access their own conversations
+        isActive: true
+      });
+      
+      if (!conversation) {
+        return reply.status(404).send({ 
+          success: false, 
+          error: 'Conversation not found or access denied' 
+        });
+      }
+      
+      fastify.log.info(`[CONVERSATION] Retrieved conversation ${conversationId} for ${user.email} (${user.role})`);
+      
+      // Format conversation for client
+      const formattedConversation = {
+        id: conversation._id,
+        conversationId: conversation._id,
+        replicaId: conversation.replicaId,
+        title: conversation.title || 'Untitled Conversation',
+        messages: conversation.messages || [],
+        lastMessageAt: conversation.lastMessageAt,
+        createdAt: conversation.createdAt,
+        messageCount: (conversation.messages || []).length,
+        userRole: user.role
+      };
+      
+      return { 
+        success: true,
+        conversation: formattedConversation,
+        userInfo: {
+          role: user.role,
+          email: user.email
+        }
+      };
+    } catch (error) {
+      fastify.log.error(error, 'Error retrieving conversation');
+      return reply.status(500).send({ 
+        success: false,
+        error: 'Internal server error while retrieving conversation'
       });
     }
   });
@@ -1789,100 +2049,6 @@ async function replicaRoutes(fastify, options) {
           error: err.message,
           stack: err.stack
         }
-      });
-    }
-  });
-
-  /**
-   * Get conversations for a specific replica
-   */
-  fastify.get('/api/replicas/:replicaId/conversations', { 
-    preHandler: authenticateToken 
-  }, async (request, reply) => {
-    try {
-      const { replicaId } = request.params;
-      const userId = request.user.id;
-      
-      // Verify user owns this replica
-      const user = await User.findById(userId);
-      const userReplica = user?.replicas?.find(r => r.replicaId === replicaId);
-      
-      if (!userReplica) {
-        return reply.status(403).send({ 
-          success: false, 
-          error: 'Access denied: Replica not found or not owned by user' 
-        });
-      }
-
-      // Get conversations for this replica
-      const conversations = await Conversation.find({ 
-        userId, 
-        replicaId,
-        isActive: true 
-      })
-      .select('_id title lastMessageAt messages')
-      .sort({ lastMessageAt: -1 })
-      .limit(50);
-      
-      // Transform conversations for frontend
-      const formattedConversations = conversations.map(conv => ({
-        id: conv._id,
-        title: conv.title,
-        lastMessageAt: conv.lastMessageAt,
-        messageCount: conv.messages.length,
-        lastMessage: conv.messages.length > 0 ? conv.messages[conv.messages.length - 1].text.substring(0, 100) : ''
-      }));
-      
-      return { 
-        success: true, 
-        conversations: formattedConversations 
-      };
-    } catch (error) {
-      fastify.log.error(error, 'Error fetching conversations');
-      return reply.status(500).send({ 
-        success: false, 
-        error: 'Failed to fetch conversations' 
-      });
-    }
-  });
-
-  /**
-   * Get messages for a specific conversation
-   */
-  fastify.get('/api/conversations/:conversationId/messages', { 
-    preHandler: authenticateToken 
-  }, async (request, reply) => {
-    try {
-      const { conversationId } = request.params;
-      const userId = request.user.id;
-      
-      // Get conversation and verify ownership
-      const conversation = await Conversation.findOne({ 
-        _id: conversationId, 
-        userId 
-      });
-      
-      if (!conversation) {
-        return reply.status(404).send({ 
-          success: false, 
-          error: 'Conversation not found or access denied' 
-        });
-      }
-      
-      return { 
-        success: true, 
-        messages: conversation.messages,
-        conversation: {
-          id: conversation._id,
-          title: conversation.title,
-          replicaId: conversation.replicaId
-        }
-      };
-    } catch (error) {
-      fastify.log.error(error, 'Error fetching conversation messages');
-      return reply.status(500).send({ 
-        success: false, 
-        error: 'Failed to fetch conversation messages' 
       });
     }
   });
