@@ -225,7 +225,9 @@ export default async function photosRoutes(fastify, options) {
           ownerUser.photos.push(photoData);
           const newPhoto = ownerUser.photos[ownerUser.photos.length - 1];
           // Ensure album references are updated on the ownerUser
-          if (album) album.photos.push(newPhoto._id || newPhoto.id);
+          // Only add to the album's photos array if the client explicitly provided an albumId
+          // (prevents auto-adding when no album was selected during upload)
+          if (album && albumId) album.photos.push(newPhoto._id || newPhoto.id);
           uploadResults.push(newPhoto);
         } catch (err) {
           // Log full error and try to serialize rich error info from Cloudinary if present

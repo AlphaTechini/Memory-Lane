@@ -800,6 +800,7 @@
                 <AlbumCard 
                   {album}
                   {canDelete}
+                  photos={photos}
                   on:edit={(e) => handleEditAlbum(e.detail)}
                   on:delete={(e) => deleteAlbum(e.detail)}
                   on:addPhotos={(e) => handleAddPhotosToAlbum(e.detail)}
@@ -866,11 +867,12 @@
           </button>
         </div>
       {:else}
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {#each getFilteredAlbums() as album (album._id)}
             <AlbumCard 
               {album}
               {canDelete}
+              photos={photos}
               on:edit={(e) => handleEditAlbum(e.detail)}
               on:delete={(e) => deleteAlbum(e.detail)}
               on:addPhotos={(e) => handleAddPhotosToAlbum(e.detail)}
