@@ -552,8 +552,17 @@ async function authRoutes(fastify, options) {
         return `${first}*****@${domain}`;
       };
 
-      const userSafe = user.toJSON();
-      userSafe.email = maskEmail(userSafe.email);
+      // Create safe user object for client response
+      const userSafe = {
+        id: user._id || user.id,
+        email: maskEmail(user.email),
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      };
 
       reply.send({
         success: true,

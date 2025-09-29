@@ -21,7 +21,7 @@ export default async function albumsRoutes(fastify, options) {
         }
       }
     },
-    preHandler: [authenticateToken, validatePatientCaretakerRelationship]
+    preHandler: [authenticateToken, requireCaretaker]
   }, async (request, reply) => {
     try {
       const { name, description, dateOfMemory } = request.body;
@@ -92,7 +92,7 @@ export default async function albumsRoutes(fastify, options) {
 
   // Update album -> PUT /gallery/albums/:albumId
   fastify.put('/:albumId', {
-    preHandler: authenticateToken,
+    preHandler: [authenticateToken, requireCaretaker],
     schema: {
       params: { type: 'object', properties: { albumId: { type: 'string' } }, required: ['albumId'] },
       body: { type: 'object', properties: { name: { type: 'string', minLength: 1, maxLength: 100 }, description: { type: 'string', minLength: 1, maxLength: 500 }, dateOfMemory: { type: 'string', format: 'date' } } }

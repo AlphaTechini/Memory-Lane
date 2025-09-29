@@ -125,7 +125,7 @@ async function replicaRoutes(fastify, options) {
    */
   fastify.post('/api/replicas', { 
     schema: createReplicaSchema,
-    preHandler: [authenticateToken, ensureSensayUser({ required: true })]
+    preHandler: [authenticateToken, requireCaretaker, ensureSensayUser({ required: true })]
   }, async (request, reply) => {
     try {
   const { name, description, template, relationship, requiredAnswers, optionalAnswers, selectedSegments, profileImage, coverageScore, greeting: userGreeting, preferredQuestion } = request.body;

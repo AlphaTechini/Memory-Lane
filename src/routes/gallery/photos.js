@@ -10,7 +10,7 @@ const isUuid = (v) => {
 
 export default async function photosRoutes(fastify, options) {
   // Upload photos -> POST /gallery/photos
-  fastify.post('/photos', { preHandler: authenticateToken }, async (request, reply) => {
+  fastify.post('/photos', { preHandler: [authenticateToken, requireCaretaker] }, async (request, reply) => {
     try {
       fastify.log.info('Starting photo upload process');
 
@@ -276,7 +276,7 @@ export default async function photosRoutes(fastify, options) {
 
   // Update photo
   fastify.put('/photos/:photoId', {
-    preHandler: authenticateToken,
+    preHandler: [authenticateToken, requireCaretaker],
     schema: { params: { type: 'object', properties: { photoId: { type: 'string' } }, required: ['photoId'] }, body: { type: 'object', properties: { description: { type: 'string', maxLength: 500 }, albumId: { type: 'string' }, removeFromAlbum: { type: 'boolean' } } } }
   }, async (request, reply) => {
     try {
