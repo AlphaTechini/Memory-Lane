@@ -45,12 +45,18 @@
   const TRAIN_BUFFER_KEY = 'activeTrainingBuffer';
 
   // Auto-scroll function to scroll to bottom of chat
+  const AUTO_SCROLL_THRESHOLD = 150; // px
+  function isNearBottom() {
+    if (!chatContainer) return true;
+    const distanceFromBottom = chatContainer.scrollHeight - (chatContainer.scrollTop + chatContainer.clientHeight);
+    return distanceFromBottom <= AUTO_SCROLL_THRESHOLD;
+  }
+
   function scrollToBottom() {
-    if (chatContainer) {
-      setTimeout(() => {
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-      }, 10); // Small delay to ensure DOM is updated
-    }
+    if (!chatContainer) return;
+    requestAnimationFrame(() => {
+      chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
+    });
   }
 
   // Format elapsed time for training session
@@ -77,11 +83,13 @@
     }
   }
 
-  // Auto-scroll when chat messages change
+  // Auto-scroll when chat messages change, but only when user is near the bottom
   $effect(() => {
-    if (chatMessages.length > 0) {
-      scrollToBottom();
-    }
+    chatMessages;
+    if (!chatContainer) return;
+    requestAnimationFrame(() => {
+      if (isNearBottom()) scrollToBottom();
+    });
   });
 
   // Demo replicas for non-authenticated users

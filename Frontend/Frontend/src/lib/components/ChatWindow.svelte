@@ -5,21 +5,27 @@
   let { messages = [], suggestedQuestions = [], onQuestionSelect } = $props();
 
   let chatContainer = $state();
-
   // Auto-scroll when messages change (Svelte 5 style)
+  // Only auto-scroll if the user is already near the bottom to avoid interrupting manual reading.
+  const AUTO_SCROLL_THRESHOLD = 150; // px
+
+  function isNearBottom() {
+    if (!chatContainer) return true;
+    const distanceFromBottom = chatContainer.scrollHeight - (chatContainer.scrollTop + chatContainer.clientHeight);
+    return distanceFromBottom <= AUTO_SCROLL_THRESHOLD;
+  }
+
   $effect(() => {
     // Reading messages here makes the effect reactive to changes
     messages;
-    
+
     if (!browser || !chatContainer) return;
 
-    // Use requestAnimationFrame to ensure DOM is updated
+    // Defer to next animation frame to ensure DOM has rendered new messages
     requestAnimationFrame(() => {
-      if (chatContainer) {
-        chatContainer.scrollTo({ 
-          top: chatContainer.scrollHeight, 
-          behavior: 'smooth' 
-        });
+      if (!chatContainer) return;
+      if (isNearBottom()) {
+        chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
       }
     });
   });
