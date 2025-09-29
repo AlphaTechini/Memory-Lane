@@ -1,4 +1,4 @@
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, requireCaretaker } from '../middleware/auth.js';
 import { uploadImage, deleteImage, validateImageFile } from '../services/cloudinaryService.js';
 import User from '../models/User.js';
 
@@ -12,10 +12,10 @@ async function replicaImageRoutes(fastify, options) {
 
   /**
    * POST /replica/upload
-   * Upload replica profile picture (single image)
+   * Upload replica profile picture (single image) - caretakers only
    */
   fastify.post('/replica/upload', {
-    preHandler: authenticateToken,
+    preHandler: [authenticateToken, requireCaretaker],
     schema: {
       consumes: ['multipart/form-data'],
       response: {
@@ -186,10 +186,10 @@ async function replicaImageRoutes(fastify, options) {
 
   /**
    * DELETE /replica
-   * Delete replica profile picture
+   * Delete replica profile picture - caretakers only
    */
   fastify.delete('/replica', {
-    preHandler: authenticateToken,
+    preHandler: [authenticateToken, requireCaretaker],
     schema: {
       response: {
         200: {

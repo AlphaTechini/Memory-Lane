@@ -15,7 +15,7 @@ import {
   startTrainingSession,
   completeTrainingSession
 } from '../services/sensayService.js';
-import { authenticateToken, optionalAuth } from '../middleware/auth.js';
+import { authenticateToken, optionalAuth, requireCaretaker, requirePatient, validatePatientCaretakerRelationship } from '../middleware/auth.js';
 import { ensureSensayUser, validateSensayLink } from '../middleware/sensayAuth.js';
 import User from '../models/User.js';
 import Patient from '../models/Patient.js';
@@ -429,7 +429,7 @@ async function replicaRoutes(fastify, options) {
   /**
    * Reconcile local replicas with Sensay remote state
    */
-  fastify.post('/api/replicas/reconcile', { preHandler: authenticateToken }, async (request, reply) => {
+  fastify.post('/api/replicas/reconcile', { preHandler: [authenticateToken, requireCaretaker] }, async (request, reply) => {
     try {
       const user = await User.findById(request.user.id).select('email role sensayUserId replicas');
       
@@ -763,7 +763,7 @@ async function replicaRoutes(fastify, options) {
    * Get a single replica by id (protected route)
    */
   fastify.get('/api/replicas/:replicaId', {
-    preHandler: authenticateToken
+    preHandler: [authenticateToken, validatePatientCaretakerRelationship]
   }, async (request, reply) => {
     try {
       const { replicaId } = request.params;
@@ -976,7 +976,7 @@ async function replicaRoutes(fastify, options) {
    * Start a chat-based training session (just validates ownership, no API call)
    * Client will accumulate messages then call end session to create KB entry with combined text.
    */
-  fastify.post('/api/replicas/:replicaId/training-sessions', { preHandler: authenticateToken }, async (request, reply) => {
+  fastify.post('/api/replicas/:replicaId/training-sessions', { preHandler: [authenticateToken, requireCaretaker] }, async (request, reply) => {
     try {
       const { replicaId } = request.params;
       const user = await User.findById(request.user.id);
@@ -1004,7 +1004,7 @@ async function replicaRoutes(fastify, options) {
   /**
    * Complete a chat-based training session: create KB entry with aggregated chat text
    */
-  fastify.post('/api/replicas/:replicaId/training-sessions/:sessionId/complete', { preHandler: authenticateToken }, async (request, reply) => {
+  fastify.post('/api/replicas/:replicaId/training-sessions/:sessionId/complete', { preHandler: [authenticateToken, requireCaretaker] }, async (request, reply) => {
     try {
       const { replicaId } = request.params;
       const { rawText, title } = request.body || {};
@@ -1382,7 +1382,7 @@ async function replicaRoutes(fastify, options) {
    * Create a KB entry for a replica and immediately populate it with raw user text
    * Body: { title: string, rawText: string, description?: string }
    */
-  fastify.post('/api/replicas/:replicaId/kb/entries', { preHandler: authenticateToken }, async (request, reply) => {
+  fastify.post('/api/replicas/:replicaId/kb/entries', { preHandler: [authenticateToken, requireCaretaker] }, async (request, reply) => {
     try {
       const { replicaId } = request.params;
       const { title, text, rawText, url, filename, autoRefresh, description } = request.body || {};
@@ -1537,7 +1537,7 @@ async function replicaRoutes(fastify, options) {
     }
   });
 
-  fastify.delete('/api/replicas/:replicaId/kb/:entryId', { preHandler: authenticateToken }, async (request, reply) => {
+  fastify.delete('/api/replicas/:replicaId/kb/:entryId', { preHandler: [authenticateToken, requireCaretaker] }, async (request, reply) => {
     try {
       const { replicaId, entryId } = request.params;
       const { deleteKnowledgeBaseEntry } = await import('../services/sensayService.js');
@@ -1894,7 +1894,7 @@ async function replicaRoutes(fastify, options) {
    * Bulk add patient email to multiple replicas (protected route - caretakers only)
    */
   fastify.post('/api/caretaker/add-patient-email', { 
-    preHandler: authenticateToken 
+    preHandler: [authenticateToken, requireCaretaker] 
   }, async (request, reply) => {
     try {
       const { patientEmail, replicaIds } = request.body;

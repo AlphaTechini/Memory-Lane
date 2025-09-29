@@ -1,4 +1,4 @@
-import { authenticateToken } from '../../middleware/auth.js';
+import { authenticateToken, validatePatientCaretakerRelationship } from '../../middleware/auth.js';
 import { requireGalleryAccess } from '../../middleware/galleryAuth.js';
 import { uploadImage, validateImageFile } from '../../services/cloudinaryService.js';
 import User from '../../models/User.js';

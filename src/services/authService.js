@@ -16,16 +16,22 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 class AuthService {
   
   /**
-   * Generate JWT token for user
+   * Generate JWT token for user (caretakers only)
    * @param {Object} user - User object
    * @returns {String} JWT token
    */
   generateToken(user) {
+    // Only generate caretaker tokens - never patient tokens from this method
+    if (user.role === 'patient') {
+      throw new Error('Cannot generate caretaker token for patient user - use generatePatientToken instead');
+    }
+
     const payload = {
       id: user._id,
       email: user.email,
-  isVerified: user.isVerified,
-  role: user.role || 'caretaker'
+      isVerified: user.isVerified,
+      role: user.role || 'caretaker',
+      type: 'caretaker' // Explicit type to prevent role confusion
     };
     
     return jwt.sign(payload, JWT_SECRET, {
@@ -503,13 +509,19 @@ class AuthService {
    * @returns {String} JWT token
    */
   generatePatientToken(patient) {
+    // Validate patient object has required fields
+    if (!patient._id || !patient.email || !patient.caretaker) {
+      throw new Error('Invalid patient object - missing required fields (_id, email, caretaker)');
+    }
+
     const payload = {
       id: patient._id,
       email: patient.email,
       role: 'patient',
       caretakerId: patient.caretaker,
-      allowedReplicas: patient.allowedReplicas,
-      type: 'patient' // Distinguish from regular user tokens
+      allowedReplicas: patient.allowedReplicas || [],
+      type: 'patient', // Explicit type to prevent role confusion
+      isVerified: true // Patients are verified through caretaker approval
     };
     
     return jwt.sign(payload, JWT_SECRET, {

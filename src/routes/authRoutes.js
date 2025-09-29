@@ -1,5 +1,5 @@
 import authService from '../services/authService.js';
-import { authenticateToken, optionalAuth } from '../middleware/auth.js';
+import { authenticateToken, optionalAuth, requireCaretaker } from '../middleware/auth.js';
 
 /**
  * Authentication routes
@@ -727,10 +727,10 @@ async function authRoutes(fastify, options) {
 
   /**
    * POST /auth/link-sensay
-   * Create and link Sensay user for accounts missing sensayUserId (protected route)
+   * Create and link Sensay user for accounts missing sensayUserId (caretakers only)
    */
   fastify.post('/auth/link-sensay', { 
-    preHandler: authenticateToken,
+    preHandler: [authenticateToken, requireCaretaker],
     config: { rateLimit: { max: 3, timeWindow: '10 minutes' } }
   }, async (request, reply) => {
     try {

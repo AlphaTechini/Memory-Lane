@@ -159,6 +159,64 @@ export const optionalAuth = async (request, reply) => {
 };
 
 /**
+ * Caretaker-only middleware
+ * Requires authentication and caretaker role
+ */
+export const requireCaretaker = async (request, reply) => {
+  // First authenticate
+  await authenticateToken(request, reply);
+  
+  // Ensure this is a caretaker, not a patient
+  if (request.isPatient || request.user.role !== 'caretaker') {
+    reply.code(403).send({
+      success: false,
+      message: 'Caretaker access required',
+      errors: ['This endpoint is only accessible to caretakers']
+    });
+    return;
+  }
+};
+
+/**
+ * Patient-only middleware
+ * Requires authentication and patient role
+ */
+export const requirePatient = async (request, reply) => {
+  // First authenticate
+  await authenticateToken(request, reply);
+  
+  // Ensure this is a patient, not a caretaker
+  if (!request.isPatient || request.user.role !== 'patient') {
+    reply.code(403).send({
+      success: false,
+      message: 'Patient access required',
+      errors: ['This endpoint is only accessible to patients']
+    });
+    return;
+  }
+};
+
+/**
+ * Patient-caretaker relationship validation
+ * Ensures patient can only access resources from their assigned caretaker
+ */
+export const validatePatientCaretakerRelationship = async (request, reply) => {
+  // Only apply to patient requests
+  if (!request.isPatient) return;
+  
+  const caretakerIdFromRequest = request.params.caretakerId || request.query.caretakerId || request.body.caretakerId;
+  
+  if (caretakerIdFromRequest && caretakerIdFromRequest !== request.user.caretakerId.toString()) {
+    reply.code(403).send({
+      success: false,
+      message: 'Access denied',
+      errors: ['You can only access resources from your assigned caretaker']
+    });
+    return;
+  }
+};
+
+/**
  * Admin only middleware
  * Requires authentication and admin role (extend user model for roles)
  */

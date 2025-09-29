@@ -1,4 +1,4 @@
-import { authenticateToken } from '../../middleware/auth.js';
+import { authenticateToken, validatePatientCaretakerRelationship } from '../../middleware/auth.js';
 import { requireGalleryAccess } from '../../middleware/galleryAuth.js';
 import User from '../../models/User.js';
 
@@ -16,7 +16,7 @@ export default async function albumsRoutes(fastify, options) {
         }
       }
     },
-    preHandler: authenticateToken
+    preHandler: [authenticateToken, requireCaretaker]
   }, async (request, reply) => {
     try {
       const { name, description, dateOfMemory } = request.body;

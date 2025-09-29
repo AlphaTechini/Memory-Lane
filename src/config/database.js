@@ -6,14 +6,54 @@ import { PrismaClient } from '@prisma/client';
 class DatabaseConfig {
   constructor() {
     this.connectionString = process.env.DATABASE_URL || '';
-    this.client = new PrismaClient(
-      this.connectionString
-        ? { datasources: { db: { url: this.connectionString } } }
-        : undefined
-    );
+    
+    // Enhanced Prisma client configuration for better connection handling
+    const prismaConfig = {
+      log: ['warn', 'error'], // Reduce logging noise in production
+      errorFormat: 'minimal'
+    };
+    
+    // Add connection pool settings if using a connection string
+    if (this.connectionString) {
+      // Ensure connection string has proper pool settings for Fly.io
+      const enhancedConnectionString = this.enhanceConnectionString(this.connectionString);
+      prismaConfig.datasources = { 
+        db: { 
+          url: enhancedConnectionString 
+        } 
+      };
+    }
+    
+    this.client = new PrismaClient(prismaConfig);
     this.connected = false;
     this.registeredSignals = false;
     this.connectionInfo = this.parseConnectionInfo(this.connectionString);
+  }
+
+  enhanceConnectionString(connectionString) {
+    try {
+      const url = new URL(connectionString);
+      
+      // Add connection pool parameters if not already present
+      const params = new URLSearchParams(url.search);
+      
+      // Set reasonable defaults for Fly.io deployment
+      if (!params.has('connection_limit')) {
+        params.set('connection_limit', '10'); // Limit concurrent connections
+      }
+      if (!params.has('pool_timeout')) {
+        params.set('pool_timeout', '10'); // Connection timeout in seconds
+      }
+      if (!params.has('connect_timeout')) {
+        params.set('connect_timeout', '5'); // Initial connection timeout
+      }
+      
+      url.search = params.toString();
+      return url.toString();
+    } catch (error) {
+      console.warn('Could not enhance connection string:', error.message);
+      return connectionString;
+    }
   }
 
   parseConnectionInfo(connectionString) {
@@ -123,11 +163,48 @@ class DatabaseConfig {
         timestamp: new Date().toISOString()
       };
     } catch (error) {
+      // If health check fails, try to reconnect
+      this.connected = false;
+      try {
+        await this.client.$disconnect();
+      } catch (disconnectError) {
+        console.warn('Error during disconnect in health check:', disconnectError.message);
+      }
+      
       return {
         healthy: false,
         error: error.message,
         timestamp: new Date().toISOString()
       };
+    }
+  }
+
+  /**
+   * Ensure database connection is active, reconnect if needed
+   */
+  async ensureConnection() {
+    try {
+      if (!this.connected) {
+        await this.client.$connect();
+        this.connected = true;
+      }
+      
+      // Quick health check
+      await this.client.$queryRaw`SELECT 1`;
+      return true;
+    } catch (error) {
+      console.warn('Database connection lost, attempting reconnection:', error.message);
+      this.connected = false;
+      
+      try {
+        await this.client.$disconnect();
+        await this.client.$connect();
+        this.connected = true;
+        return true;
+      } catch (reconnectError) {
+        console.error('Failed to reconnect to database:', reconnectError.message);
+        return false;
+      }
     }
   }
 }
