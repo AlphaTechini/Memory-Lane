@@ -523,16 +523,23 @@ async function authRoutes(fastify, options) {
     preHandler: authenticateToken 
   }, async (request, reply) => {
     try {
-      // User is already attached to request by middleware
-      const user = await authService.getUserById(request.user.id);
+      let user;
       
-      if (!user) {
-        reply.code(404).send({
-          success: false,
-          message: 'User not found',
-          errors: ['User does not exist']
-        });
-        return;
+      // For patients, user data is already in request.user (from Patient collection)
+      if (request.isPatient) {
+        user = request.user;
+      } else {
+        // For caretakers, fetch from User collection
+        user = await authService.getUserById(request.user.id);
+        
+        if (!user) {
+          reply.code(404).send({
+            success: false,
+            message: 'User not found',
+            errors: ['User does not exist']
+          });
+          return;
+        }
       }
 
       // Log full debug info on the server only
