@@ -87,9 +87,6 @@ SENSAY_BASE_URL=https://api.sensay.ai/v1
 SENSAY_ORGANIZATION_SECRET=
 SENSAY_OWNER_ID=
 
-# External / 3rd-party keys
-LLAMA_API_KEY=
-
 # Database (PostgreSQL via Fly.io Postgres or external host)
 DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<database>?sslmode=require
 
