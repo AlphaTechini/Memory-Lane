@@ -425,7 +425,9 @@
   async function loadConversation(conversationId) {
     try {
       const token = getAuthToken();
-      const response = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/messages`, {
+      // Backend currently exposes GET /api/conversations/:conversationId (no /messages suffix)
+      // Try canonical route first; if a future /messages sub-route appears, we can fallback.
+      let response = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -433,10 +435,21 @@
 
       if (response.ok) {
         const data = await response.json();
-        chatMessages = data.messages || [];
+        // Existing endpoint returns a conversation object with messages; adapt expected shape
+        chatMessages = data.conversation?.messages || data.messages || [];
         selectedReplica = selectedReplicaForSidebar; // Set the active replica for chat
       } else {
-        console.error('Failed to load conversation messages');
+        // Fallback: attempt legacy /messages path if present
+        const alt = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/messages`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (alt.ok) {
+          const data = await alt.json();
+            chatMessages = data.messages || [];
+            selectedReplica = selectedReplicaForSidebar;
+        } else {
+          console.error('Failed to load conversation (both canonical and /messages endpoints)');
+        }
       }
     } catch (error) {
       console.error('Error loading conversation messages:', error);

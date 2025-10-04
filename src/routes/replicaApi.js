@@ -1196,6 +1196,52 @@ async function replicaRoutes(fastify, options) {
       }
 
       // Resolve ownerUserId for DB queries
+
+  // Compatibility endpoint: just return messages for a conversation
+  fastify.get('/api/conversations/:conversationId/messages', {
+    preHandler: [authenticateToken]
+  }, async (request, reply) => {
+    try {
+      const { conversationId } = request.params;
+      if (!conversationId || typeof conversationId !== 'string' || !/^[0-9a-fA-F\-]{36}$/.test(conversationId)) {
+        return reply.status(400).send({ success: false, error: 'Invalid conversation id' });
+      }
+      const tokenUserId = request.user?.id;
+      if (!tokenUserId) {
+        return reply.status(401).send({ success: false, error: 'User ID not found in token' });
+      }
+      let ownerUserId = tokenUserId;
+      let user = await User.findById(tokenUserId).select('email role');
+      if (!user && request.isPatient) {
+        const patient = await Patient.findById(tokenUserId);
+        if (patient && patient.userId) {
+          ownerUserId = patient.userId;
+          user = await User.findById(ownerUserId).select('email role');
+        }
+      }
+      if (!user) {
+        return reply.status(401).send({ success: false, error: 'User not found' });
+      }
+      const conversation = await Conversation.findOne({
+        _id: conversationId,
+        userId: ownerUserId,
+        isActive: true
+      });
+      if (!conversation) {
+        return reply.status(404).send({ success:false, error:'Conversation not found or access denied' });
+      }
+      return {
+        success: true,
+        conversationId: conversation._id,
+        replicaId: conversation.replicaId,
+        messages: conversation.messages || [],
+        messageCount: (conversation.messages || []).length
+      };
+    } catch (err) {
+      fastify.log.error(err, 'Error retrieving conversation messages');
+      return reply.status(500).send({ success:false, error:'Internal server error while retrieving messages' });
+    }
+  });
       let ownerUserId = tokenUserId;
       let user = await User.findById(tokenUserId).select('email role');
       if (!user && request.isPatient) {
