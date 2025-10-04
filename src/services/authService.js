@@ -5,6 +5,8 @@ import emailService from './emailService.js';
 import { createSensayUser, ensureSensayUser, syncUserWithSensay } from './sensayService.js';
 import logger from '../utils/logger.js';
 
+import firebaseAdmin from '../firebase.js';
+
 // JWT secret - in production, use environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -14,6 +16,76 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
  * Handles user registration, login, and token generation
  */
 class AuthService {
+
+  /**
+   * Login or register user with Google ID token
+   * @param {String} idToken - Google ID token from frontend
+   * @returns {Object} Login result with JWT and user object
+   */
+  async loginWithGoogle(idToken) {
+    try {
+      // 1. Verify the idToken with Firebase Admin
+      const decoded = await firebaseAdmin.auth().verifyIdToken(idToken);
+      const googleId = decoded.uid;
+      const email = decoded.email;
+      const name = decoded.name || '';
+      // 2. Split name into firstName and lastName
+      let firstName = null, lastName = null;
+      if (name) {
+        const parts = name.trim().split(' ');
+        firstName = parts[0] || null;
+        lastName = parts.length > 1 ? parts.slice(1).join(' ') : null;
+      }
+
+      // 3. Upsert user by googleId
+      let user = await User.findOne({ googleId });
+      if (user) {
+        // Update email/name if changed
+        let updated = false;
+        if (email && user.email !== email) { user.email = email; updated = true; }
+        if (firstName && user.firstName !== firstName) { user.firstName = firstName; updated = true; }
+        if (lastName && user.lastName !== lastName) { user.lastName = lastName; updated = true; }
+        if (!user.isVerified) { user.isVerified = true; updated = true; }
+        if (updated) await user.save();
+      } else {
+        // If not found by googleId, try by email (migration/legacy)
+        user = await User.findByEmail(email);
+        if (user && !user.googleId) {
+          user.googleId = googleId;
+          if (firstName && !user.firstName) user.firstName = firstName;
+          if (lastName && !user.lastName) user.lastName = lastName;
+          if (!user.isVerified) user.isVerified = true;
+          await user.save();
+        } else if (!user) {
+          // Create new user
+          user = await User.create({
+            email,
+            googleId,
+            firstName,
+            lastName,
+            isVerified: true,
+            role: 'caretaker',
+          });
+        }
+      }
+
+      // 4. Generate JWT token (caretaker only)
+      const token = this.generateToken(user);
+      return {
+        success: true,
+        message: 'Login with Google successful',
+        user: user.toJSON(),
+        token
+      };
+    } catch (error) {
+      logger?.error?.('[loginWithGoogle] failed', error) || console.error('[loginWithGoogle] failed', error);
+      return {
+        success: false,
+        message: error.message || 'Google login failed',
+        errors: [error.message || 'Google login failed']
+      };
+    }
+  }
   
   /**
    * Generate JWT token for user (caretakers only)

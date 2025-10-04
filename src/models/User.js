@@ -68,6 +68,7 @@ class UserEntity {
       _id: this._id,
       id: this.id,
       email: this.email,
+      googleId: this.googleId,
       sensayUserId: this.sensayUserId,
       isVerified: this.isVerified,
       firstName: this.firstName,
