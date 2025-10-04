@@ -10,9 +10,9 @@ datasource db {
 model User {
   id                   String    @id @default(uuid())
   email                String    @unique
-  googleId             String    @unique
+  googleId             String?   @unique
   sensayUserId         String?
-  password             String?
+  password             String?   // Optional for Google Auth
   isVerified           Boolean   @default(false)
   firstName            String?
   lastName             String?
