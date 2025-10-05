@@ -1,8 +1,8 @@
-<!-- src/routes/dashboard/+page.svelte -->
 <script>
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+  import UpgradeNotice from '$lib/UpgradeNotice.svelte';
 
   import { isAuthenticated, verifyAuth, logout, requireAuthForAction, apiCall, getUserRole } from '$lib/auth.js';
 
@@ -38,11 +38,11 @@
                   try {
                     const response = await apiCall('/api/auth/me', { method: 'GET' });
                     if (response.ok) {
-                const data = await response.json();
-                const resolved = data.user || data.patient || data;
-                // persist normalized userData shape for other components
-                try { localStorage.setItem('userData', JSON.stringify(resolved)); } catch (e) {}
-                userRole = resolved?.role || 'caretaker';
+                      const data = await response.json();
+                      const resolved = data.user || data.patient || data;
+                      // persist normalized userData shape for other components
+                      try { localStorage.setItem('userData', JSON.stringify(resolved)); } catch (e) {}
+                      userRole = resolved?.role || 'caretaker';
                       console.log('Dashboard: userRole from API:', userRole);
                     }
                   } catch (error) {
@@ -155,6 +155,9 @@
   <title>Dashboard - Memory Lane</title>
 </svelte:head>
 
+<!-- Render UpgradeNotice near top so it shows immediately on the dashboard -->
+<UpgradeNotice />
+
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
   <!-- Header -->
   <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
@@ -184,7 +187,7 @@
                   Welcome, {user.firstName || user.email}!
                 </span>
                 <button
-                  onclick={logout}
+                  on:click={logout}
                   class="text-sm bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-700 dark:text-red-300 px-3 py-1 rounded-md transition-colors"
                 >
                   Logout
@@ -269,7 +272,7 @@
           Cached Token: {typeof localStorage !== 'undefined' ? (localStorage.getItem('authToken') ? 'exists' : 'missing') : 'unknown'}
         </div>
         <button 
-          onclick={() => {
+          on:click={() => {
             if (typeof localStorage !== 'undefined') {
               localStorage.removeItem('authToken');
               localStorage.removeItem('userData');
@@ -286,97 +289,100 @@
 
     <!-- Navigation Cards -->
     {#if authChecked}
-      <div class="{userRole === 'patient' ? 'grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto justify-items-center' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'}">
+      <div class={userRole === 'patient' ? 'grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto justify-items-center' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8'}>
         {#each navigationItems.filter(item => {
           // Show item if not caretaker-only
           if (!item.caretakerOnly) return true;
           // Show caretaker-only items only for authenticated caretakers (not patients)
           return isAuth && userRole === 'caretaker';
         }) as item (item.id)}
-        <button
-          onclick={() => navigateTo(item.route, item.requiresAuth)}
-          class="group relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-transparent focus:outline-none focus:ring-4 focus:ring-blue-500/20 {item.requiresAuth && !isAuth ? 'opacity-75' : ''}"
-        >
-          <!-- Auth requirement badge -->
-          {#if item.requiresAuth && !isAuth}
-            <div class="absolute top-3 right-3 z-10">
-              <div class="flex items-center px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-md">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-600 dark:text-yellow-400 mr-1">
-                  <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          <!-- Safe button: build class via JS expression to avoid parser issues -->
+          <button
+            on:click={() => navigateTo(item.route, item.requiresAuth)}
+            class={
+              `group relative rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 dark:border-gray-700 
+               ${isAuth || !item.requiresAuth ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-800/40'}`
+            }
+          >
+            <!-- Auth requirement badge -->
+            {#if item.requiresAuth && !isAuth}
+              <div class="absolute top-3 right-3 z-10">
+                <div class="flex items-center px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-md">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1">
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                  <span class="text-xs text-yellow-700 dark:text-yellow-300 font-medium">Login Required</span>
+                </div>
+              </div>
+            {/if}
+
+            <!-- Gradient overlay -->
+            <div class="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-gray-50 dark:to-gray-700/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            
+            <!-- Content -->
+            <div class="relative p-8">
+              <!-- Icon -->
+              <div class={"w-16 h-16 mx-auto mb-6 " + item.textColor + " group-hover:scale-110 transition-transform duration-300"}>
+                {#if item.id === 'chatbot'}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                  </svg>
+                {:else if item.id === 'gallery'}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                    <circle cx="9" cy="9" r="2"/>
+                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                  </svg>
+                {:else if item.id === 'create-replica'}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                {:else if item.id === 'manage-patients'}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <line x1="17" x2="22" y1="8" y2="13"/>
+                    <line x1="22" x2="17" y1="8" y2="13"/>
+                  </svg>
+                {/if}
+              </div>
+              
+              <!-- Title -->
+              <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                {item.title}
+              </h3>
+              
+              <!-- Description -->
+              <p class="text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
+                {item.description}
+                {#if item.requiresAuth && !isAuth}
+                  <span class="block mt-2 text-sm text-yellow-600 dark:text-yellow-400">
+                    Sign up or login to access this feature
+                  </span>
+                {/if}
+              </p>
+              
+              <!-- Action Button -->
+              <div class="inline-flex items-center justify-center px-6 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg group-hover:bg-gradient-to-r group-hover:from-blue-50 group-hover:to-purple-50 transition-colors">
+                <span class="font-medium mr-2">
+                  {#if item.requiresAuth && !isAuth}
+                    Login to Access
+                  {:else}
+                    Open {item.title}
+                  {/if}
+                </span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14"/>
+                  <path d="M12 5l7 7-7 7"/>
                 </svg>
-                <span class="text-xs text-yellow-700 dark:text-yellow-300 font-medium">Login Required</span>
               </div>
             </div>
-          {/if}
-
-          <!-- Gradient overlay -->
-          <div class="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-gray-50 dark:to-gray-700/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          
-          <!-- Content -->
-          <div class="relative p-8">
-            <!-- Icon -->
-            <div class="w-16 h-16 mx-auto mb-6 {item.textColor} group-hover:scale-110 transition-transform duration-300">
-              <!-- Safe icon rendering - SVG icons are now inline components -->
-              {#if item.id === 'chatbot'}
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                </svg>
-              {:else if item.id === 'gallery'}
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
-                  <circle cx="9" cy="9" r="2"/>
-                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-                </svg>
-              {:else if item.id === 'create-replica'}
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
-              {:else if item.id === 'manage-patients'}
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <line x1="17" x2="22" y1="8" y2="13"/>
-                  <line x1="22" x2="17" y1="8" y2="13"/>
-                </svg>
-              {/if}
-            </div>
-            
-            <!-- Title -->
-            <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-4 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-purple-600 group-hover:bg-clip-text transition-all duration-300">
-              {item.title}
-            </h3>
-            
-            <!-- Description -->
-            <p class="text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
-              {item.description}
-              {#if item.requiresAuth && !isAuth}
-                <span class="block mt-2 text-sm text-yellow-600 dark:text-yellow-400">
-                  Sign up or login to access this feature
-                </span>
-              {/if}
-            </p>
-            
-            <!-- Action Button -->
-            <div class="inline-flex items-center justify-center px-6 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg group-hover:bg-gradient-to-r group-hover:from-blue-500 group-hover:to-purple-600 group-hover:text-white transition-all duration-300">
-              <span class="font-medium mr-2">
-                {#if item.requiresAuth && !isAuth}
-                  Login to Access
-                {:else}
-                  Open {item.title}
-                {/if}
-              </span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-hover:translate-x-1 transition-transform duration-300">
-                <path d="M5 12h14"/>
-                <path d="M12 5l7 7-7 7"/>
-              </svg>
-            </div>
-          </div>
-        </button>
-      {/each}
+          </button>
+        {/each}
       </div>
     {:else}
       <!-- Loading state -->
