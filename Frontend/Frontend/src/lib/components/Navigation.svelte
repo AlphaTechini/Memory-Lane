@@ -180,6 +180,19 @@
           </button>
         </div>
       {/if}
+      <!-- Feedback and About buttons -->
+      <button
+        onclick={() => goto('/feedback')}
+        class="hidden md:block px-3 lg:px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+      >
+        Feedback
+      </button>
+      <button
+        onclick={() => goto('/about')}
+        class="hidden md:block px-3 lg:px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+      >
+        About
+      </button>
     </div>
   </div>
   

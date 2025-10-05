@@ -199,6 +199,9 @@ await server.register(replicaRoutes);
 await server.register(galleryRoutes);
 await server.register(replicaImageRoutes);
 await server.register(genericChatRoutes);
+// Register API routes (feedback, etc)
+const apiRoutes = (await import('./routes/api/index.js')).default;
+await server.register(apiRoutes);
 
 // Admin routes (import conditionally to avoid loading in production accidentally)
 if (process.env.NODE_ENV === 'development' || process.env.ENABLE_ADMIN_ROUTES === 'true') {
