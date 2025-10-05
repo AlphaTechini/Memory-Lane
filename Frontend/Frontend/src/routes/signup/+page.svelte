@@ -6,7 +6,6 @@
   import GoogleSignInButton from '$lib/components/GoogleSignInButton.svelte';
   import { apiUrl } from '$lib/utils/api.js';
 
-  // ... rest of your existing script code stays the same ...
   let email = $state('');
   let password = $state('');
   let confirmPassword = $state('');
