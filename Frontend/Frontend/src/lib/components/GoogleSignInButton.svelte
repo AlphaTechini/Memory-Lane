@@ -1,9 +1,7 @@
-<!-- Frontend/Frontend/src/lib/components/GoogleSignInButton.svelte -->
 <script>
-  import { auth } from '$lib/firebase';
-  import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
   import { goto } from '$app/navigation';
   import { apiUrl } from '$lib/utils/api.js';
+  import { initFirebaseClient } from '$lib/firebase';
 
   let { mode = 'signin', disabled = false } = $props();
   let loading = $state(false);
@@ -12,30 +10,31 @@
   async function handleGoogleSignIn() {
     loading = true;
     error = null;
-    
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({
-      prompt: 'select_account'
-    });
 
     try {
+      // Init firebase client in browser on demand
+      const { auth, GoogleAuthProvider, signInWithPopup } = await initFirebaseClient();
+
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+
       const result = await signInWithPopup(auth, provider);
       const idToken = await result.user.getIdToken();
-      
+
       const response = await fetch(apiUrl('/auth/google'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         localStorage.setItem('authToken', data.token);
         if (data.user) {
           localStorage.setItem('userData', JSON.stringify(data.user));
         }
-        
+
         const redirectTo = localStorage.getItem('redirectAfterLogin');
         if (redirectTo) {
           localStorage.removeItem('redirectAfterLogin');
@@ -48,7 +47,7 @@
       }
     } catch (err) {
       console.error('Google sign-in error:', err);
-      error = err.message || 'Failed to sign in with Google';
+      error = err?.message || 'Failed to sign in with Google';
     } finally {
       loading = false;
     }
@@ -57,7 +56,7 @@
 
 <div class="space-y-2">
   <button
-    onclick={handleGoogleSignIn}
+    on:click={handleGoogleSignIn}
     disabled={loading || disabled}
     class="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
   >
@@ -68,18 +67,17 @@
       </svg>
       <span class="text-gray-700 dark:text-gray-300">Signing in...</span>
     {:else}
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M19.6 10.227c0-.709-.064-1.39-.182-2.045H10v3.868h5.382a4.6 4.6 0 01-1.996 3.018v2.51h3.232c1.891-1.742 2.982-4.305 2.982-7.35z" fill="#4285F4"/>
-        <path d="M10 20c2.7 0 4.964-.895 6.618-2.423l-3.232-2.509c-.895.6-2.04.955-3.386.955-2.605 0-4.81-1.76-5.595-4.123H1.064v2.59A9.996 9.996 0 0010 20z" fill="#34A853"/>
-        <path d="M4.405 11.9c-.2-.6-.314-1.24-.314-1.9 0-.66.114-1.3.314-1.9V5.51H1.064A9.996 9.996 0 000 10c0 1.614.386 3.14 1.064 4.49l3.34-2.59z" fill="#FBBC05"/>
-        <path d="M10 3.977c1.468 0 2.786.505 3.823 1.496l2.868-2.868C14.959.99 12.695 0 10 0 6.09 0 2.71 2.24 1.064 5.51l3.34 2.59C5.19 5.736 7.395 3.977 10 3.977z" fill="#EA4335"/>
+      <!-- Google logo -->
+      <svg width="20" height="20" viewBox="0 0 533.5 544.3" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M533.5 278.4c0-18.3-1.6-36-4.7-53.1H272v100.5h146.9c-6.3 34.1-25.1 62.9-53.4 82.1v68.1h86.3c51.5-47.5 81.7-117.6 81.7-197.6z" fill="#4285f4"/>
+        <path d="M272 544.3c72.9 0 134.1-24.1 178.8-65.4l-86.3-68.1c-23.9 16-54.5 25.5-92.5 25.5-70.9 0-131-47.8-152.4-112.2H30.9v70.6C75.1 488.6 168 544.3 272 544.3z" fill="#34a853"/>
+        <path d="M119.6 328.1c-10.8-32.4-10.8-67.4 0-99.8V157.7H30.9c-39.6 79.5-39.6 173.8 0 253.3l88.7-82.9z" fill="#fbbc04"/>
+        <path d="M272 107.7c39.6 0 75.3 13.6 103.4 40.5l77.5-77.5C412.1 23.1 344.9 0 272 0 168 0 75.1 55.7 30.9 157.7l88.7 70.6C141 155.5 201.1 107.7 272 107.7z" fill="#ea4335"/>
       </svg>
-      <span class="text-gray-700 dark:text-gray-300 font-medium">
-        {mode === 'signup' ? 'Sign up with Google' : 'Sign in with Google'}
-      </span>
+      <span class="text-gray-700 dark:text-gray-300">Sign in with Google</span>
     {/if}
   </button>
-  
+
   {#if error}
     <p class="text-sm text-red-600 dark:text-red-400">{error}</p>
   {/if}
