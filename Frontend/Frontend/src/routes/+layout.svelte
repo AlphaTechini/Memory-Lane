@@ -30,6 +30,17 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+
+  <!-- 🔔 Global Notification Banner -->
+  <div class="fixed top-0 left-0 w-full z-50">
+    <div class="bg-yellow-300 text-black text-center px-4 py-3 shadow-lg">
+      <p class="font-medium">
+        🚧 The platform is undergoing an upgrade. As such, some features may not work properly.<br />
+        Please check in again after 24 hours. Sorry for any inconveniences caused.
+      </p>
+    </div>
+  </div>
+
   {#if !isAuthPage}
     <Navigation />
   {/if}
