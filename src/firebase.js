@@ -1,48 +1,41 @@
-// src/firebase.js
-// url=https://github.com/AlphaTechini/Built-with-Sensay-API/blob/main/src/firebase.js
-import admin from 'firebase-admin';
-import fs from 'fs';
-import path from 'path';
+// Frontend safe firebase init - only runs in the browser (avoids SSR errors)
+import { browser } from '$app/environment';
 
-let adminInstance = null;
-let initialized = false;
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
+};
 
-try {
-  const serviceAccountPath = path.resolve(process.cwd(), 'serviceAccountKey.json');
-  if (fs.existsSync(serviceAccountPath)) {
-    const raw = fs.readFileSync(serviceAccountPath, 'utf8');
-    const serviceAccount = JSON.parse(raw);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-    adminInstance = admin;
-    initialized = true;
-    console.log('firebase-admin initialized');
-  } else {
-    console.warn('serviceAccountKey.json not found; firebase-admin is not initialized. Google sign-in will be disabled.');
+let app = null;
+let auth = null;
+
+if (browser) {
+  try {
+    // Lazily import firebase modules in the browser to avoid SSR initialization
+    // (avoid calling getAuth() during SSR which can throw if env vars are missing)
+    // Note: static imports are fine but this keeps runtime init strictly client-side.
+    // Use dynamic imports to ensure bundlers still include firebase for the client.
+    (async () => {
+      const { initializeApp } = await import('firebase/app');
+      const { getAuth } = await import('firebase/auth');
+      try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        // optional: console.info('client firebase initialized');
+      } catch (initErr) {
+        console.warn('Firebase client initialization failed:', initErr?.message || initErr);
+        app = null;
+        auth = null;
+      }
+    })();
+  } catch (err) {
+    console.warn('Failed to load firebase client libraries:', err);
   }
-} catch (err) {
-  // Do NOT re-throw — fail gracefully so the server and non-Firebase routes can continue.
-  console.error('Failed to initialize firebase-admin. Google sign-in will be disabled.', err);
 }
 
-/**
- * Export a safe wrapper that matches the existing usage pattern:
- * existing code calls firebaseAdmin.auth().verifyIdToken(...)
- * If initialization failed, auth().verifyIdToken will throw a controlled error
- * which the caller can catch and return a non-crashing response.
- */
-export default {
-  auth() {
-    if (!initialized) {
-      return {
-        verifyIdToken: async () => {
-          throw new Error('Firebase Admin not initialized');
-        }
-      };
-    }
-    return adminInstance.auth();
-  },
-  // Optional: expose the raw admin instance if initialized
-  _admin: adminInstance
-};
+export { app, auth };
+export default { app, auth };
