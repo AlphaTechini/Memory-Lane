@@ -1,3 +1,48 @@
+import databaseConfig from '../config/database.js';
+const prisma = databaseConfig.prisma;
+/**
+ * Login or register user with Google ID token using Prisma
+ * @param {Object} param0
+ * @param {string} param0.idToken
+ * @returns {Promise<{user: Object, token: string}>}
+ */
+export async function loginWithGoogle({ idToken }) {
+  if (!idToken) throw new Error('idToken required');
+  // Verify the token with Firebase Admin
+  const decoded = await firebaseAdmin.auth().verifyIdToken(idToken).catch(() => {
+    throw new Error('Invalid Google ID token');
+  });
+  const googleId = decoded.uid;
+  const email = decoded.email || null;
+  const fullName = decoded.name || '';
+  const [firstName, ...rest] = fullName.split(' ');
+  const lastName = rest.join(' ') || null;
+
+  // Upsert user by googleId (Prisma)
+  const user = await prisma.user.upsert({
+    where: { googleId },
+    update: {
+      email,
+      firstName,
+      lastName,
+      updatedAt: new Date()
+    },
+    create: {
+      googleId,
+      email,
+      firstName,
+      lastName
+    }
+  });
+
+  // Create JWT (use your existing payload pattern)
+  const token = jwt.sign(
+    { userId: user.id, email: user.email },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
+  return { user, token };
+}
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import validator from 'validator';

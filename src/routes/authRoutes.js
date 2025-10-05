@@ -8,37 +8,29 @@ import { authenticateToken, requireCaretaker } from '../middleware/auth.js';
  */
 async function authRoutes(fastify, options) {
   
-	// Google OAuth Login/Signup
-	fastify.post('/auth/google', async (request, reply) => {
-		try {
-			const { idToken } = request.body;
-
-			if (!idToken) {
-				return reply.code(400).send({
+		// Google OAuth Login/Signup (Prisma version)
+		const { loginWithGoogle } = await import('../services/authService.js');
+		fastify.post('/auth/google', async (request, reply) => {
+			try {
+				const { idToken } = request.body;
+				if (!idToken) {
+					return reply.code(400).send({
+						success: false,
+						message: 'ID token is required',
+						errors: ['No ID token provided']
+					});
+				}
+				const { user, token } = await loginWithGoogle({ idToken });
+				return reply.code(200).send({ success: true, user, token });
+			} catch (error) {
+				fastify.log.error('Google auth error:', error);
+				return reply.code(500).send({
 					success: false,
-					message: 'ID token is required',
-					errors: ['No ID token provided']
+					message: 'Internal server error during Google authentication',
+					errors: [error.message]
 				});
 			}
-
-			// Use the authService to handle Google login
-			const result = await authService.loginWithGoogle(idToken);
-
-			if (!result.success) {
-				return reply.code(400).send(result);
-			}
-
-			return reply.code(200).send(result);
-
-		} catch (error) {
-			fastify.log.error('Google auth error:', error);
-			return reply.code(500).send({
-				success: false,
-				message: 'Internal server error during Google authentication',
-				errors: [error.message]
-			});
-		}
-	});
+		});
 
 	// Get current authenticated user
 	fastify.get('/auth/me', {
