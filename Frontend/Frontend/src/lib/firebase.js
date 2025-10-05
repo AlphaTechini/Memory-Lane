@@ -1,4 +1,5 @@
-// Frontend safe firebase init - only runs in the browser (avoids SSR errors)
+// Frontend: safe firebase client initializer - does NOT run during SSR.
+// Exports an async init function that callers can use in the browser.
 import { browser } from '$app/environment';
 
 const firebaseConfig = {
@@ -10,32 +11,56 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-let app = null;
-let auth = null;
+let initPromise = null;
 
-if (browser) {
-  try {
-    // Lazily import firebase modules in the browser to avoid SSR initialization
-    // (avoid calling getAuth() during SSR which can throw if env vars are missing)
-    // Note: static imports are fine but this keeps runtime init strictly client-side.
-    // Use dynamic imports to ensure bundlers still include firebase for the client.
-    (async () => {
-      const { initializeApp } = await import('firebase/app');
-      const { getAuth } = await import('firebase/auth');
-      try {
-        app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
-        // optional: console.info('client firebase initialized');
-      } catch (initErr) {
-        console.warn('Firebase client initialization failed:', initErr?.message || initErr);
-        app = null;
-        auth = null;
-      }
-    })();
-  } catch (err) {
-    console.warn('Failed to load firebase client libraries:', err);
+/**
+ * Initialize Firebase client libraries only in the browser on demand.
+ * Returns an object { app, auth, GoogleAuthProvider, signInWithPopup, getIdToken }
+ * Throws an error if called on the server or if required env vars are missing.
+ */
+export async function initFirebaseClient() {
+  if (!browser) {
+    throw new Error('initFirebaseClient must be called in the browser');
   }
+
+  if (initPromise) return initPromise;
+
+  initPromise = (async () => {
+    try {
+      const firebaseAppModule = await import('firebase/app');
+      const firebaseAuthModule = await import('firebase/auth');
+
+      const { initializeApp, getApps } = firebaseAppModule;
+      const { getAuth, GoogleAuthProvider, signInWithPopup } = firebaseAuthModule;
+
+      // Minimal config validation
+      if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.authDomain) {
+        throw new Error('Missing Firebase client configuration (VITE_FIREBASE_*).');
+      }
+
+      let appInstance;
+      const apps = getApps();
+      if (!apps || apps.length === 0) {
+        appInstance = initializeApp(firebaseConfig);
+      } else {
+        appInstance = apps[0];
+      }
+
+      const auth = getAuth(appInstance);
+      return {
+        app: appInstance,
+        auth,
+        GoogleAuthProvider,
+        signInWithPopup
+      };
+    } catch (err) {
+      // Reset initPromise on error so subsequent attempts can retry
+      initPromise = null;
+      throw err;
+    }
+  })();
+
+  return initPromise;
 }
 
-export { app, auth };
-export default { app, auth };
+export default { initFirebaseClient };
