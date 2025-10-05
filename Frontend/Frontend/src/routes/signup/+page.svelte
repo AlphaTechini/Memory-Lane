@@ -3,8 +3,10 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+  import GoogleSignInButton from '$lib/components/GoogleSignInButton.svelte';
   import { apiUrl } from '$lib/utils/api.js';
 
+  // ... rest of your existing script code stays the same ...
   let email = $state('');
   let password = $state('');
   let confirmPassword = $state('');
@@ -18,17 +20,12 @@
   let userType = $state('caretaker');
 
   const isCaretaker = $derived(userType === 'caretaker');
-
-  // Validation patterns
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const namePattern = /^[A-Za-z\s'-]+$/;
-
-  // Derived validity flags
   const emailValid = $derived(emailPattern.test(email));
   const firstNameValid = $derived(!!firstName && namePattern.test(firstName));
   const lastNameValid = $derived(!lastName || namePattern.test(lastName));
 
-  // Check if already logged in
   $effect(() => {
     if (browser) {
       const token = localStorage.getItem('authToken');
@@ -38,7 +35,6 @@
     }
   });
 
-  // Password validation
   const passwordValid = $derived(password.length >= 6);
   const passwordsMatch = $derived(password === confirmPassword);
   const formValid = $derived(
@@ -70,14 +66,13 @@
     }
     
     if (!formValid) {
-      // Set a descriptive error (do not send request)
       if (!emailValid) error = 'Please enter a valid email address';
       else if (!firstNameValid) error = 'First name can only contain letters, spaces, apostrophes and hyphens';
       else if (!lastNameValid) error = 'Last name can only contain letters, spaces, apostrophes and hyphens';
       else if (!passwordValid) error = 'Password must be at least 6 characters';
       else if (!passwordsMatch) error = 'Passwords do not match';
       else error = 'Please correct the highlighted errors';
-      return; // Prevent network call
+      return;
     }
 
     loading = true;
@@ -101,11 +96,9 @@
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Caretaker needs OTP verification
         localStorage.setItem('userEmail', email);
         goto('/verify-otp');
       } else {
-        // Check if this is an existing user error with suggested action
         if (data.suggestedAction === 'login') {
           error = data.message || 'Account already exists';
           showLoginSuggestion = true;
@@ -140,7 +133,6 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-  <!-- Navigation -->
   <nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-2">
@@ -150,19 +142,15 @@
     </div>
   </nav>
 
-  <!-- Main Content -->
   <main class="flex items-center justify-center min-h-[calc(100vh-80px)] px-4 py-12">
     <div class="w-full max-w-md">
-      <!-- Header -->
       <div class="text-center mb-8">
-        <!-- Add your site logo at Frontend/Frontend/static/logo.png -->
         <img src="/logo.png" alt="Memory Lane logo" class="mx-auto mb-4 h-14 w-auto" />
         <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Create Account</h2>
         <p class="text-gray-600 dark:text-gray-400 mb-2">Memory Lane is a caregiver-curated reminiscence platform that turns family photos and notes into personalized, role-based conversational replicas so patients can revisit memories in a safe, familiar voice.</p>
         <p class="text-gray-600 dark:text-gray-400">Join Memory Lane and start building your digital replica</p>
       </div>
 
-      <!-- Signup Form -->
       <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div class="px-6 pt-6 pb-4 bg-gray-50/60 dark:bg-gray-900/20">
           <div class="flex rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-1">
@@ -184,7 +172,24 @@
         </div>
 
         {#if isCaretaker}
-        <form onsubmit={handleSignup} class="p-6 space-y-6 border-t border-gray-200 dark:border-gray-700">
+          <!-- Google Sign-In Section -->
+          <div class="p-6 pb-4 border-t border-gray-200 dark:border-gray-700">
+            <GoogleSignInButton mode="signup" />
+          </div>
+
+          <!-- Divider -->
+          <div class="px-6 pb-4">
+            <div class="relative">
+              <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-gray-300 dark:border-gray-600"></div>
+              </div>
+              <div class="relative flex justify-center text-sm">
+                <span class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Or sign up with email</span>
+              </div>
+            </div>
+          </div>
+
+        <form onsubmit={handleSignup} class="p-6 pt-0 space-y-6">
           <!-- Name Fields -->
           <div class="grid grid-cols-2 gap-4">
             <div>
@@ -373,7 +378,6 @@
               </a>
             </p>
             
-            <!-- Explore Without Signup -->
             <div class="border-t border-gray-200 dark:border-gray-600 pt-3">
               <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
                 Want to explore first?
