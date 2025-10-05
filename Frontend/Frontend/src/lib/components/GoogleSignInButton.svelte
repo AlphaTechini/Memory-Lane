@@ -1,10 +1,30 @@
 <!-- Frontend/Frontend/src/lib/components/GoogleSignInButton.svelte -->
 <script>
-  import { auth } from '$lib/firebase';
-  import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
   import { goto } from '$app/navigation';
   import { apiUrl } from '$lib/utils/api.js';
 
+
+let auth = null;
+let GoogleAuthProvider;
+let signInWithPopup;
+
+async function handleGoogleSignIn() {
+  loading = true;
+  error = null;
+  try {
+    if (!auth) {
+      const fb = await import('$lib/firebase');
+      auth = fb.auth;
+      const mod = await import('firebase/auth');
+      GoogleAuthProvider = mod.GoogleAuthProvider;
+      signInWithPopup = mod.signInWithPopup;
+    }
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const result = await signInWithPopup(auth, provider);
+    ...
+  } catch (err) { ... }
+}
   let { mode = 'signin', disabled = false } = $props();
   let loading = $state(false);
   let error = $state(null);
