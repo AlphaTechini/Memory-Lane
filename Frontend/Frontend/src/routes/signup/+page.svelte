@@ -153,20 +153,26 @@
       <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div class="px-6 pt-6 pb-4 bg-gray-50/60 dark:bg-gray-900/20">
           <div class="flex rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-1">
-            <button
-              type="button"
-              onclick={() => userType = 'caretaker'}
-              class="flex-1 text-center py-2 px-3 rounded-md text-sm font-medium transition-colors {userType === 'caretaker' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
-            >
-              Caretaker
-            </button>
-            <button
-              type="button"
-              onclick={() => userType = 'patient'}
-              class="flex-1 text-center py-2 px-3 rounded-md text-sm font-medium transition-colors {userType === 'patient' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}"
-            >
-              Patient
-            </button>
+            <!-- replace the buttons with these -->
+<button
+  type="button"
+  onclick={() => userType = 'caretaker'}
+  class={userType === 'caretaker'
+    ? 'flex-1 text-center py-2 px-3 rounded-md text-sm font-medium transition-colors bg-blue-600 text-white shadow-sm'
+    : 'flex-1 text-center py-2 px-3 rounded-md text-sm font-medium transition-colors text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}
+>
+  Caretaker
+</button>
+
+<button
+  type="button"
+  onclick={() => userType = 'patient'}
+  class={userType === 'patient'
+    ? 'flex-1 text-center py-2 px-3 rounded-md text-sm font-medium transition-colors bg-blue-600 text-white shadow-sm'
+    : 'flex-1 text-center py-2 px-3 rounded-md text-sm font-medium transition-colors text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}
+>
+  Patient
+</button>
           </div>
         </div>
 
