@@ -129,6 +129,8 @@
 
 <svelte:head>
   <title>Sign Up - Memory Lane</title>
+  <meta name="description" content="Sign up to create AI replicas that aid in dementia and amnesia recovery, support caretakers, and assist neurologists and memory specialists in managing patient care." />
+  <meta name="keywords" content="sign up, healthcare AI signup, dementia care assistant, amnesia recovery AI, patient caretakers, neurologists, memory replica signup" />
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">

@@ -118,6 +118,8 @@
 
 <svelte:head>
   <title>Login - Memory Lane</title>
+  <meta name="description" content="Log in securely to access your AI memory replicas. Manage patients, track dementia recovery, and support caretakers and neurologists in memory care." />
+  <meta name="keywords" content="login, AI replicas, memory recovery login, dementia AI, amnesia patient care, healthcare AI platform access" />
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">

@@ -138,6 +138,9 @@
 
 <svelte:head>
   <title>Sign Up - Memory Lane</title>
+  <meta name="description" content="Using Sensay AI, caretakers and doctors can train replicas to help dementia and amnesia patients recall memories, strengthen cognitive recovery, and improve healthcare outcomes." />
+  <meta name="keywords" content="memory recovery, dementia support, amnesia recovery, memory assistant, healthcare AI, train replicas, recall memories, caretakers, neurologists, cognitive therapy AI" />
+
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">

@@ -27,6 +27,9 @@
 
 <svelte:head>
   <title>Sensay AI - AI Replica Platform</title>
+  <meta name="description" content="AI replicas that support memory recovery and assist patients with dementia, amnesia, and other memory illnesses. Caretakers, neurologists, and memory specialists can use the platform to manage patients and track progress." />
+  <meta name="keywords" content="AI memory support, dementia, amnesia, dementia AI, amnesia AI, memory illness, healthcare AI, neurologists, neuropsychologists, patient memory management, caretakers, memory recovery, replicas, cognitive health" />
+
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">

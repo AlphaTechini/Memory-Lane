@@ -791,6 +791,8 @@
 
 <svelte:head>
   <title>Chat with Your Replicas - Memory Lane</title>
+  <meta name="description" content="Engage in real-time conversations with AI replicas that assist patients in memory recall, support dementia and amnesia care, and help caretakers provide personalized interaction and therapy." />
+  <meta name="keywords" content="chat with AI replicas, memory recall assistant, dementia support chat, amnesia therapy AI, caregiver AI assistant, replica conversations, memory illness chat tool" />
 </svelte:head>
 
 <div class="bg-gray-50 dark:bg-gray-900">
@@ -1021,17 +1023,18 @@
                               {/if}
                             </button>
                             <button type="button"
-                              onclick={(e) => {
-                                e.stopPropagation();
-                                cancelDeleteReplica();
-                              }}
-                              class="p-1 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 transition-colors cursor-pointer"
-                              title="Cancel"
-                            >
-                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                              </svg>
-                            </button>
+  aria-label="Cancel delete operation"
+  onclick={(e) => {
+    e.stopPropagation();
+    cancelDeleteReplica();
+  }}
+  class="p-1 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 transition-colors cursor-pointer"
+  title="Cancel"
+>
+  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+  </svg>
+</button>
                           </div>
                         {:else}
                           <!-- Delete button -->

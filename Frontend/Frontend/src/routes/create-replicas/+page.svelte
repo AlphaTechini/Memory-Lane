@@ -292,7 +292,9 @@
 
 <svelte:head>
   <title>Create Replica - Memory Lane</title>
-    </svelte:head>
+  <meta name="description" content="Create personalized AI replicas with unique memory and conversation styles to assist dementia and amnesia patients, support caretakers, and empower doctors specializing in memory care." />
+  <meta name="keywords" content="create AI replicas, dementia care AI, amnesia memory support, custom AI companion, replica generator, memory illness assistant, neurologist memory therapy AI" />
+</svelte:head>
 
     <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
   <BackNavigation 

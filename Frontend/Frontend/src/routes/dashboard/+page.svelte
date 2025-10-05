@@ -153,6 +153,8 @@
 
 <svelte:head>
   <title>Dashboard - Memory Lane</title>
+  <meta name="description" content="Dashboard for managing AI replicas: track memory recovery, assist dementia patients, help amnesia recovery, and support caretakers and neurologists with memory-focused care." />
+  <meta name="keywords" content="AI dashboard, memory management, dementia tracking, amnesia recovery dashboard, caretakers AI tool, neurologist patient support" />
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
