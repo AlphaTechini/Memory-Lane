@@ -1,58 +1,120 @@
 import nodemailer from 'nodemailer';
-import { resolve } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import dotenv from 'dotenv';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-dotenv.config({ path: resolve(__dirname, '../../../.env') });
-
-const smtpHost = process.env.EMAIL_SMTP_HOST;
-const smtpPort = process.env.EMAIL_SMTP_PORT;
-const smtpUser = process.env.EMAIL_SMTP_USER;
-const smtpPass = process.env.EMAIL_SMTP_PASS;
-const feedbackTo = process.env.FEEDBACK_TO || smtpUser;
 
 // Simple XSS prevention: strip tags and limit length
 function sanitize(input) {
   return String(input).replace(/<[^>]*>?/gm, '').slice(0, 2000);
 }
 
-export async function feedbackRoute(fastify, opts) {
+/**
+ * Feedback routes
+ * @param {import('fastify').FastifyInstance} fastify
+ * @param {Object} opts
+ */
+export async function feedbackRoutes(fastify, opts) {
+  const { EMAIL_SMTP_HOST, EMAIL_SMTP_PORT, EMAIL_SMTP_USER, EMAIL_SMTP_PASS, FEEDBACK_TO } = process.env;
+
+  // Validate email configuration on startup
+  if (!EMAIL_SMTP_HOST || !EMAIL_SMTP_USER || !EMAIL_SMTP_PASS) {
+    fastify.log.warn('Email configuration incomplete. Feedback functionality may not work.');
+  }
+
+  /**
+   * Submit feedback
+   * POST /api/feedback
+   * Body: { name: string, email: string, body: string }
+   * Auth: Optional (works for both authenticated and non-authenticated users)
+   */
   fastify.post('/api/feedback', async (request, reply) => {
-    const { name, email, body } = request.body || {};
-    if (!name || !email || !body) {
-      return reply.code(400).send({ error: 'All fields required.' });
-    }
-    if (!/^.+@.+\..+$/.test(email)) {
-      return reply.code(400).send({ error: 'Invalid email.' });
-    }
-    const sanitizedBody = sanitize(body);
-    if (sanitizedBody !== body) {
-      return reply.code(400).send({ error: 'Feedback contains invalid characters.' });
-    }
     try {
+      const { name, email, body } = request.body || {};
+
+      // Validate required fields
+      if (!name || !email || !body) {
+        return reply.code(400).send({ 
+          error: 'All fields are required.',
+          details: {
+            name: !name ? 'Name is required' : null,
+            email: !email ? 'Email is required' : null,
+            body: !body ? 'Feedback message is required' : null
+          }
+        });
+      }
+
+      // Validate email format
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return reply.code(400).send({ error: 'Invalid email address format.' });
+      }
+
+      // Sanitize feedback body
+      const sanitizedBody = sanitize(body);
+      if (sanitizedBody !== body) {
+        return reply.code(400).send({ 
+          error: 'Feedback contains invalid characters. Please remove any HTML tags or special formatting.' 
+        });
+      }
+
+      // Check if email is configured
+      if (!EMAIL_SMTP_HOST || !EMAIL_SMTP_USER || !EMAIL_SMTP_PASS) {
+        request.log.error('Email not configured');
+        return reply.code(500).send({ 
+          error: 'Email service is not configured. Please contact support.' 
+        });
+      }
+
+      // Create email transporter
       const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpPort == 465, // true for 465, false for other ports
-        auth: { user: smtpUser, pass: smtpPass },
+        host: EMAIL_SMTP_HOST,
+        port: parseInt(EMAIL_SMTP_PORT) || 587,
+        secure: parseInt(EMAIL_SMTP_PORT) === 465,
+        auth: { 
+          user: EMAIL_SMTP_USER, 
+          pass: EMAIL_SMTP_PASS 
+        },
       });
+
+      // Get user info if authenticated
+      let userInfo = '';
+      if (request.user) {
+        userInfo = `\n\nUser Info:\nUser ID: ${request.user.userId}\nUsername: ${request.user.username || 'N/A'}\nRole: ${request.user.role || 'N/A'}`;
+      }
+
+      // Send email
       await transporter.sendMail({
-        from: `Sensay Feedback <${smtpUser}>`,
-        to: feedbackTo,
+        from: `Memory Lane Feedback <${EMAIL_SMTP_USER}>`,
+        to: FEEDBACK_TO || EMAIL_SMTP_USER,
         subject: `Feedback from ${name}`,
         replyTo: email,
-        text: `Name: ${name}\nEmail: ${email}\n\n${sanitizedBody}`,
+        text: `Name: ${name}\nEmail: ${email}${userInfo}\n\nFeedback:\n${sanitizedBody}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2563eb;">New Feedback Received</h2>
+            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p><strong>Name:</strong> ${name}</p>
+              <p><strong>Email:</strong> ${email}</p>
+              ${userInfo ? `<p><strong>User Info:</strong><pre style="background: white; padding: 10px; border-radius: 4px;">${userInfo.trim()}</pre></p>` : ''}
+            </div>
+            <div style="background: white; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
+              <h3>Feedback:</h3>
+              <p style="white-space: pre-wrap;">${sanitizedBody}</p>
+            </div>
+          </div>
+        `
       });
-      return { ok: true };
-    } catch (e) {
-      request.log.error(e);
-      return reply.code(500).send({ error: 'Failed to send feedback.' });
+
+      request.log.info({ email, name }, 'Feedback submitted successfully');
+
+      return reply.send({ 
+        ok: true,
+        message: 'Feedback submitted successfully' 
+      });
+
+    } catch (error) {
+      request.log.error({ error: error.message, stack: error.stack }, 'Failed to send feedback email');
+      return reply.code(500).send({ 
+        error: 'Failed to send feedback. Please try again later.' 
+      });
     }
   });
 }
 
-export default feedbackRoute;
+export default feedbackRoutes;
