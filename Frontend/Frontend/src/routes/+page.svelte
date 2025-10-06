@@ -1,30 +1,12 @@
 <script>
-  import { browser } from '$app/environment';
-  import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
-  import ThemeToggle from '$lib/components/ThemeToggle.svelte';
-  import GoogleSignInButton from '$lib/components/GoogleSignInButton.svelte';
-  import { apiUrl } from '$lib/utils/api.js';
+  import { goto } from '$app/navigation';
+  import { browser } from '$app/environment';
 
-  let email = $state('');
-  let password = $state('');
-  let confirmPassword = $state('');
-  let firstName = $state('');
-  let lastName = $state('');
-  let loading = $state(false);
-  let error = $state('');
-  let showPassword = $state(false);
-  let showConfirmPassword = $state(false);
-  let showLoginSuggestion = $state(false);
-  let userType = $state('caretaker');
+  let scrolled = $state(false);
+  let mobileMenuOpen = $state(false);
 
-  const isCaretaker = $derived(userType === 'caretaker');
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const namePattern = /^[A-Za-z\s'-]+$/;
-  const emailValid = $derived(emailPattern.test(email));
-  const firstNameValid = $derived(!!firstName && namePattern.test(firstName));
-  const lastNameValid = $derived(!lastName || namePattern.test(lastName));
-
+  // Check if already logged in
   $effect(() => {
     if (browser) {
       const token = localStorage.getItem('authToken');
@@ -34,375 +16,287 @@
     }
   });
 
-  const passwordValid = $derived(password.length >= 6);
-  const passwordsMatch = $derived(password === confirmPassword);
-  const formValid = $derived(
-    emailValid &&
-    password &&
-    confirmPassword &&
-    firstNameValid &&
-    lastNameValid &&
-    passwordValid &&
-    passwordsMatch
-  );
-
   onMount(() => {
-    const params = new URLSearchParams(window.location.search);
-    const mode = params.get('mode');
-    if (mode === 'patient') {
-      userType = 'patient';
-    } else if (mode === 'caretaker') {
-      userType = 'caretaker';
-    }
+    const handleScroll = () => {
+      scrolled = window.scrollY > 20;
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   });
 
-  async function handleSignup(event) {
-    event.preventDefault();
-
-    if (userType === 'patient') {
-      goToPatientLogin();
-      return;
+  const features = [
+    {
+      icon: 'brain',
+      title: "AI-Powered Memory Support",
+      description: "Personalized conversational replicas trained on your memories and stories"
+    },
+    {
+      icon: 'heart',
+      title: "Compassionate Care",
+      description: "Designed specifically for dementia, amnesia, and memory-related conditions"
+    },
+    {
+      icon: 'users',
+      title: "Caretaker-Curated",
+      description: "Families control the content, ensuring safe and meaningful interactions"
+    },
+    {
+      icon: 'shield',
+      title: "Secure & Private",
+      description: "Your memories are protected with enterprise-grade security"
     }
-    
-    if (!formValid) {
-      if (!emailValid) error = 'Please enter a valid email address';
-      else if (!firstNameValid) error = 'First name can only contain letters, spaces, apostrophes and hyphens';
-      else if (!lastNameValid) error = 'Last name can only contain letters, spaces, apostrophes and hyphens';
-      else if (!passwordValid) error = 'Password must be at least 6 characters';
-      else if (!passwordsMatch) error = 'Passwords do not match';
-      else error = 'Please correct the highlighted errors';
-      return;
+  ];
+
+  const audiences = [
+    {
+      title: "Patients & Individuals",
+      description: "Whether managing memory conditions or simply wanting to preserve precious moments, Memory Lane helps you reconnect with your past.",
+      benefits: ["Revisit cherished memories", "Stimulate cognitive engagement", "Maintain connection to identity"]
+    },
+    {
+      title: "Caretakers & Families",
+      description: "Create a supportive environment for your loved ones with tools designed to make memory care easier and more meaningful.",
+      benefits: ["Build personalized memory galleries", "Monitor engagement safely", "Reduce caregiver stress"]
+    },
+    {
+      title: "Healthcare Professionals",
+      description: "Neuropsychologists and memory specialists can leverage Memory Lane as a complementary tool in cognitive therapy and patient care.",
+      benefits: ["Evidence-based approach", "Track patient progress", "Enhance treatment outcomes"]
     }
-
-    loading = true;
-    error = '';
-
-    try {
-      const response = await fetch(apiUrl('/auth/signup'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          email, 
-          password, 
-          firstName, 
-          lastName,
-          role: 'caretaker'
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        localStorage.setItem('userEmail', email);
-        goto('/verify-otp');
-      } else {
-        if (data.suggestedAction === 'login') {
-          error = data.message || 'Account already exists';
-          showLoginSuggestion = true;
-        } else {
-          error = data.message || 'Signup failed';
-          showLoginSuggestion = false;
-        }
-      }
-    } catch (err) {
-      console.error('Signup request failed:', err);
-      error = 'Network error. Please try again.';
-    } finally {
-      loading = false;
-    }
-  }
-
-  function togglePasswordVisibility() {
-    showPassword = !showPassword;
-  }
-
-  function toggleConfirmPasswordVisibility() {
-    showConfirmPassword = !showConfirmPassword;
-  }
-
-  function goToPatientLogin() {
-    goto('/login?mode=patient');
-  }
+  ];
 </script>
 
 <svelte:head>
-  <title>Sign Up - Memory Lane</title>
-  <meta name="description" content="Sign up to create AI replicas that aid in dementia and amnesia recovery, support caretakers, and assist neurologists and memory specialists in managing patient care." />
-  <meta name="keywords" content="sign up, healthcare AI signup, dementia care assistant, amnesia recovery AI, patient caretakers, neurologists, memory replica signup" />
+  <title>Memory Lane - AI-Powered Memory Recovery Platform</title>
+  <meta name="description" content="A caregiver-curated platform that transforms family photos and stories into personalized AI replicas, helping patients with dementia, amnesia, or memory loss reconnect with their past." />
+  <meta name="keywords" content="memory recovery, dementia support, amnesia recovery, memory assistant, healthcare AI, AI replicas, cognitive therapy, caretakers, neurologists" />
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-  <nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Memory Lane</h1>
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+  <!-- Navigation -->
+  <nav class="fixed top-0 w-full z-50 transition-all duration-300 {scrolled ? 'bg-white/95 backdrop-blur-md shadow-md' : 'bg-transparent'}">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center space-x-2">
+          <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+          <span class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Memory Lane
+          </span>
+        </div>
+        
+        <!-- Desktop Menu -->
+        <div class="hidden md:flex items-center space-x-4">
+          <a href="#features" class="text-gray-700 hover:text-blue-600 transition-colors">Features</a>
+          <a href="#who-its-for" class="text-gray-700 hover:text-blue-600 transition-colors">Who It's For</a>
+          <a href="/login" class="text-gray-700 hover:text-blue-600 transition-colors">Sign In</a>
+          <a href="/signup" class="bg-blue-600 text-white px-6 py-2 rounded-full hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl">
+            Get Started
+          </a>
+        </div>
+
+        <!-- Mobile Menu Button -->
+        <button 
+          onclick={() => mobileMenuOpen = !mobileMenuOpen}
+          class="md:hidden p-2 rounded-lg hover:bg-gray-100"
+        >
+          {#if mobileMenuOpen}
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          {:else}
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          {/if}
+        </button>
       </div>
-      <ThemeToggle />
+
+      <!-- Mobile Menu -->
+      {#if mobileMenuOpen}
+        <div class="md:hidden py-4 space-y-3 bg-white/95 backdrop-blur-md rounded-b-lg">
+          <a href="#features" class="block px-4 py-2 text-gray-700 hover:bg-gray-50 rounded">Features</a>
+          <a href="#who-its-for" class="block px-4 py-2 text-gray-700 hover:bg-gray-50 rounded">Who It's For</a>
+          <a href="/login" class="block px-4 py-2 text-gray-700 hover:bg-gray-50 rounded">Sign In</a>
+          <a href="/signup" class="block mx-4 text-center bg-blue-600 text-white px-6 py-2 rounded-full hover:bg-blue-700 transition-colors">
+            Get Started
+          </a>
+        </div>
+      {/if}
     </div>
   </nav>
 
-  <main class="flex items-center justify-center min-h-[calc(100vh-80px)] px-4 py-12">
-    <div class="w-full max-w-md">
-      <div class="text-center mb-8">
-        <img src="/logo.png" alt="Memory Lane logo" class="mx-auto mb-4 h-14 w-auto" />
-        <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Create Account</h2>
-        <p class="text-gray-600 dark:text-gray-400 mb-2">Memory Lane is a caregiver-curated reminiscence platform that turns family photos and notes into personalized, role-based conversational replicas so patients can revisit memories in a safe, familiar voice.</p>
-        <p class="text-gray-600 dark:text-gray-400">Join Memory Lane and start building your digital replica</p>
-      </div>
-
-      <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div class="px-6 pt-6 pb-4 bg-gray-50/60 dark:bg-gray-900/20">
-          <div class="flex rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-1">
-            <!-- replace the buttons with these -->
-<button
-  type="button"
-  onclick={() => userType = 'caretaker'}
-  class={userType === 'caretaker'
-    ? 'flex-1 text-center py-2 px-3 rounded-md text-sm font-medium transition-colors bg-blue-600 text-white shadow-sm'
-    : 'flex-1 text-center py-2 px-3 rounded-md text-sm font-medium transition-colors text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}
->
-  Caretaker
-</button>
-
-<button
-  type="button"
-  onclick={() => userType = 'patient'}
-  class={userType === 'patient'
-    ? 'flex-1 text-center py-2 px-3 rounded-md text-sm font-medium transition-colors bg-blue-600 text-white shadow-sm'
-    : 'flex-1 text-center py-2 px-3 rounded-md text-sm font-medium transition-colors text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}
->
-  Patient
-</button>
-          </div>
+  <!-- Hero Section - Above the fold -->
+  <section class="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center max-w-4xl mx-auto">
+        <div class="inline-flex items-center space-x-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full mb-6 animate-pulse">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+          <span class="text-sm font-medium">AI-Powered Memory Recovery Platform</span>
         </div>
+        
+        <h1 class="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent leading-tight">
+          Preserve Memories,<br />Restore Connections
+        </h1>
+        
+        <p class="text-xl md:text-2xl text-gray-700 mb-8 leading-relaxed">
+          A caregiver-curated platform that transforms family photos and stories into 
+          <span class="font-semibold text-purple-600"> personalized AI replicas</span>, 
+          helping patients with dementia, amnesia, or memory loss reconnect with their past.
+        </p>
 
-        {#if isCaretaker}
-          <!-- Google Sign-In Section -->
-          <div class="p-6 pb-4 border-t border-gray-200 dark:border-gray-700">
-            <GoogleSignInButton mode="signup" />
-          </div>
+        <p class="text-lg text-gray-600 mb-12">
+          Because everyone deserves to remember. <span class="italic">Everyone forgets sometimes</span> — 
+          we're here to help you hold on to what matters most.
+        </p>
 
-          <!-- Divider -->
-          <div class="px-6 pb-4">
-            <div class="relative">
-              <div class="absolute inset-0 flex items-center">
-                <div class="w-full border-t border-gray-300 dark:border-gray-600"></div>
-              </div>
-              <div class="relative flex justify-center text-sm">
-                <span class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Or sign up with email</span>
-              </div>
-            </div>
-          </div>
-
-        <form onsubmit={handleSignup} class="p-6 pt-0 space-y-6">
-          <!-- Name Fields -->
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label for="firstName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                First Name *
-              </label>
-              <input
-                type="text"
-                id="firstName"
-                bind:value={firstName}
-                required
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                placeholder="First name"
-              />
-            </div>
-            <div>
-              <label for="lastName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Last Name
-              </label>
-              <input
-                type="text"
-                id="lastName"
-                bind:value={lastName}
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                placeholder="Last name"
-              />
-              {#if lastName && !lastNameValid}
-                <p class="mt-1 text-sm text-red-600 dark:text-red-400">Only letters, spaces, ' and - allowed</p>
-              {/if}
-            </div>
-          </div>
-
-          <!-- Email Field -->
-          <div>
-            <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Email Address *
-            </label>
-            <input
-              type="email"
-              id="email"
-              bind:value={email}
-              required
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              placeholder="Enter your email"
-            />
-            {#if email && !emailValid}
-              <p class="mt-1 text-sm text-red-600 dark:text-red-400">Invalid email format</p>
-            {/if}
-          </div>
-
-          <!-- Password Field -->
-          <div>
-            <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Password *
-            </label>
-            <div class="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                bind:value={password}
-                required
-                class="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                placeholder="Enter your password"
-              />
-              <button
-                type="button"
-                onclick={togglePasswordVisibility}
-                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                {#if showPassword}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                    <line x1="1" y1="1" x2="23" y2="23"/>
-                  </svg>
-                {:else}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                {/if}
-              </button>
-            </div>
-            {#if password && !passwordValid}
-              <p class="mt-1 text-sm text-red-600 dark:text-red-400">Password must be at least 6 characters</p>
-            {/if}
-          </div>
-
-          <!-- Confirm Password Field -->
-          <div>
-            <label for="confirmPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Confirm Password *
-            </label>
-            <div class="relative">
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                id="confirmPassword"
-                bind:value={confirmPassword}
-                required
-                class="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                placeholder="Confirm your password"
-              />
-              <button
-                type="button"
-                onclick={toggleConfirmPasswordVisibility}
-                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                {#if showConfirmPassword}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                    <line x1="1" y1="1" x2="23" y2="23"/>
-                  </svg>
-                {:else}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                {/if}
-              </button>
-            </div>
-            {#if confirmPassword && !passwordsMatch}
-              <p class="mt-1 text-sm text-red-600 dark:text-red-400">Passwords do not match</p>
-            {/if}
-          </div>
-
-          <!-- Error Message -->
-          {#if error}
-            <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
-              <p class="text-red-600 dark:text-red-400 text-sm">{error}</p>
-              {#if showLoginSuggestion}
-                <div class="mt-2">
-                  <button
-                    type="button"
-                    onclick={() => goto('/login')}
-                    class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition-colors"
-                  >
-                    Go to Login Page
-                  </button>
-                </div>
-              {/if}
-            </div>
-          {/if}
-
-          <!-- Submit Button -->
-          <button
-            type="submit"
-            disabled={loading || !formValid}
-            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
+        <!-- CTA Buttons -->
+        <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
+          <a 
+            href="/signup" 
+            class="group w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center"
           >
-            {#if loading}
-              <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Creating account...
-            {:else}
-              Create Account
-            {/if}
-          </button>
-        </form>
-        {:else}
-        <div class="p-6 space-y-4 border-t border-gray-200 dark:border-gray-700">
-          <div class="bg-blue-50 dark:bg-blue-900/25 border border-blue-200 dark:border-blue-700 rounded-md p-4 text-sm text-blue-800 dark:text-blue-200">
-            <p class="font-medium">Are you a patient?</p>
-            <p class="mt-1">Use the sign in flow instead. We'll verify that your caretaker has already added you to Memory Lane.</p>
-          </div>
-          <button
-            type="button"
-            onclick={goToPatientLogin}
-            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            Start Your Journey Today
+            <svg class="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </a>
+          
+          <a 
+            href="/login" 
+            class="w-full sm:w-auto bg-white text-gray-700 px-8 py-4 rounded-full text-lg font-semibold border-2 border-gray-300 hover:border-blue-600 hover:text-blue-600 transition-all duration-300"
           >
-            Go to Patient Sign In
-          </button>
-          <p class="text-xs text-gray-500 dark:text-gray-400 text-center">
-            Once your caretaker invites you, your email will unlock patient access through the sign in page.
-          </p>
+            Already have an account? Sign In
+          </a>
         </div>
-        {/if}
 
-        <!-- Footer Links -->
-        <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 rounded-b-lg">
-          <div class="text-center space-y-3">
-            <p class="text-sm text-gray-600 dark:text-gray-400">
-              Already have an account?
-              <a href="/login" class="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
-                Sign in
-              </a>
-            </p>
-            
-            <div class="border-t border-gray-200 dark:border-gray-600 pt-3">
-              <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                Want to explore first?
-              </p>
-              <button
-                onclick={() => goto('/dashboard')}
-                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1">
-                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-                </svg>
-                Explore without signup
-              </button>
-            </div>
-          </div>
-        </div>
+        <p class="text-sm text-gray-500">
+          No credit card required • Free to explore • HIPAA-compliant security
+        </p>
       </div>
     </div>
-  </main>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="py-20 px-4 sm:px-6 lg:px-8 bg-white/60 backdrop-blur-sm">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-16">
+        <h2 class="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
+          Powerful Features for Memory Care
+        </h2>
+        <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+          Designed with compassion and powered by cutting-edge AI technology
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        {#each features as feature}
+          <div class="bg-white p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+            <div class="bg-gradient-to-br from-blue-100 to-purple-100 w-14 h-14 rounded-xl flex items-center justify-center mb-4">
+              {#if feature.icon === 'brain'}
+                <svg class="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+              {:else if feature.icon === 'heart'}
+                <svg class="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              {:else if feature.icon === 'users'}
+                <svg class="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              {:else if feature.icon === 'shield'}
+                <svg class="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              {/if}
+            </div>
+            <h3 class="text-xl font-bold mb-2 text-gray-900">{feature.title}</h3>
+            <p class="text-gray-600">{feature.description}</p>
+          </div>
+        {/each}
+      </div>
+    </div>
+  </section>
+
+  <!-- Who It's For Section -->
+  <section id="who-its-for" class="py-20 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-16">
+        <h2 class="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
+          Who Memory Lane Serves
+        </h2>
+        <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+          Supporting patients, families, and healthcare professionals in the journey of memory care
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-8">
+        {#each audiences as audience}
+          <div class="bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300">
+            <h3 class="text-2xl font-bold mb-4 text-gray-900">{audience.title}</h3>
+            <p class="text-gray-600 mb-6">{audience.description}</p>
+            <ul class="space-y-3">
+              {#each audience.benefits as benefit}
+                <li class="flex items-start">
+                  <div class="bg-green-100 rounded-full p-1 mr-3 mt-1">
+                    <div class="w-2 h-2 bg-green-600 rounded-full"></div>
+                  </div>
+                  <span class="text-gray-700">{benefit}</span>
+                </li>
+              {/each}
+            </ul>
+          </div>
+        {/each}
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA Section -->
+  <section class="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-600 to-purple-600">
+    <div class="max-w-4xl mx-auto text-center">
+      <h2 class="text-4xl md:text-5xl font-bold mb-6 text-white">
+        Ready to Preserve What Matters Most?
+      </h2>
+      <p class="text-xl text-blue-100 mb-8">
+        Join thousands of families and healthcare professionals using Memory Lane to support memory recovery and cognitive wellness.
+      </p>
+      
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a 
+          href="/signup" 
+          class="group bg-white text-blue-600 px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center"
+        >
+          Create Your Free Account
+          <svg class="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
+        </a>
+        
+        <a 
+          href="/login" 
+          class="bg-transparent text-white px-8 py-4 rounded-full text-lg font-semibold border-2 border-white hover:bg-white hover:text-blue-600 transition-all duration-300"
+        >
+          Sign In
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-gray-400 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto text-center">
+      <div class="flex items-center justify-center space-x-2 mb-4">
+        <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </svg>
+        <span class="text-xl font-bold text-white">Memory Lane</span>
+      </div>
+      <p class="mb-4">Empowering memory care through AI and compassion</p>
+      <p class="text-sm">© 2025 Memory Lane. HIPAA-compliant and secure.</p>
+    </div>
+  </footer>
 </div>
