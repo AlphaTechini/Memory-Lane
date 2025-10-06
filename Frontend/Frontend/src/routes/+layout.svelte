@@ -62,7 +62,7 @@
         <ul class="text-left inline-block mx-auto space-y-2 mb-3">
           <li>1️⃣ Descriptive Homepage – Users are no longer confused about what the app does.</li>
           <li>2️⃣ Feedback Section – Head over to the <a href="/feedback" class="underline text-blue-700 hover:text-blue-900">Feedback page</a> and suggest changes you’d like to see.</li>
-          <li>3️⃣ About Section (incomplete).</li>
+          <li>3️⃣ About Section.</li>
           <li>4️⃣ Google Auth preparation.</li>
         </ul>
 
