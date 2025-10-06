@@ -1,5 +1,13 @@
-const nodemailer = require('nodemailer');
-require('dotenv').config();
+import nodemailer from 'nodemailer';
+import { resolve } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import dotenv from 'dotenv';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+dotenv.config({ path: resolve(__dirname, '../../../.env') });
 
 const smtpHost = process.env.EMAIL_SMTP_HOST;
 const smtpPort = process.env.EMAIL_SMTP_PORT;
@@ -12,7 +20,7 @@ function sanitize(input) {
   return String(input).replace(/<[^>]*>?/gm, '').slice(0, 2000);
 }
 
-module.exports = async function feedbackRoute(fastify, opts) {
+export async function feedbackRoute(fastify, opts) {
   fastify.post('/api/feedback', async (request, reply) => {
     const { name, email, body } = request.body || {};
     if (!name || !email || !body) {
@@ -45,4 +53,6 @@ module.exports = async function feedbackRoute(fastify, opts) {
       return reply.code(500).send({ error: 'Failed to send feedback.' });
     }
   });
-};
+}
+
+export default feedbackRoute;
