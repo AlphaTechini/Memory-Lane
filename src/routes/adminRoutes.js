@@ -6,21 +6,6 @@ import AuthService from '../services/authService.js';
  * @param {import('fastify').FastifyInstance} fastify 
  */
 async function adminRoutes(fastify, options) {
-
-  // POST /auth/google - Google login/signup
-  fastify.post('/auth/google', async (request, reply) => {
-    const { idToken } = request.body || {};
-    try {
-      if (!idToken) {
-        reply.code(400).send({ success: false, message: 'idToken is required' });
-        return;
-      }
-      const result = await AuthService.loginWithGoogle(idToken);
-      reply.send(result);
-    } catch (err) {
-      reply.code(400).send({ success: false, error: err.message });
-    }
-  });
   
   // Simple auth check using a secret header
   const authCheck = (request, reply) => {
