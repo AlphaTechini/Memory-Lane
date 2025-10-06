@@ -50,12 +50,6 @@
   {#if showBanner}
     <div class="fixed top-0 left-0 w-full z-50">
       <div class="bg-yellow-300 text-black text-center px-4 py-3 shadow-lg relative">
-        <p class="font-medium">
-          <s class="opacity-75 italic">
-              🚧 The platform is undergoing an upgrade. As such, some features may not work properly.<br />
-              Please check in again after 24 hours. Sorry for any inconveniences caused.
-          </s>
-        </p>
         <p class="font-semibold text-base mt-2">
             🎉 Great news! The system upgrade is *almost complete*. You may see new features stabilize over the next few hours. Thank you for your patience!
         </p>
