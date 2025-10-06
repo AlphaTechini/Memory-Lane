@@ -1043,14 +1043,4 @@ async function authRoutes(fastify, options) {
 		}
 	});
 }
-
-export default authRoutes;
-        success: false,
-        message: 'Failed to get Sensay status',
-        errors: [error.message]
-      });
-    }
-  });
-}
-
 export default authRoutes;
