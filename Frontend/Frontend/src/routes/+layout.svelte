@@ -61,7 +61,7 @@
         </p>
 
         <button
-          on:click={dismissBanner}
+          onclick={dismissBanner}
           class="absolute top-1/2 right-3 transform -translate-y-1/2 p-1 rounded-full hover:bg-yellow-400 transition-colors"
           aria-label="Close notification banner"
         >
@@ -76,7 +76,7 @@
   {#if showNotificationIcon}
     <div class="fixed top-4 right-4 z-50">
       <button
-        on:click={showBannerFromIcon}
+        onclick={showBannerFromIcon}
         class="bg-yellow-300 p-3 rounded-full shadow-xl hover:bg-yellow-400 transition-colors"
         aria-label="Show notification updates"
       >
