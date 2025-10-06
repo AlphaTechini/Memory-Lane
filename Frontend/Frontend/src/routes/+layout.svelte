@@ -8,52 +8,68 @@
 
   let { children } = $props();
 
-  // Component state for banner visibility
+  // Banner version key (increment if you release a new update)
+  const BANNER_VERSION = "v2";
+
   let showBanner = $state(true);
-  let showNotificationIcon = $state(false);
 
   // Initialize Vercel Speed Insights
   injectSpeedInsights();
 
   $effect(() => {
     if (!browser) return;
+
+    // Theme handling
     document.documentElement.classList.toggle('dark', $theme === 'dark');
+
+    // Check if banner was dismissed before
+    const dismissed = localStorage.getItem("bannerDismissed");
+    if (dismissed === BANNER_VERSION) {
+      showBanner = false;
+    }
   });
 
-  // Check if we're on auth pages (login, signup, verify-otp)
+  // Dismiss function with localStorage
+  const dismissBanner = () => {
+    showBanner = false;
+    if (browser) {
+      localStorage.setItem("bannerDismissed", BANNER_VERSION);
+    }
+  };
+
+  // Check if we’re on login/signup pages
   let isAuthPage = $derived(
     $page.route.id?.includes('/login') ||
     $page.route.id?.includes('/signup') ||
     $page.route.id?.includes('/verify-otp')
   );
-
-  const dismissBanner = () => {
-    showBanner = false;
-    showNotificationIcon = true;
-  };
-
-  const showBannerFromIcon = () => {
-    showBanner = true;
-    showNotificationIcon = false;
-  };
 </script>
 
 <svelte:head>
   <title>Sensay AI - AI Replica Platform</title>
   <meta name="description" content="AI replicas that support memory recovery and assist patients with dementia, amnesia, and other memory illnesses. Caretakers, neurologists, and memory specialists can use the platform to manage patients and track progress." />
   <meta name="keywords" content="AI memory support, dementia, amnesia, dementia AI, amnesia AI, memory illness, healthcare AI, neurologists, neuropsychologists, patient memory management, caretakers, memory recovery, replicas, cognitive health" />
-
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
 
   {#if showBanner}
     <div class="fixed top-0 left-0 w-full z-50">
-      <div class="bg-yellow-300 text-black text-center px-4 py-3 shadow-lg relative">
-        <p class="font-semibold text-base mt-2">
-            🎉 Great news! The system upgrade is *almost complete*. You may see new features stabilize over the next few hours. Thank you for your patience!
-        </p>
+      <div class="bg-yellow-300 text-black text-center px-6 py-4 shadow-lg relative">
+        <p class="font-bold text-lg mb-2">🚀 Welcome to Version 2 of Memory Lane!</p>
+        <p class="mb-3">Sorry for any inconveniences caused before. Here’s what’s new:</p>
 
+        <ul class="text-left inline-block mx-auto space-y-2 mb-3">
+          <li>1️⃣ Descriptive Homepage – Users are no longer confused about what the app does.</li>
+          <li>2️⃣ Feedback Section – Head over to the <a href="/feedback" class="underline text-blue-700 hover:text-blue-900">Feedback page</a> and suggest changes you’d like to see.</li>
+          <li>3️⃣ About Section (incomplete).</li>
+          <li>4️⃣ Google Auth preparation.</li>
+        </ul>
+
+        <p class="mt-4 font-semibold">🔮 Upcoming:</p>
+        <p>Google Auth – Sign up / Sign in with Google.</p>
+
+        <!-- Always visible close button -->
         <button
           onclick={dismissBanner}
           class="absolute top-1/2 right-3 transform -translate-y-1/2 p-1 rounded-full hover:bg-yellow-400 transition-colors"
@@ -67,26 +83,11 @@
     </div>
   {/if}
 
-  {#if showNotificationIcon}
-    <div class="fixed top-4 right-4 z-50">
-      <button
-        onclick={showBannerFromIcon}
-        class="bg-yellow-300 p-3 rounded-full shadow-xl hover:bg-yellow-400 transition-colors"
-        aria-label="Show notification updates"
-      >
-        <svg class="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M10 2a2 2 0 012 2v1a7 7 0 017 7v7a2 2 0 01-2 2h-14a2 2 0 01-2-2v-7a7 7 0 017-7V4a2 2 0 012-2zm-2 19a4 4 0 008 0H8z" />
-        </svg>
-        <span class="absolute top-0 right-0 block h-3 w-3 rounded-full ring-2 ring-gray-900 bg-red-500"></span>
-      </button>
-    </div>
-  {/if}
-
   {#if !isAuthPage}
     <Navigation />
   {/if}
   
-  <main class={isAuthPage ? '' : (showBanner ? 'pt-20' : 'pt-0')}>
+  <main class={isAuthPage ? '' : (showBanner ? 'pt-40' : 'pt-0')}>
     {@render children()}
   </main>
 </div>
