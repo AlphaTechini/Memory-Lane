@@ -1,4 +1,3 @@
-<!-- src/routes/+layout.svelte -->
 <script>
   import '../app.css';
   import { browser } from '$app/environment';
@@ -34,12 +33,16 @@
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
 
-  <!-- 🔔 Global Notification Banner -->
   <div class="fixed top-0 left-0 w-full z-50">
     <div class="bg-yellow-300 text-black text-center px-4 py-3 shadow-lg">
       <p class="font-medium">
-        🚧 The platform is undergoing an upgrade. As such, some features may not work properly.<br />
-        Please check in again after 24 hours. Sorry for any inconveniences caused.
+        <s class="opacity-75">
+            🚧 The platform is undergoing an upgrade. As such, some features may not work properly.<br />
+            Please check in again after 24 hours. Sorry for any inconveniences caused.
+        </s>
+      </p>
+      <p class="font-bold text-lg text-red-700 mt-2">
+          🎉 Great news! The system upgrade is **almost complete**. You may see new features stabilize over the next few hours. Thank you for your patience!
       </p>
     </div>
   </div>
