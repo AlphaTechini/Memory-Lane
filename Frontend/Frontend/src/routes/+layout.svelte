@@ -5,6 +5,7 @@
   import { theme } from '$lib/stores/theme.js';
   import Navigation from '$lib/components/Navigation.svelte';
   import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
+  import { injectAnalytics } from '@vercel/analytics/sveltekit';
 
   let { children } = $props();
 
