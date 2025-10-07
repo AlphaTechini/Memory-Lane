@@ -5,8 +5,12 @@
   import { theme } from '$lib/stores/theme.js';
   import Navigation from '$lib/components/Navigation.svelte';
   import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
+  import { dev } from '$app/environment';
   import { injectAnalytics } from '@vercel/analytics/sveltekit';
+ 
+  injectAnalytics({ mode: dev ? 'development' : 'production' });
 
+  
   let { children } = $props();
 
   // Banner version key (increment if you release a new update)
