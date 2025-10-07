@@ -90,7 +90,7 @@
     on:click={handleGoogleSignIn}
     disabled={loading || disabled}
     class="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-    class:scale-95={pressed}  <!-- <-- press-down effect -->
+    class:scale-95={pressed}
   >
     {#if loading}
       <span>Signing in...</span>
