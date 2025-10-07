@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { initFirebaseClient } from '$lib/firebase';
   import { onMount } from 'svelte';
+  import { apiUrl } from '$lib/utils/api.js';
 
   let { mode = 'signin', disabled = false } = $props();
   let loading = $state(false);
@@ -30,13 +31,13 @@
 
     // Trigger press-down animation
     pressed = true;
-    setTimeout(() => pressed = false, 150); // short press duration
+    setTimeout(() => pressed = false, 150);
 
     error = null;
     loading = true;
 
     try {
-      if (!firebaseAuth) throw new Error("Feature not available yet");
+      if (!firebaseAuth) throw new Error("Google sign-in not available yet");
 
       const { auth, GoogleAuthProvider, signInWithPopup } = firebaseAuth;
       const provider = new GoogleAuthProvider();
@@ -44,7 +45,8 @@
 
       const idToken = await result.user.getIdToken();
 
-      const response = await fetch('/auth/google', {
+      // Send to backend
+      const response = await fetch(apiUrl('/auth/google'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken }),
@@ -53,9 +55,15 @@
       const data = await response.json();
 
       if (response.ok && data.success) {
+        // Store the token FIRST
         localStorage.setItem('authToken', data.token);
-        if (data.user) localStorage.setItem('userData', JSON.stringify(data.user));
+        
+        // Then store user data
+        if (data.user) {
+          localStorage.setItem('userData', JSON.stringify(data.user));
+        }
 
+        // Check for redirect
         const redirectTo = localStorage.getItem('redirectAfterLogin');
         if (redirectTo) {
           localStorage.removeItem('redirectAfterLogin');
@@ -68,7 +76,7 @@
       }
     } catch (err) {
       console.error("Google Sign-In error:", err);
-      error = err.message || "Feature not available yet";
+      error = err.message || "Sign-in failed. Please try again.";
 
       showToast = true;
       clearTimeout(toastTimer);
@@ -93,6 +101,10 @@
     class:scale-95={pressed}
   >
     {#if loading}
+      <svg class="animate-spin h-5 w-5 text-gray-600 dark:text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
       <span>Signing in...</span>
     {:else}
       <!-- Google Icon -->
@@ -109,7 +121,7 @@
   {#if showToast}
     <div
       on:click={dismissToast}
-      class="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-4 py-2 rounded-lg shadow-lg cursor-pointer"
+      class="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-4 py-2 rounded-lg shadow-lg cursor-pointer z-10"
     >
       {error}
     </div>
