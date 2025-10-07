@@ -20,8 +20,12 @@ async function authRoutes(fastify, options) {
 						errors: ['No ID token provided']
 					});
 				}
-				const { user, token } = await loginWithGoogle({ idToken });
-				return reply.code(200).send({ success: true, user, token });
+				const result = await authService.loginWithGoogle(idToken);
+				if (result.success) {
+					return reply.code(200).send(result);
+				} else {
+					return reply.code(400).send(result);
+				}
 			} catch (error) {
 				fastify.log.error('Google auth error:', error);
 				return reply.code(500).send({
