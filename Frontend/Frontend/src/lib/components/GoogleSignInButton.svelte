@@ -12,6 +12,9 @@
   let showToast = $state(false);
   let toastTimer;
 
+  // Button press state
+  let pressed = false;
+
   onMount(async () => {
     try {
       const { auth, GoogleAuthProvider, signInWithPopup } = await initFirebaseClient();
@@ -24,13 +27,16 @@
 
   async function handleGoogleSignIn() {
     if (loading || disabled) return;
+
+    // Trigger press-down animation
+    pressed = true;
+    setTimeout(() => pressed = false, 150); // short press duration
+
     error = null;
     loading = true;
 
     try {
-      if (!firebaseAuth) {
-        throw new Error("Feature not available yet");
-      }
+      if (!firebaseAuth) throw new Error("Feature not available yet");
 
       const { auth, GoogleAuthProvider, signInWithPopup } = firebaseAuth;
       const provider = new GoogleAuthProvider();
@@ -38,7 +44,6 @@
 
       const idToken = await result.user.getIdToken();
 
-      // ✅ backend request like +page.svelte
       const response = await fetch('/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -49,9 +54,7 @@
 
       if (response.ok && data.success) {
         localStorage.setItem('authToken', data.token);
-        if (data.user) {
-          localStorage.setItem('userData', JSON.stringify(data.user));
-        }
+        if (data.user) localStorage.setItem('userData', JSON.stringify(data.user));
 
         const redirectTo = localStorage.getItem('redirectAfterLogin');
         if (redirectTo) {
@@ -67,14 +70,9 @@
       console.error("Google Sign-In error:", err);
       error = err.message || "Feature not available yet";
 
-      // show toast
       showToast = true;
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => {
-        showToast = false;
-      }, 3000);
-
-      // dismiss on any click/tap
+      toastTimer = setTimeout(() => showToast = false, 3000);
       window.addEventListener("click", dismissToast, { once: true });
     } finally {
       loading = false;
@@ -91,7 +89,8 @@
   <button
     on:click={handleGoogleSignIn}
     disabled={loading || disabled}
-    class="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+    class="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+    class:scale-95={pressed}  <!-- <-- press-down effect -->
   >
     {#if loading}
       <span>Signing in...</span>
@@ -116,3 +115,9 @@
     </div>
   {/if}
 </div>
+
+<style>
+  button {
+    transition: transform 0.15s ease-in-out; /* smooth press-down effect */
+  }
+</style>
