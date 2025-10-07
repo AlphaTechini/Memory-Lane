@@ -118,6 +118,6 @@
 
 <style>
   button {
-    transition: transform 0.15s ease-in-out; /* smooth press-down effect */
+    transition: transform 0.15s ease-in-out;
   }
 </style>
