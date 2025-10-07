@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+  import GoogleSignInButton from '$lib/components/GoogleSignInButton.svelte';
   import { apiUrl } from '$lib/utils/api.js';
 
   let email = $state('');
@@ -138,12 +139,10 @@
     <div class="w-full max-w-md">
       <!-- Header -->
       <div class="text-center mb-8">
-            <!-- Add your site logo at Frontend/Frontend/static/logo.png -->
-            <img src="/logo.png" alt="Memory Lane logo" class="mx-auto mb-4 h-14 w-auto" />
-            <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Welcome Back</h2>
-            <!-- Brief descriptive paragraph about Memory Lane -->
-            <p class="text-gray-600 dark:text-gray-400 mb-2">Memory Lane is a caregiver-curated reminiscence platform that turns family photos and training data into personalized, role-based conversational replicas, enabling patients to revisit memories by chatting with replicas who play the role of relatives.</p>
-            <p class="text-gray-600 dark:text-gray-400">
+        <img src="/logo.png" alt="Memory Lane logo" class="mx-auto mb-4 h-14 w-auto" />
+        <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Welcome Back</h2>
+        <p class="text-gray-600 dark:text-gray-400 mb-2">Memory Lane is a caregiver-curated reminiscence platform that turns family photos and training data into personalized, role-based conversational replicas, enabling patients to revisit memories by chatting with replicas who play the role of relatives.</p>
+        <p class="text-gray-600 dark:text-gray-400">
           {#if userType === 'caretaker'}
             Sign in to your Memory Lane account
           {:else}
@@ -174,7 +173,26 @@
 
       <!-- Login Form -->
       <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700">
-        <form onsubmit={handleLogin} class="p-6 space-y-6">
+        {#if userType === 'caretaker'}
+          <!-- Google Sign-In Section (Caretakers only) -->
+          <div class="p-6 pb-4">
+            <GoogleSignInButton mode="signin" />
+          </div>
+
+          <!-- Divider -->
+          <div class="px-6 pb-4">
+            <div class="relative">
+              <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-gray-300 dark:border-gray-600"></div>
+              </div>
+              <div class="relative flex justify-center text-sm">
+                <span class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Or sign in with email</span>
+              </div>
+            </div>
+          </div>
+        {/if}
+
+        <form onsubmit={handleLogin} class="p-6 {userType === 'caretaker' ? 'pt-0' : ''} space-y-6">
           <!-- Email Field -->
           <div>
             <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -194,39 +212,39 @@
           </div>
 
           {#if userType === 'caretaker'}
-          <!-- Password Field -->
-          <div>
-            <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Password
-            </label>
-            <div class="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                bind:value={password}
-                required
-                class="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                placeholder="Enter your password"
-              />
-              <button
-                type="button"
-                onclick={togglePasswordVisibility}
-                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                {#if showPassword}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                    <line x1="1" y1="1" x2="23" y2="23"/>
-                  </svg>
-                {:else}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                {/if}
-              </button>
+            <!-- Password Field -->
+            <div>
+              <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Password
+              </label>
+              <div class="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  bind:value={password}
+                  required
+                  class="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onclick={togglePasswordVisibility}
+                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  {#if showPassword}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  {:else}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  {/if}
+                </button>
+              </div>
             </div>
-          </div>
           {/if}
 
           <!-- Error Message -->
