@@ -14,3 +14,7 @@ serviceAccountKey.json
 PITCH.md
 PITCH.txt
 
+
+
+#Ignore vscode AI rules
+.github\instructions\codacy.instructions.md

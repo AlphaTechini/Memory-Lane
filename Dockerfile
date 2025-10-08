@@ -20,6 +20,7 @@ RUN if [ -f package-lock.json ]; then npm ci --omit=dev; \
 # Copy source (only backend)
 COPY src ./src
 COPY prisma ./prisma
+COPY serviceAccountKey.json /app/serviceAccountKey.json
 
 # Generate Prisma client for runtime usage
 RUN npx prisma generate
