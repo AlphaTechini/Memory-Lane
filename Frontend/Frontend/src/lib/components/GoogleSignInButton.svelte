@@ -4,7 +4,7 @@
   import { onMount } from 'svelte';
   import { apiUrl } from '$lib/utils/api.js';
 
-  let { mode = 'signin', disabled = true } = $props();
+  let { mode = 'signin', disabled = false } = $props();
   let loading = $state(false);
   let error = $state(null);
   let firebaseAuth = $state(null);
@@ -190,11 +190,11 @@
 
 <div class="space-y-2 relative">
   <button
-    on:click={handleGoogleSignIn}
-    on:touchstart={handleTouchStart}
-    on:touchend={handleTouchEnd}
-    on:mousedown={handleMouseDown}
-    on:mouseup={handleMouseUp}
+    onclick={handleGoogleSignIn}
+    ontouchstart={handleTouchStart}
+    ontouchend={handleTouchEnd}
+    onmousedown={handleMouseDown}
+    onmouseup={handleMouseUp}
     disabled={loading || disabled || !firebaseAuth}
     class="google-signin-button w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg shadow-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:shadow-inner touch-manipulation"
     class:pressed={isPressed && !loading}
@@ -229,14 +229,14 @@
   </button>
 
   {#if showToast}
-    <div
-      on:click={dismissToast}
-      on:touchend={dismissToast}
+   <button
+      onclick={dismissToast}
+      ontouchend={dismissToast}
       class="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-red-600 text-white text-sm px-4 py-3 rounded-lg shadow-lg cursor-pointer z-50 max-w-xs w-full text-center"
       style="touch-action: manipulation;"
     >
       {error}
-    </div>
+    </button>
   {/if}
   
   {#if initializationError && !firebaseAuth}
