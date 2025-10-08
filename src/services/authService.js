@@ -152,7 +152,8 @@ class AuthService {
       logger?.error?.('[loginWithGoogle] unexpected error', error);
       return {
         success: false,
-        message: 'Google sign-in failed',
+        message: 'Google sign-in failed, Please note only caretakers can sign in with Google. Try another email.',
+
         errors: [error.message || 'Unexpected error']
       };
     }
