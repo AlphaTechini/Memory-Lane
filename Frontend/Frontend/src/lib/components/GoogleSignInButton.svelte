@@ -4,7 +4,7 @@
   import { onMount } from 'svelte';
   import { apiUrl } from '$lib/utils/api.js';
 
-  let { mode = 'signin', disabled = false } = $props();
+  let { mode = 'signin', disabled = true } = $props();
   let loading = $state(false);
   let error = $state(null);
   let firebaseAuth = $state(null);
