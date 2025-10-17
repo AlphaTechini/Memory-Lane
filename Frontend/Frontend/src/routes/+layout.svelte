@@ -61,11 +61,11 @@
   {#if showBanner}
     <div class="fixed top-0 left-0 w-full z-50">
       <div class="bg-yellow-300 text-black text-center px-6 py-4 shadow-lg relative">
-        <p class="font-bold text-lg mb-2">🚀 Welcome to Version 2.1 of Memory Lane!</p>
-        <p class="mb-3">Our backend will be shutdown temporarily as we require support for payments</p>
+        <p </p>
+        <p class="mb-3">Our backend will soon shutdown temporarily as we require support for payments</p>
 
         <ul class="text-left inline-block mx-auto space-y-2 mb-3">
-          <li>If you are interestd in supporting us contact us using the feedback section</li>
+          <li>If you are interested in supporting us contact us using the feedback section</li>
         </ul>
 
         <!-- Always visible close button -->
