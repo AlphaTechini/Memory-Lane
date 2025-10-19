@@ -65,7 +65,9 @@
         <p class="mb-3">Our backend will soon shutdown temporarily as we require support for payments</p>
 
         <ul class="text-left inline-block mx-auto space-y-2 mb-3">
-          <li>If you are interested in supporting us contact us using the feedback section</li>
+          <li>
+            If you are interested in supporting us, please <a href="/feedback" class="font-bold underline hover:text-blue-800">contact us via feedback</a>.
+          </li>
         </ul>
 
         <!-- Always visible close button -->

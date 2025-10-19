@@ -1,67 +1,37 @@
 <script>
-  import { goto } from '$app/navigation';
-  import { apiCall, checkAuthStatus, getAuthToken } from '$lib/auth.js';
   import { apiUrl } from '$lib/utils/api.js';
-  import { onMount } from 'svelte';
+  import { session } from '$lib/stores/session';
 
-  let name = '';
-  let email = '';
+  let name = $session.user?.name || '';
+  let email = $session.user?.email || '';
   let body = '';
   let error = '';
   let success = '';
   let loading = false;
-  let isAuthenticated = false;
-
-  onMount(() => {
-    isAuthenticated = checkAuthStatus();
-  });
-
-  function sanitize(input) {
-    return input.replace(/<[^>]*>?/gm, '').slice(0, 2000);
-  }
+  let form;
 
   async function submitFeedback() {
     error = '';
     success = '';
     loading = true;
 
-    if (!name.trim() || !email.trim() || !body.trim()) {
-      error = 'All fields are required.';
-      loading = false;
-      return;
-    }
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      error = 'Invalid email address.';
-      loading = false;
-      return;
-    }
-
-    const sanitizedBody = sanitize(body);
-    if (sanitizedBody !== body) {
-      error = 'Feedback contains invalid characters.';
-      loading = false;
-      return;
-    }
-
     try {
-      const token = getAuthToken();
       const response = await fetch(apiUrl('/api/feedback'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` })
         },
-        body: JSON.stringify({ name, email, body: sanitizedBody })
+        body: JSON.stringify({ name, email, body })
       });
 
+      const result = await response.json();
+
       if (response.ok) {
-        success = 'Thank you for your feedback!';
-        name = '';
-        email = '';
+        success = result.message || 'Thank you for your feedback!';
+        form?.reset();
         body = '';
       } else {
-        const data = await response.json();
-        error = data.error || 'Failed to send feedback.';
+        error = result.error || 'Failed to send feedback.';
       }
     } catch (e) {
       console.error('Error submitting feedback:', e);
@@ -73,7 +43,7 @@
 </script>
 
 <svelte:head>
-  <title>Feedback - Memory Lane</title>
+  <title>Feedback - Sensay AI</title>
   <meta name="description" content="Share your feedback with us to help improve Memory Lane" />
 </svelte:head>
 
@@ -85,7 +55,7 @@
         We'd love to hear from you! Share your thoughts, suggestions, or report any issues.
       </p>
 
-      <form on:submit|preventDefault={submitFeedback} class="space-y-5">
+      <form on:submit|preventDefault={submitFeedback} class="space-y-5" bind:this={form}>
         <div>
           <label for="name" class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
           <input 
