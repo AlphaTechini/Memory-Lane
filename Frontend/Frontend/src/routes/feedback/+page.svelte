@@ -1,6 +1,5 @@
 <script>
   import { apiUrl } from '$lib/utils/api.js';
-  import { session } from '$lib/stores/session';
 
   let name = $session.user?.name || '';
   let email = $session.user?.email || '';
