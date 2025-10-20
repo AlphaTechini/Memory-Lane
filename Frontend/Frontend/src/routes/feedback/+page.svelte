@@ -1,10 +1,9 @@
 <script>
   import { apiUrl } from '$lib/utils/api.js';
-  import { session } from '$lib/auth.js';
 
-  // Use the session store from auth.js to get user data
-  let name = $state($session.user?.name || '');
-  let email = $state($session.user?.email || '');
+
+  let name = $state('');
+  let email = $state('');
   let body = $state('');
   let error = $state('');
   let success = $state('');
