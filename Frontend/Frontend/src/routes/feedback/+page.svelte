@@ -1,15 +1,18 @@
 <script>
   import { apiUrl } from '$lib/utils/api.js';
+  import { session } from '$lib/auth.js';
 
-  let name = $session.user?.name || '';
-  let email = $session.user?.email || '';
-  let body = '';
-  let error = '';
-  let success = '';
-  let loading = false;
-  let form;
+  // Use the session store from auth.js to get user data
+  let name = $state($session.user?.name || '');
+  let email = $state($session.user?.email || '');
+  let body = $state('');
+  let error = $state('');
+  let success = $state('');
+  let loading = $state(false);
+  let form = $state();
 
   async function submitFeedback() {
+    // The form's onsubmit handles preventDefault automatically now
     error = '';
     success = '';
     loading = true;
@@ -54,7 +57,7 @@
         We'd love to hear from you! Share your thoughts, suggestions, or report any issues.
       </p>
 
-      <form on:submit|preventDefault={submitFeedback} class="space-y-5" bind:this={form}>
+      <form onsubmit={submitFeedback} class="space-y-5" bind:this={form}>
         <div>
           <label for="name" class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
           <input 
