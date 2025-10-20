@@ -15,7 +15,8 @@
 		"@vercel/speed-insights": "^1.2.0",
 		"firebase": "^12.3.0",
 		"tailwindcss": "^4.0.0",
-		"uuid": "^10.0.0"
+		"uuid": "^10.0.0",
+		"nodemailer":"latest"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",
