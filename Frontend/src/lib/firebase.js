@@ -34,8 +34,10 @@ export async function initFirebaseClient() {
       const { getAuth, GoogleAuthProvider, signInWithPopup } = firebaseAuthModule;
 
       // Minimal config validation
-      if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.authDomain) {
-        throw new Error('Missing Firebase client configuration (VITE_FIREBASE_*).');
+      if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.authDomain || 
+          firebaseConfig.apiKey.includes('your-') || firebaseConfig.apiKey.includes('X8X')) {
+        console.warn('Firebase client configuration incomplete or using placeholder values. Google Auth will not work.');
+        throw new Error('Missing Firebase client configuration (VITE_FIREBASE_*). Please configure in Firebase Console.');
       }
 
       let appInstance;
