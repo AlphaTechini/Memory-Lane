@@ -1505,3 +1505,120 @@ export const tryFindUserByEmail = async (email) => {
     return null;
   }
 };
+// ===== HEALTH CHECK FUNCTIONS =====
+
+/**
+ * Test Sensay API connectivity and basic functionality.
+ * @param {number} [timeout] - Optional timeout for the health check.
+ * @returns {Promise<object>} Health check result.
+ */
+export const healthCheck = async (timeout = 10000) => {
+  const startTime = Date.now();
+  
+  if (!sensayConfig.isProperlyConfigured()) {
+    return {
+      status: 'unhealthy',
+      configured: false,
+      message: 'Sensay API not configured',
+      responseTime: Date.now() - startTime,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  try {
+    // Create a test axios instance with shorter timeout for health checks
+    const healthApi = axios.create({
+      baseURL: sensayConfig.baseUrl,
+      timeout: timeout,
+      headers: sensayConfig.headers.base
+    });
+
+    // Try to get organization info or a simple endpoint to test connectivity
+    const response = await healthApi.get('/v1/users/me', {
+      headers: {
+        ...sensayConfig.headers.base,
+        'X-USER-ID': 'health-check-test',
+        'X-API-Version': '2025-03-25'
+      }
+    });
+
+    const responseTime = Date.now() - startTime;
+    
+    return {
+      status: 'healthy',
+      configured: true,
+      connected: true,
+      responseTime,
+      apiVersion: response.headers['x-api-version'] || '2025-03-25',
+      timestamp: new Date().toISOString(),
+      baseUrl: sensayConfig.baseUrl
+    };
+  } catch (error) {
+    const responseTime = Date.now() - startTime;
+    
+    // 404 is expected for health check test user, so consider it healthy
+    if (error.response?.status === 404) {
+      return {
+        status: 'healthy',
+        configured: true,
+        connected: true,
+        responseTime,
+        apiVersion: error.response.headers['x-api-version'] || '2025-03-25',
+        timestamp: new Date().toISOString(),
+        baseUrl: sensayConfig.baseUrl,
+        note: 'API accessible (404 expected for test user)'
+      };
+    }
+    
+    return {
+      status: 'unhealthy',
+      configured: true,
+      connected: false,
+      responseTime,
+      error: error.message,
+      errorCode: error.response?.status || 'NETWORK_ERROR',
+      timestamp: new Date().toISOString(),
+      baseUrl: sensayConfig.baseUrl
+    };
+  }
+};
+
+/**
+ * Get detailed Sensay service status including configuration and performance metrics.
+ * @returns {Promise<object>} Detailed status information.
+ */
+export const getServiceStatus = async () => {
+  const startTime = Date.now();
+  
+  try {
+    const healthResult = await healthCheck(5000);
+    
+    return {
+      service: 'sensay',
+      ...healthResult,
+      configuration: {
+        baseUrl: sensayConfig.baseUrl,
+        configured: sensayConfig.isProperlyConfigured(),
+        hasOrganizationSecret: Boolean(sensayConfig.organizationSecret),
+        timeout: 30000 // Default timeout from service
+      },
+      capabilities: {
+        userManagement: true,
+        replicaCreation: true,
+        knowledgeBase: true,
+        chat: true,
+        streaming: true
+      },
+      totalCheckTime: Date.now() - startTime
+    };
+  } catch (error) {
+    return {
+      service: 'sensay',
+      status: 'error',
+      configured: sensayConfig.isProperlyConfigured(),
+      error: error.message,
+      timestamp: new Date().toISOString(),
+      totalCheckTime: Date.now() - startTime
+    };
+  }
+};

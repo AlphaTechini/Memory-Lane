@@ -593,8 +593,7 @@ async function authRoutes(fastify, options) {
 			fastify.log.info('Auth.me requested - server-side debug:', {
 				id: user._id,
 				email: user.email,
-				role: user.role,
-				sensayUserId: user.sensayUserId
+				role: user.role
 			});
 
 			// Mask email for client response
@@ -789,259 +788,46 @@ async function authRoutes(fastify, options) {
 	});
 
 	/**
-	 * POST /auth/link-sensay
-	 * Create and link Sensay user for accounts missing sensayUserId (caretakers only)
+	 * POST /auth/firebase-token
+	 * Generate Firebase custom token for authenticated user
+	 * This enables client SDK to authenticate with Firestore
 	 */
-	fastify.post('/auth/link-sensay', { 
-		preHandler: [authenticateToken, requireCaretaker],
-		config: { rateLimit: { max: 3, timeWindow: '10 minutes' } }
+	fastify.post('/auth/firebase-token', {
+		preHandler: authenticateToken
 	}, async (request, reply) => {
 		try {
 			const userId = request.user.id;
-			const User = (await import('../models/User.js')).default;
-			const { createSensayUser } = await import('../services/sensayService.js');
-			
-			const user = await User.findById(userId);
-			if (!user) {
-				reply.code(404).send({
-					success: false,
-					message: 'User not found',
-					errors: ['User account not found']
-				});
-				return;
-			}
-			
-			// Only caretakers need Sensay users
-			if (user.role === 'patient') {
-				reply.code(400).send({
-					success: false,
-					message: 'Patients do not need Sensay user accounts',
-					errors: ['Patient accounts use whitelist email access']
-				});
-				return;
-			}
-			
-			// Check if already linked
-			if (user.sensayUserId) {
-				return {
-					success: true,
-					message: 'Sensay user already linked',
-					sensayUserId: user.sensayUserId
-				};
-			}
-			
-			// Create Sensay user
-			const fullName = (user.firstName || user.lastName) ? 
-				`${user.firstName || ''} ${user.lastName || ''}`.trim() : 
-				user.email.split('@')[0];
-				
-			fastify.log.info(`Manually linking Sensay user for ${user.email}`);
-			
-			const sensayResp = await createSensayUser({ 
-				email: user.email, 
-				name: fullName 
-			});
-			
-			if (sensayResp && sensayResp.id) {
-				user.sensayUserId = sensayResp.id;
-				await user.save();
-				
-				fastify.log.info(`Successfully linked Sensay user ${sensayResp.id} to user ${user._id}`);
-				
-				return {
-					success: true,
-					message: 'Sensay user created and linked successfully',
-					sensayUserId: sensayResp.id
-				};
-			} else if (sensayResp?.conflict) {
-				fastify.log.warn(`Sensay user conflict for ${user.email} - attempting resolution`);
-				
-				try {
-					// Try to find existing Sensay user by email
-					const { findSensayUserByEmail } = await import('../services/sensayService.js');
-					const existingSensayUser = await findSensayUserByEmail(user.email);
-					
-					if (existingSensayUser && existingSensayUser.id) {
-						user.sensayUserId = existingSensayUser.id;
-						await user.save();
-						
-						fastify.log.info(`Successfully linked existing Sensay user ${existingSensayUser.id} to user ${user._id}`);
-						
-						return {
-							success: true,
-							message: 'Existing Sensay user found and linked successfully',
-							sensayUserId: existingSensayUser.id
-						};
-					} else {
-						reply.code(409).send({
-							success: false,
-							message: 'Sensay user exists but could not be found for linking',
-							errors: ['Please contact support for manual linking']
-						});
-						return;
-					}
-				} catch (searchErr) {
-					fastify.log.error(`Failed to search for existing Sensay user: ${searchErr.message}`);
-					reply.code(409).send({
-						success: false,
-						message: 'Sensay user already exists but could not be linked automatically',
-						errors: ['Please contact support for manual linking']
-					});
-					return;
-				}
-			} else {
-				reply.code(500).send({
-					success: false,
-					message: 'Failed to create Sensay user',
-					errors: ['Sensay API returned unexpected response']
-				});
-				return;
-			}
-			
-		} catch (error) {
-			fastify.log.error(`Error linking Sensay user for ${request.user.id}:`, error);
-			reply.code(500).send({
-				success: false,
-				message: 'Error creating Sensay user link',
-				errors: ['Internal server error']
-			});
-		}
-	});
+			const userEmail = request.user.email;
+			const userRole = request.user.role || 'caretaker';
 
-	// Sync user with Sensay
-	fastify.post('/sync-sensay', {
-		preHandler: [authenticateToken],
-		schema: {
-			response: {
-				200: {
-					type: 'object',
-					properties: {
-						success: { type: 'boolean' },
-						message: { type: 'string' },
-						sensayUser: { type: 'object' }
-					}
-				}
-			}
-		}
-	}, async (request, reply) => {
-		try {
-			const userId = request.user.id || request.user._id;
-			const syncResult = await authService.syncUserWithSensay(userId);
+			// Import Firebase admin
+			const firebase = await import('../firebase.js');
 			
-			if (syncResult.success) {
-				reply.code(200).send({
-					success: true,
-					message: syncResult.message,
-					sensayUser: syncResult.sensayUser
-				});
-			} else {
-				reply.code(400).send({
+			if (!firebase.default._admin) {
+				return reply.code(503).send({
 					success: false,
-					message: syncResult.message,
-					error: syncResult.error
+					message: 'Firebase not initialized',
+					errors: ['Firebase Admin SDK is not configured']
 				});
-			}
-		} catch (error) {
-			fastify.log.error(`Error syncing user with Sensay:`, error);
-			reply.code(500).send({
-				success: false,
-				message: 'Failed to sync with Sensay',
-				errors: [error.message]
-			});
-		}
-	});
-
-	// Ensure user exists in Sensay (create if missing)
-	fastify.post('/ensure-sensay', {
-		preHandler: [authenticateToken],
-		schema: {
-			response: {
-				200: {
-					type: 'object',
-					properties: {
-						success: { type: 'boolean' },
-						message: { type: 'string' },
-						sensayUserId: { type: 'string' },
-						created: { type: 'boolean' }
-					}
-				}
-			}
-		}
-	}, async (request, reply) => {
-		try {
-			const userId = request.user.id || request.user._id;
-			const result = await authService.ensureUserInSensay(userId);
-			
-			reply.code(200).send(result);
-		} catch (error) {
-			fastify.log.error(`Error ensuring user in Sensay:`, error);
-			reply.code(500).send({
-				success: false,
-				message: 'Failed to ensure user exists in Sensay',
-				errors: [error.message]
-			});
-		}
-	});
-
-	// Get user's Sensay status
-	fastify.get('/sensay-status', {
-		preHandler: [authenticateToken],
-		schema: {
-			response: {
-				200: {
-					type: 'object',
-					properties: {
-						success: { type: 'boolean' },
-						hasConnection: { type: 'boolean' },
-						sensayUserId: { type: ['string', 'null'] },
-						lastSync: { type: ['string', 'null'] },
-						error: { type: ['object', 'null'] }
-					}
-				}
-			}
-		}
-	}, async (request, reply) => {
-		try {
-			const userId = request.user.id || request.user._id;
-			const User = (await import('../models/User.js')).default;
-			const user = await User.findById(userId);
-			
-			if (!user) {
-				reply.code(404).send({
-					success: false,
-					message: 'User not found'
-				});
-				return;
 			}
 
-			const hasConnection = Boolean(user.sensayUserId);
-			const response = {
+			// Create custom token with user claims
+			const customToken = await firebase.default._admin.auth().createCustomToken(userId, {
+				email: userEmail,
+				role: userRole
+			});
+
+			return reply.send({
 				success: true,
-				hasConnection,
-				sensayUserId: user.sensayUserId || null,
-				lastSync: user.updatedAt ? user.updatedAt.toISOString() : null,
-				error: user.sensayError || null
-			};
-
-			// If user has sensayUserId, try to verify it exists
-			if (hasConnection) {
-				try {
-					const { getCurrentSensayUser } = await import('../services/sensayService.js');
-					const sensayUser = await getCurrentSensayUser(user.sensayUserId);
-					response.verified = Boolean(sensayUser);
-					response.sensayUserData = sensayUser;
-				} catch (verifyError) {
-					response.verified = false;
-					response.verificationError = verifyError.message;
-				}
-			}
-
-			reply.code(200).send(response);
+				customToken,
+				expiresIn: '1h',
+				userId
+			});
 		} catch (error) {
-			fastify.log.error(`Error getting Sensay status:`, error);
-			reply.code(500).send({
+			fastify.log.error('Firebase token generation error:', error);
+			return reply.code(500).send({
 				success: false,
-				message: 'Failed to get Sensay status',
+				message: 'Failed to generate Firebase token',
 				errors: [error.message]
 			});
 		}

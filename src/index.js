@@ -11,6 +11,7 @@ import galleryRoutes from './routes/gallery/index.js';
 import replicaImageRoutes from './routes/replicaImageRoutes.js';
 import genericChatRoutes from './routes/genericChatRoutes.js';
 import databaseConfig from './config/database.js';
+import { validateMigrationConfig } from './config/migration.js';
 
 // (dotenv already loaded via loadEnv.js)
 
@@ -187,10 +188,18 @@ await server.register(multipart, {
   }
 });
 
-// Connect to Postgres asynchronously so the server can start listening immediately.
+// Validate migration configuration on startup
+try {
+  validateMigrationConfig();
+} catch (err) {
+  server.log.error({ err }, 'Migration configuration validation failed');
+  process.exit(1);
+}
+
+// Connect to MongoDB asynchronously so the server can start listening immediately.
 // Any errors are logged inside databaseConfig.connect().
 databaseConfig.connect().catch(err => {
-  server.log.error({ err }, 'Initial Postgres connection attempt failed');
+  server.log.error({ err }, 'Initial MongoDB connection attempt failed');
 });
 
 // Register routes
@@ -202,6 +211,9 @@ await server.register(genericChatRoutes);
 // Register API routes (feedback, etc)
 const apiRoutes = (await import('./routes/api/index.js')).default;
 await server.register(apiRoutes);
+// Register health check routes with enhanced monitoring
+const healthRoutes = (await import('./routes/healthApi.js')).default;
+await server.register(healthRoutes);
 
 // Admin routes (import conditionally to avoid loading in production accidentally)
 if (process.env.NODE_ENV === 'development' || process.env.ENABLE_ADMIN_ROUTES === 'true') {
@@ -209,24 +221,7 @@ if (process.env.NODE_ENV === 'development' || process.env.ENABLE_ADMIN_ROUTES ==
   await server.register(adminRoutes);
 }
 
-// Health check endpoint
-// Lightweight health-check: return minimal payload and avoid verbose logging
-server.get('/health', async (request, reply) => {
-  try {
-    const dbHealth = await databaseConfig.healthCheck();
-    // Only indicate status and minimal db state to keep logs small
-    reply.header('X-Service', 'sensay-api').send({ status: 'ok', db: dbHealth.ok ? 'ok' : 'unavailable' });
-  } catch (err) {
-    // Log detailed error server-side (stack + context) but return minimal payload to the probe
-    try {
-      server.log.error({ err, route: '/health' }, 'Health check failed');
-    } catch (logErr) {
-      // ensure logging failures don't crash the health endpoint
-      console.error('Failed to log health check error', logErr);
-    }
-    reply.code(503).send({ status: 'unhealthy' });
-  }
-});
+// Health check endpoint is now handled by healthApi.js routes
 
 // Root endpoint - simple ok response, keep log noise low
 server.get('/', { logLevel: 'error' }, async (request, reply) => {

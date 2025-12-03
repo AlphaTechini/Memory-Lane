@@ -11,9 +11,10 @@ export async function addPatientEmailToReplicas(user, patientEmail, replicaIds, 
   const results = [];
   let anySuccess = false;
 
-  const updateReplicaFn = deps.updateReplica || (async (replicaId, updateData) => {
-    const mod = await import('./sensayService.js');
-    return mod.updateReplica(replicaId, updateData);
+  const updateReplicaFn = deps.updateReplica || (async (replicaId, updateData, userId) => {
+    // Use replica abstraction layer to handle both Sensay and Supavec
+    const replicaAbstraction = await import('./replicaAbstractionService.js');
+    return replicaAbstraction.updateReplicaMetadata(replicaId, updateData, userId);
   });
 
   const PatientModel = deps.PatientModel || (await import('../models/Patient.js')).default;
@@ -24,10 +25,25 @@ export async function addPatientEmailToReplicas(user, patientEmail, replicaIds, 
 
   for (const replicaId of replicaIds) {
     try {
-      const userReplica = user.replicas?.find(r => r.replicaId === replicaId);
+      const userReplica = user.replicas?.find(r => r.replicaId === replicaId || r.fileId === replicaId);
       if (!userReplica) {
         results.push({ replicaId, success: false, error: 'Replica not found or not owned by user' });
         continue;
+      }
+
+      // Validate cross-namespace access for Supavec replicas
+      if (userReplica.apiSource === 'SUPAVEC' || userReplica.supavecNamespace) {
+        const expectedNamespace = user.id || user._id;
+        const replicaNamespace = userReplica.supavecNamespace;
+        
+        if (replicaNamespace && replicaNamespace !== expectedNamespace.toString()) {
+          results.push({ 
+            replicaId, 
+            success: false, 
+            error: 'Cross-namespace access denied - replica belongs to different user' 
+          });
+          continue;
+        }
       }
 
       if (!userReplica.whitelistEmails) userReplica.whitelistEmails = [];
@@ -46,7 +62,7 @@ export async function addPatientEmailToReplicas(user, patientEmail, replicaIds, 
         llm: { model: 'gpt-4o' }
       };
 
-      await updateReplicaFn(replicaId, updateData);
+      await updateReplicaFn(replicaId, updateData, user.id || user._id);
 
       results.push({ replicaId, success: true, message: 'Successfully updated' });
       anySuccess = true;

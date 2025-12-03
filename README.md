@@ -1,14 +1,14 @@
 <div align="center">
-	<h1>Sensay Memory Care Platform</h1>
+	<h1>Supavec Memory Care Platform</h1>
 	<p><strong>AI-assisted memory support</strong> combining caregiver-managed replicas, simplified patient access, conversational history, and secure gallery sharing.</p>
 	<p>
-		Backend: Fastify + PostgreSQL (Prisma) · Frontend: SvelteKit · Auth: JWT (Caretaker & Patient) · External: Sensay API, Cloudinary, Nodemailer
+		Backend: Fastify + PostgreSQL (Prisma) · Frontend: SvelteKit · Auth: JWT (Caretaker & Patient) · External: Supavec API, Cloudinary, Nodemailer
 	</p>
 	<hr/>
 </div>
 
 ## 1. Core Concept
-Caretakers create and train AI "replicas" (persona-based conversational agents) that patients (often memory-impaired) can interact with using a frictionless, email-only login. Caretakers also manage a memory gallery (albums + photos) and whitelist patient emails for secure, read-focused access. The platform integrates with Sensay's API to provision replicas and optionally train them (multi-endpoint fallback). Cloudinary can store images; email is used for caretaker verification and passwordless support flows.
+Caretakers create and train AI "replicas" (persona-based conversational agents) that patients (often memory-impaired) can interact with using a frictionless, email-only login. Caretakers also manage a memory gallery (albums + photos) and whitelist patient emails for secure, read-focused access. The platform integrates with Supavec's API to manage the knowledge base for the replicas. Cloudinary can store images; email is used for caretaker verification and passwordless support flows.
 
 ## 2. High-Level Architecture
 ```

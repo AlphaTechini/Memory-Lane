@@ -1,6 +1,73 @@
-import databaseConfig from '../config/database.js';
+import mongoose from 'mongoose';
 
-const prisma = databaseConfig.prisma;
+// Define the conversation schema
+const conversationSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  replicaId: {
+    type: String,
+    required: true
+  },
+  title: String,
+  messages: [{
+    id: String,
+    text: String,
+    sender: {
+      type: String,
+      enum: ['user', 'assistant'],
+      default: 'user'
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  apiSource: {
+    type: String,
+    enum: ['SUPAVEC', 'SENSAY'],
+    default: 'SUPAVEC'
+  },
+  lastMessageAt: Date
+}, {
+  timestamps: true,
+  toJSON: {
+    transform: function(doc, ret) {
+      ret.id = ret._id;
+      delete ret.__v;
+      return ret;
+    }
+  },
+  toObject: {
+    transform: function(doc, ret) {
+      ret.id = ret._id;
+      delete ret.__v;
+      return ret;
+    }
+  }
+});
+
+// Indexes
+conversationSchema.index({ userId: 1, replicaId: 1, lastMessageAt: -1 });
+conversationSchema.index({ userId: 1 });
+conversationSchema.index({ replicaId: 1 });
+
+// Pre-save middleware to update lastMessageAt
+conversationSchema.pre('save', function(next) {
+  if (this.messages && this.messages.length > 0) {
+    const lastMessage = this.messages[this.messages.length - 1];
+    this.lastMessageAt = lastMessage.timestamp || new Date();
+  }
+  next();
+});
+
+const MongoConversation = mongoose.model('Conversation', conversationSchema);
 
 const normalizeMessage = (message = {}) => ({
   id: message.id || message._id || message.timestamp?.valueOf?.() || Date.now().toString(),
@@ -102,7 +169,7 @@ const applySelect = (entity, selectInput) => {
 const fetchConversationsForFilter = async (filter = {}) => {
   if (filter._id || filter.id) {
     const id = filter._id || filter.id;
-    const record = await prisma.conversation.findUnique({ where: { id } });
+    const record = await MongoConversation.findById(id);
     return record ? [record] : [];
   }
 
@@ -111,12 +178,12 @@ const fetchConversationsForFilter = async (filter = {}) => {
   if (filter.replicaId) where.replicaId = filter.replicaId;
   if (typeof filter.isActive === 'boolean') where.isActive = filter.isActive;
 
-  // If only simple fields provided, let Prisma filter server-side.
+  // If only simple fields provided, let MongoDB filter server-side.
   if (Object.keys(where).length > 0 && Object.keys(filter).every(key => ['userId', 'replicaId', 'isActive'].includes(key))) {
-    return prisma.conversation.findMany({ where });
+    return MongoConversation.find(where);
   }
 
-  return prisma.conversation.findMany();
+  return MongoConversation.find();
 };
 
 class ConversationEntity {
@@ -132,6 +199,7 @@ class ConversationEntity {
     this.title = record.title ?? this.title ?? null;
     this.messages = Array.isArray(record.messages) ? record.messages.map(normalizeMessage) : (this.messages || []);
     this.isActive = record.isActive ?? this.isActive ?? true;
+    this.apiSource = record.apiSource ?? this.apiSource ?? 'SUPAVEC'; // Track which API was used
     this.lastMessageAt = record.lastMessageAt ? new Date(record.lastMessageAt) : (this.messages.length ? this.messages[this.messages.length - 1].timestamp : this.lastMessageAt ?? null);
     this.createdAt = record.createdAt ? new Date(record.createdAt) : this.createdAt ?? null;
     this.updatedAt = record.updatedAt ? new Date(record.updatedAt) : this.updatedAt ?? null;
@@ -146,6 +214,7 @@ class ConversationEntity {
       title: this.title,
       messages: this.messages.map(msg => ({ ...msg, timestamp: msg.timestamp })),
       isActive: this.isActive,
+      apiSource: this.apiSource,
       lastMessageAt: this.lastMessageAt,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt
@@ -168,17 +237,19 @@ class ConversationEntity {
       title: this.title,
       messages: this.messages.map(msg => ({
         ...msg,
+        id: msg.id || Date.now().toString(),
         timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)
       })),
       isActive: this.isActive,
+      apiSource: this.apiSource,
       lastMessageAt: this.lastMessageAt
     };
 
     if (this.id) {
-      const updated = await prisma.conversation.update({ where: { id: this.id }, data });
+      const updated = await MongoConversation.findByIdAndUpdate(this.id, data, { new: true });
       this._load(updated);
     } else {
-      const created = await prisma.conversation.create({ data });
+      const created = await MongoConversation.create(data);
       this._load(created);
     }
 

@@ -1,4 +1,5 @@
 import authService from '../services/authService.js';
+import User from '../models/User.js';
 
 /**
  * Authentication middleware for Fastify
@@ -212,6 +213,7 @@ export const requirePatient = async (request, reply) => {
 /**
  * Patient-caretaker relationship validation
  * Ensures patient can only access resources from their assigned caretaker
+ * Updated to support Supavec namespace validation
  */
 export const validatePatientCaretakerRelationship = async (request, reply) => {
   // Only apply to patient requests
@@ -226,6 +228,64 @@ export const validatePatientCaretakerRelationship = async (request, reply) => {
       errors: ['You can only access resources from your assigned caretaker']
     });
     return;
+  }
+
+  // For replica access, validate that patient can access the specific replica
+  const replicaId = request.params.replicaId;
+  if (replicaId) {
+    const allowedReplicas = request.user.allowedReplicas || [];
+    if (!allowedReplicas.includes(replicaId)) {
+      reply.code(403).send({
+        success: false,
+        message: 'Access denied',
+        errors: ['You do not have permission to access this replica']
+      });
+      return;
+    }
+
+    // Validate Supavec namespace access for the replica
+    try {
+      const User = (await import('../models/User.js')).default;
+      const caretaker = await User.findById(request.user.caretakerId);
+      
+      if (!caretaker) {
+        reply.code(403).send({
+          success: false,
+          message: 'Access denied',
+          errors: ['Caretaker not found']
+        });
+        return;
+      }
+
+      // Check if replica exists in caretaker's namespace and validate email whitelist
+      const replicaAbstraction = await import('../services/replicaAbstractionService.js');
+      const accessValidation = await replicaAbstraction.validateReplicaAccess(
+        replicaId, 
+        request.user.caretakerId,
+        { 
+          userRole: 'patient',
+          patientEmail: request.user.email,
+          namespace: request.user.caretakerId // Use caretaker ID as namespace
+        }
+      );
+      
+      if (!accessValidation.success || !accessValidation.hasAccess) {
+        reply.code(403).send({
+          success: false,
+          message: 'Access denied',
+          errors: [accessValidation.error || 'Replica not found in caretaker namespace or email not whitelisted']
+        });
+        return;
+      }
+    } catch (error) {
+      console.error('Error validating Supavec namespace access:', error);
+      reply.code(500).send({
+        success: false,
+        message: 'Internal server error',
+        errors: ['Failed to validate replica access']
+      });
+      return;
+    }
   }
 };
 
@@ -306,3 +366,19 @@ export const cleanupRateLimit = () => {
 // Clean up every hour
 setInterval(cleanupRateLimit, 60 * 60 * 1000);
 
+/**
+ * Middleware to check if the user (caretaker) has a Supavec-compatible ID.
+ * In our case, this is just their standard user ID.
+ * This replaces the old `validateSensayLink` middleware.
+ */
+export const validateSupavecNamespace = async (request, reply) => {
+  const userId = request.user?.id;
+  if (!userId) {
+    return reply.status(401).send({ success: false, error: 'Authentication required' });
+  }
+  const user = await User.findById(userId).select('id role');
+  if (!user || user.role !== 'caretaker') {
+    return reply.status(403).send({ success: false, error: 'Caretaker role required for this operation' });
+  }
+  // The user's ID is the namespace, so if they exist, the namespace is valid.
+};

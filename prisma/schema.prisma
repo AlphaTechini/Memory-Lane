@@ -11,7 +11,6 @@ model User {
   id                   String    @id @default(uuid())
   email                String    @unique
   googleId             String?   @unique
-  sensayUserId         String?
   password             String?   // Optional for Google Auth
   isVerified           Boolean   @default(false)
   firstName            String?
@@ -27,8 +26,7 @@ model User {
   photos               Json?
   replicaImageUrl      String?
   replicaImageId       String?
-  replicas             Json?
-  deletedReplicas      Json?
+  replicas             Json?     // Array of { fileId: string, name: string, description: string, createdAt: date }
   whitelistedPatients  String[]  @default([])
   patientWhitelist     Json?
   gallery              Json?
@@ -68,6 +66,7 @@ model Conversation {
   title         String?
   messages      Json?
   isActive      Boolean  @default(true)
+  apiSource     String?  @default("SUPAVEC")
   lastMessageAt DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
