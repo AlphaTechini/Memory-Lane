@@ -72,7 +72,10 @@
           </button>
         {/if}
 
-        <h1 class="text-lg lg:text-xl font-bold text-gray-900 dark:text-gray-100">Memory Lane</h1>
+        <a href="/dashboard" class="flex items-center gap-2">
+          <img src="/logo.png" alt="Memory Lane Logo" class="h-8 lg:h-10 w-auto" />
+          <h1 class="text-lg lg:text-xl font-bold text-gray-900 dark:text-gray-100">Memory Lane</h1>
+        </a>
       </div>
       
       <div class="hidden md:flex items-center gap-2 lg:gap-4">
