@@ -62,7 +62,7 @@
     <div class="fixed top-0 left-0 w-full z-50">
       <div class="bg-yellow-300 text-black text-center px-6 py-4 shadow-lg relative">
         <p> </p>
-        <p class="mb-3">Our backend will soon shutdown temporarily as we require support for payments</p>
+        <p class="mb-3">Welcome to Version 3</p>
 
         <ul class="text-left inline-block mx-auto space-y-2 mb-3">
           <li>
