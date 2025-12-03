@@ -20,7 +20,7 @@ export function getApiBase() {
   }
   // Check if we're in development mode
   const isDev = import.meta?.env?.DEV || (typeof window !== 'undefined' && window.location?.hostname === 'localhost');
-  return isDev ? 'http://localhost:4001' : 'https://win-api-sensay.cyberpunk.work';
+  return isDev ? 'http://localhost:4001' : 'https://memory-lane-d5l0.onrender.com';
 }
 
 export async function apiFetch(path, options = {}) {
