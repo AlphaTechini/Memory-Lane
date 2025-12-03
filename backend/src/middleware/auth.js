@@ -53,7 +53,7 @@ export const authenticateToken = async (request, reply) => {
       return;
     }
 
-    // If token type indicates caretaker/patient ensure id looks like a UUID (Prisma UUID format)
+    // If token type indicates caretaker/patient ensure id looks like a UUID
     if (!isSafeUuid(decoded.id)) {
       reply.code(401).send({ success: false, message: 'Invalid token id format', errors: ['Malformed user id in token'] });
       return;

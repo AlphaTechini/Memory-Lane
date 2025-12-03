@@ -545,3 +545,40 @@ const migrationLogger = {
   }
 }
 ```
+
+## Prisma Removal Strategy
+
+### Current State Analysis
+
+The codebase currently has Prisma artifacts (schema files, references in code) but the actual database layer uses MongoDB with Mongoose. This creates confusion and maintenance overhead.
+
+### Removal Approach
+
+**Files to Remove**:
+- `backend/prisma/schema.prisma` - PostgreSQL schema definition
+- `backend/prisma/migrations/` - All migration files
+- Prisma-related Docker and deployment commands
+
+**Code References to Update**:
+```javascript
+// BEFORE (Prisma references in tests)
+await databaseConfig.prisma.user.deleteMany({ where: { email: 'test@example.com' } });
+await databaseConfig.prisma.$disconnect();
+
+// AFTER (MongoDB/Mongoose)
+await User.deleteMany({ email: 'test@example.com' });
+await mongoose.connection.close();
+```
+
+**Configuration Updates**:
+- Remove Prisma from `package.json` dependencies
+- Remove Prisma from `pnpm-workspace.yaml` build dependencies
+- Remove `npx prisma db push` from `fly.toml` release command
+- Remove `npx prisma generate` from `Dockerfile`
+- Remove Prisma-related environment variables from `.env.example`
+
+**Documentation Updates**:
+- Update `README.md` to remove Prisma references
+- Update architecture diagrams to show MongoDB only
+- Remove Prisma setup instructions
+- Update deployment guides to remove Prisma steps

@@ -2,7 +2,7 @@
 	<h1>Supavec Memory Care Platform</h1>
 	<p><strong>AI-assisted memory support</strong> combining caregiver-managed replicas, simplified patient access, conversational history, and secure gallery sharing.</p>
 	<p>
-		Backend: Fastify + PostgreSQL (Prisma) · Frontend: SvelteKit · Auth: JWT (Caretaker & Patient) · External: Supavec API, Cloudinary, Nodemailer
+		Backend: Fastify + Firestore · Frontend: SvelteKit · Auth: JWT (Caretaker & Patient) · External: Supavec API, Cloudinary, Nodemailer
 	</p>
 	<hr/>
 </div>
@@ -25,16 +25,16 @@ Caretakers create and train AI "replicas" (persona-based conversational agents) 
 ┌───────┴───────────────────▼────┐
 │            Fastify API          │
 │  Auth Routes (caretaker/patient)│
-│  Replica Routes (Sensay proxy)  │
+│  Replica Routes (Supavec proxy) │
 │  Gallery Routes (albums/photos) │
 │  Chat + Conversation storage    │
 │  Middleware (auth, gallery ACL) │
 └───────▲──────────────┬─────────┘
 				│              │
-				│ Prisma ORM   │
+				│ Firestore    │
 				│              │
 ┌───────┴──────────────▼─────────┐
-│            PostgreSQL           │
+│            Firestore            │
 │  Users (caretakers)             │
 │  Patients (email + caretaker)   │
 │  Conversations (message logs)   │
@@ -42,7 +42,7 @@ Caretakers create and train AI "replicas" (persona-based conversational agents) 
 └─────────────────────────────────┘
 
 External Services:
-	• Sensay API (replica lifecycle)
+	• Supavec API (replica lifecycle)
 	• Cloudinary (image hosting, optional)
 	• Nodemailer / SMTP (OTP + notifications)
 ```
@@ -64,10 +64,10 @@ External Services:
 |--------------|------|
 | Runtime      | Node.js (ES Modules) |
 | Framework    | Fastify v5 |
-| DB           | PostgreSQL (Fly.io) via Prisma ORM |
+| DB           | Firestore (Google Cloud) |
 | Frontend     | SvelteKit + Tailwind CSS |
 | Auth         | JWT + Email OTP (caretakers) + Simple email (patients) |
-| External     | Sensay API, Cloudinary, Nodemailer |
+| External     | Supavec API, Cloudinary, Nodemailer |
 | Deployment   | (User-defined) |
 
 ## 5. Environment Variables
@@ -80,15 +80,15 @@ NODE_ENV=development
 JWT_SECRET=your-jwt-secret-here
 JWT_EXPIRES_IN=7d
 
-# Sensay API (external service)
+# Supavec API (external service)
 # Keep these secrets out of source control and store them in your host's secret manager
-SENSAY_API_KEY=
-SENSAY_BASE_URL=https://api.sensay.ai/v1
-SENSAY_ORGANIZATION_SECRET=
-SENSAY_OWNER_ID=
+SUPAVEC_API_KEY=
+SUPAVEC_BASE_URL=https://api.supavec.com
+SUPAVEC_TIMEOUT=30000
 
-# Database (PostgreSQL via Fly.io Postgres or external host)
-DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<database>?sslmode=require
+# Firestore Configuration
+# Service account key file path (for server-side Firebase Admin SDK)
+GOOGLE_APPLICATION_CREDENTIALS=./serviceAccountKey.json
 
 # Email (Nodemailer) – for caretaker OTP / notifications
 EMAIL_FROM=noreply@example.com
@@ -120,9 +120,9 @@ LOG_LEVEL=info
 ```
 
 Notes:
-- Run `npx prisma db push` after setting up your Postgres database to ensure tables and indexes exist.
-- Unique constraints (e.g., `User.email`) are defined directly in the Prisma schema; keep the schema in version control and rerun `db push` whenever it changes.
-- Configure connection pooling (e.g., Fly's PgBouncer) for high-concurrency scenarios if needed.
+- Set up Firebase/Firestore project and download service account key to `serviceAccountKey.json`
+- Unique constraints (e.g., `User.email`) are enforced at the application level
+- Firestore automatically scales and handles connection pooling
 
 ## 6. Enhanced Sensay User Management
 
@@ -463,7 +463,7 @@ If you later switch back to Prisma migrations, add `SHADOW_DATABASE_URL` via `fl
 ## 15. Troubleshooting
 | Symptom | Likely Cause | Action |
 |---------|--------------|-------|
-`Postgres connection error` | Bad URI / network / credentials | Verify `DATABASE_URL`, ensure Fly Postgres is attached and reachable |
+`Firestore connection error` | Bad credentials / network | Verify `GOOGLE_APPLICATION_CREDENTIALS` and service account key |
 `OTP not received` | SMTP misconfig | Check SMTP creds; test with a simple nodemailer script |
 `Replica creation failed` | Missing Sensay secret or invalid model payload | Confirm `SENSAY_ORGANIZATION_SECRET`; inspect logs |
 `Patient login fails` | Email not whitelisted / Patient doc absent | Ensure caretaker added email to a replica |
@@ -530,7 +530,7 @@ This project was recently updated to improve deployment readiness and developer 
 	- `.env.example` updated to include all known environment keys (placeholders only).
 
 - Server & code changes
-	- Migrated persistence layer from MongoDB to Prisma + PostgreSQL and tightened database connection configuration.
+	- Using Firestore for data persistence with Firebase Admin SDK.
 	- Added per-route rate limits on sensitive auth endpoints; global defaults remain configurable via environment variables.
 	- Added a root landing route (`GET /`) and a health endpoint (`GET /health`).
 	- CORS handling improved: allowed origins seeded from `FRONTEND_URL(S)` and dynamic runtime origin registration via `POST /internal/register-origin` (guarded by `ORIGIN_REGISTRATION_SECRET`).

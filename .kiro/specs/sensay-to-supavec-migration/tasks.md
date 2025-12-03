@@ -353,3 +353,56 @@
   - Add migration deployment procedures
   - Create rollback procedures for failed deployments
   - _Requirements: 6.4_
+
+- [x] 12. Remove all Prisma dependencies and references
+
+
+
+
+  - Remove Prisma schema files and migration directories
+  - Update all code references from Prisma to MongoDB/Mongoose
+  - Remove Prisma from package configuration and build scripts
+  - Update documentation to reflect MongoDB-only architecture
+  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
+
+
+
+
+
+- [ ] 12.1 Remove Prisma files and directories
+  - Delete backend/prisma/schema.prisma file
+  - Delete backend/prisma/migrations/ directory
+  - Remove Prisma configuration from project structure
+
+
+
+
+  - _Requirements: 9.1_
+
+- [ ] 12.2 Update code references to use MongoDB
+  - Replace Prisma client calls in test files with Mongoose equivalents
+
+
+
+
+  - Update databaseConfig references from prisma to mongoose
+  - Ensure all database operations use Mongoose models
+  - _Requirements: 9.2_
+
+- [ ] 12.3 Remove Prisma from build and deployment
+  - Remove Prisma dependencies from package.json
+
+
+
+  - Remove Prisma from pnpm-workspace.yaml
+  - Remove "npx prisma db push" from fly.toml release command
+  - Remove "npx prisma generate" from Dockerfile
+  - Remove DATABASE_URL and Prisma-related env vars from .env.example
+  - _Requirements: 9.3, 9.4_
+
+- [ ] 12.4 Update documentation
+  - Remove Prisma references from README.md
+  - Update architecture diagrams to show MongoDB only
+  - Remove Prisma setup instructions
+  - Update deployment guides to remove Prisma steps
+  - _Requirements: 9.5_

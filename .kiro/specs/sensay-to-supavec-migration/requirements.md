@@ -113,3 +113,15 @@ The MemoryLane web application currently uses the Sensay API for creating AI rep
 3. THE MemoryLane_Backend SHALL validate patient access using both local whitelist and Supavec namespace permissions
 4. THE MemoryLane_Backend SHALL support bulk patient email management through existing caretaker endpoints
 5. THE MemoryLane_Backend SHALL ensure email-based access control works consistently across both local and Supavec data sources
+
+### Requirement 9
+
+**User Story:** As a developer, I want to remove all Prisma dependencies and references from the codebase, so that the system uses only MongoDB without confusion or unused artifacts.
+
+#### Acceptance Criteria
+
+1. THE MemoryLane_Backend SHALL remove all Prisma schema files and configuration from the project
+2. WHEN code references Prisma client operations, THE MemoryLane_Backend SHALL use MongoDB/Mongoose equivalents instead
+3. THE MemoryLane_Backend SHALL remove Prisma-related dependencies from package configuration files
+4. THE MemoryLane_Backend SHALL remove Prisma commands from deployment scripts and Docker configurations
+5. THE MemoryLane_Backend SHALL update all documentation to reflect MongoDB-only architecture without Prisma references

@@ -238,7 +238,7 @@ server.setErrorHandler((error, request, reply) => {
     server.log.error(error);
   }
   
-  // Validation errors surfaced via the Prisma compatibility layer
+  // Validation errors
   if (error.name === 'ValidationError') {
     const errors = Object.values(error.errors).map(err => err.message);
     reply.code(400).send({

@@ -3,7 +3,4 @@ ignoredBuiltDependencies:
 
 onlyBuiltDependencies:
   - '@firebase/util'
-  - '@prisma/client'
-  - '@prisma/engines'
-  - prisma
   - protobufjs

@@ -749,7 +749,7 @@ async function replicaRoutes(fastify, options) {
           if (!patient.userId) {
             fastify.log.info(`[CHAT DEBUG] Patient ${patient.email} missing linked User; creating one`);
             try {
-              // Prisma User model requires a non-null password field. Generate a random one for linked user.
+              // Generate a random password for linked user
               const randomPassword = crypto.randomBytes(16).toString('hex');
               const created = await User.create({
                 email: patient.email,

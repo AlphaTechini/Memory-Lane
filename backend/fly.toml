@@ -17,7 +17,6 @@ kill_timeout = 5
 # Deploy across Frankfurt (EU), US East (iad), and US Central (ord)
 [deploy]
   strategy = "rolling"
-  release_command = "npx prisma db push --accept-data-loss"
 
 [env]
   PORT = "4000"

@@ -89,7 +89,7 @@ export async function addPatientEmailToReplicas(user, patientEmail, replicaIds, 
             // If we find a patient, make sure it belongs to the current caretaker
             if (patient && patient.caretakerId !== caretakerId) {
               console.warn(`Patient ${normalizedEmail} exists but belongs to different caretaker (${patient.caretakerId} vs ${caretakerId})`);
-              // Create a new patient record for this caretaker since Prisma schema allows multiple patients with same email for different caretakers
+              // Create a new patient record for this caretaker since schema allows multiple patients with same email for different caretakers
               patient = null;
             }
             

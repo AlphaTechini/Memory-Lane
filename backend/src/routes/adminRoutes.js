@@ -1,5 +1,6 @@
-import databaseConfig from '../config/database.js';
-import AuthService from '../services/authService.js';
+import User from '../models/User.js';
+import Conversation from '../models/Conversation.js';
+import Patient from '../models/Patient.js';
 
 /**
  * Admin routes for database management (DANGEROUS - use with caution)
@@ -20,17 +21,15 @@ async function adminRoutes(fastify, options) {
   };
 
   /**
-   * GET /admin/db-status - Check database table counts
+   * GET /admin/db-status - Check database collection counts
    */
   fastify.get('/admin/db-status', async (request, reply) => {
     if (!authCheck(request, reply)) return;
     
     try {
-      const prisma = databaseConfig.prisma;
-      
-      const userCount = await prisma.user.count();
-      const conversationCount = await prisma.conversation.count();
-      const patientCount = await prisma.patient.count();
+      const userCount = await User.countDocuments();
+      const conversationCount = await Conversation.find().then(results => results.length);
+      const patientCount = await Patient.countDocuments();
       
       return {
         success: true,
@@ -47,66 +46,69 @@ async function adminRoutes(fastify, options) {
   });
 
   /**
-   * POST /admin/clear-user-data - Clear PII/auth fields while preserving rows
+   * POST /admin/clear-user-data - Clear PII/auth fields while preserving documents
    */
   fastify.post('/admin/clear-user-data', async (request, reply) => {
     if (!authCheck(request, reply)) return;
     
     try {
-      const prisma = databaseConfig.prisma;
-      
-      // Clear user PII/auth data while preserving rows
-      const userUpdate = await prisma.user.updateMany({
-        data: {
-          email: null,
-          password: null,
-          sensayUserId: null,
-          isVerified: false,
-          firstName: null,
-          lastName: null,
-          verificationToken: null,
-          otpCode: null,
-          otpExpires: null,
-          passwordResetToken: null,
-          passwordResetExpires: null,
-          replicaImageUrl: null,
-          replicaImageId: null,
-          replicas: [],
-          deletedReplicas: [],
-          whitelistedPatients: [],
-          patientWhitelist: [],
-          gallery: null,
-          updatedAt: new Date()
+      // Clear user PII/auth data while preserving documents
+      const userUpdate = await User.updateMany(
+        {},
+        {
+          $set: {
+            email: null,
+            password: null,
+            isVerified: false,
+            firstName: null,
+            lastName: null,
+            verificationToken: null,
+            otpCode: null,
+            otpExpires: null,
+            passwordResetToken: null,
+            passwordResetExpires: null,
+            replicaImageUrl: null,
+            replicaImageId: null,
+            replicas: [],
+            whitelistedPatients: [],
+            patientWhitelist: null,
+            gallery: null,
+            updatedAt: new Date()
+          }
         }
-      });
+      );
       
       // Clear conversation messages
-      const conversationUpdate = await prisma.conversation.updateMany({
-        data: {
-          messages: [],
-          updatedAt: new Date()
-        }
-      });
+      const conversations = await Conversation.find();
+      let conversationUpdateCount = 0;
+      for (const conv of conversations) {
+        conv.messages = [];
+        conv.updatedAt = new Date();
+        await conv.save();
+        conversationUpdateCount++;
+      }
       
       // Clear patient PII
-      const patientUpdate = await prisma.patient.updateMany({
-        data: {
-          userId: null,
-          caretaker: null,
-          email: null,
-          firstName: null,
-          lastName: null,
-          updatedAt: new Date()
+      const patientUpdate = await Patient.updateMany(
+        {},
+        {
+          $set: {
+            userId: null,
+            email: null,
+            firstName: null,
+            lastName: null,
+            updatedAt: new Date()
+          }
         }
-      });
+      );
       
       return {
         success: true,
         message: 'User data cleared successfully',
         rowsUpdated: {
-          users: userUpdate.count,
-          conversations: conversationUpdate.count,
-          patients: patientUpdate.count
+          users: userUpdate.modifiedCount,
+          conversations: conversationUpdateCount,
+          patients: patientUpdate.modifiedCount
         }
       };
     } catch (error) {

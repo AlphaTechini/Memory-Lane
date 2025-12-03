@@ -8,7 +8,7 @@ import { authenticateToken, requireCaretaker } from '../middleware/auth.js';
  */
 async function authRoutes(fastify, options) {
   
-		// Google OAuth Login/Signup (Prisma version)
+		// Google OAuth Login/Signup
 		const { loginWithGoogle } = await import('../services/authService.js');
 		fastify.post('/auth/google', async (request, reply) => {
 			try {

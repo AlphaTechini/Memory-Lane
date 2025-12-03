@@ -5,7 +5,7 @@ FROM node:20-alpine AS base
 # Set working directory
 WORKDIR /app
 
-# Install runtime dependencies required by Prisma and Node
+# Install runtime dependencies required by Node
 RUN apk add --no-cache openssl libc6-compat
 
 # Install only production dependencies first (leveraging Docker layer caching)
@@ -19,10 +19,7 @@ RUN if [ -f package-lock.json ]; then npm ci --omit=dev; \
 
 # Copy source (only backend)
 COPY src ./src
-COPY prisma ./prisma
 
-# Generate Prisma client for runtime usage
-RUN npx prisma generate
 # Expose port (matches PORT env default 4000)
 EXPOSE 4000
 

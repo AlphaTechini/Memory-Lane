@@ -1,5 +1,6 @@
 import request from 'supertest';
 import server from '../src/index.js';
+import User from '../src/models/User.js';
 import databaseConfig from '../src/config/database.js';
 
 // Mock Google verification
@@ -22,9 +23,9 @@ describe('Full integration chain', () => {
   let token;
 
   afterAll(async () => {
-    // Clean up test user from DB
-    await databaseConfig.prisma.user.deleteMany({ where: { email: 'test@example.com' } });
-    await databaseConfig.prisma.$disconnect();
+    // Clean up test user from Firestore
+    await User.deleteMany({ email: 'test@example.com' });
+    await databaseConfig.disconnect();
   });
 
   it('POST /auth/google returns JWT and inserts user', async () => {
@@ -34,8 +35,8 @@ describe('Full integration chain', () => {
     expect(res.status).toBe(200);
     expect(res.body.token).toBeDefined();
     token = res.body.token;
-    // Check DB for user
-    const user = await databaseConfig.prisma.user.findUnique({ where: { email: 'test@example.com' } });
+    // Check Firestore for user
+    const user = await User.findByEmail('test@example.com');
     expect(user).not.toBeNull();
   });
 
