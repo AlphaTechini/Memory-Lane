@@ -20,7 +20,7 @@ export function getApiBase() {
   }
   // Check if we're in development mode
   const isDev = import.meta?.env?.DEV || (typeof window !== 'undefined' && window.location?.hostname === 'localhost');
-  return isDev ? 'http://localhost:4000' : 'https://win-api-sensay.cyberpunk.work';
+  return isDev ? 'http://localhost:4001' : 'https://win-api-sensay.cyberpunk.work';
 }
 
 export async function apiFetch(path, options = {}) {

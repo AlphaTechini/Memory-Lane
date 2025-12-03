@@ -75,12 +75,26 @@
  
    // --- Initial Setup - MOVED TO onMount for SSR safety ---
    onMount(() => {
+     // Ping backend to prevent cold start on Render
+     pingBackend();
+     
      if (!$activeConversationId && Object.keys($conversations).length === 0) {
        handleNewConversation();
      } else if (!$activeConversationId && $conversationsList.length > 0) {
        setActiveConversation($conversationsList[0].id);
      }
    });
+
+   // Ping backend to wake up server (prevents Render cold start)
+   async function pingBackend() {
+     try {
+       const { apiFetch } = await import('./lib/apiBase.js');
+       await apiFetch('/health');
+       console.log('Backend ping successful');
+     } catch (error) {
+       console.warn('Backend ping failed:', error.message);
+     }
+   }
 </script>
 
 <main class="h-screen w-screen bg-gray-100 flex font-sans">
