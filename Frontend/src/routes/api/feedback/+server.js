@@ -43,7 +43,12 @@ export async function POST({ request, locals }) {
 
     // Check if email is configured
     if (!EMAIL_SMTP_HOST || !EMAIL_SMTP_USER || !EMAIL_SMTP_PASS) {
-      console.error('Email not configured');
+      console.error('Email not configured:', {
+        hasHost: !!EMAIL_SMTP_HOST,
+        hasUser: !!EMAIL_SMTP_USER,
+        hasPass: !!EMAIL_SMTP_PASS,
+        hasFeedbackTo: !!FEEDBACK_TO
+      });
       return json({ 
         error: 'Email service is not configured. Please contact support.' 
       }, { status: 500 });
@@ -66,10 +71,21 @@ export async function POST({ request, locals }) {
       userInfo = `\n\nUser Info:\nUser ID: ${locals.user.userId}\nUsername: ${locals.user.username || 'N/A'}\nRole: ${locals.user.role || 'N/A'}`;
     }
 
+    // Determine recipient email
+    const recipientEmail = FEEDBACK_TO || EMAIL_SMTP_USER;
+    
+    // Validate recipient email
+    if (!recipientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
+      console.error('Invalid or missing recipient email:', { FEEDBACK_TO, EMAIL_SMTP_USER });
+      return json({ 
+        error: 'Email service configuration error. Please contact support.' 
+      }, { status: 500 });
+    }
+
     // Send email
     await transporter.sendMail({
       from: `Memory Lane Feedback <${EMAIL_SMTP_USER}>`,
-      to: FEEDBACK_TO || EMAIL_SMTP_USER,
+      to: recipientEmail,
       subject: `Feedback from ${name}`,
       replyTo: email,
       text: `Name: ${name}\nEmail: ${email}${userInfo}\n\nFeedback:\n${sanitizedBody}`,
