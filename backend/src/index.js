@@ -196,11 +196,17 @@ try {
   process.exit(1);
 }
 
-// Connect to MongoDB asynchronously so the server can start listening immediately.
-// Any errors are logged inside databaseConfig.connect().
-databaseConfig.connect().catch(err => {
-  server.log.error({ err }, 'Initial MongoDB connection attempt failed');
-});
+// Connect to MongoDB before registering routes to ensure database is ready
+try {
+  await databaseConfig.connect();
+  if (!databaseConfig.connected) {
+    server.log.error('MongoDB connection failed - exiting');
+    process.exit(1);
+  }
+} catch (err) {
+  server.log.error({ err }, 'Failed to connect to MongoDB');
+  process.exit(1);
+}
 
 // Register routes
 await server.register(authRoutes);
