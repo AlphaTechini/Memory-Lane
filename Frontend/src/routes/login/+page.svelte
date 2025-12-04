@@ -102,7 +102,13 @@
           }
         }
       } else {
-        error = data.message || (userType === 'patient' ? 'Patient login failed' : 'Login failed');
+        // Handle unverified account case
+        if (data.unverified && data.user) {
+          localStorage.setItem('userEmail', email);
+          goto('/verify-otp');
+        } else {
+          error = data.message || (userType === 'patient' ? 'Patient login failed' : 'Login failed');
+        }
       }
     } catch (err) {
       console.error('Login request failed:', err);

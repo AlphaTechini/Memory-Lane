@@ -391,10 +391,17 @@ class AuthService {
       }
 
       if (!user.isVerified) {
+        // Send OTP in background for unverified users trying to login
+        this.generateAndSendOTP(user.email).catch(err => {
+          logger?.error?.(`Background OTP send failed for ${user.email}:`, err);
+        });
+        
         return {
           success: false,
-          message: 'Account not verified. Please verify your email before logging in.',
-          errors: ['Account not verified']
+          message: 'Account not verified. A verification code has been sent to your email.',
+          errors: ['Account not verified'],
+          unverified: true,
+          user: user.toJSON()
         };
       }
 

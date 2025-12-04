@@ -96,7 +96,12 @@
 
       if (response.ok && data.success) {
         localStorage.setItem('userEmail', email);
-        goto('/verify-otp');
+        // Handle both new signups and existing unverified accounts
+        if (data.unverified || data.otpSent) {
+          goto('/verify-otp');
+        } else {
+          goto('/verify-otp');
+        }
       } else {
         if (data.suggestedAction === 'login') {
           error = data.message || 'Account already exists';
