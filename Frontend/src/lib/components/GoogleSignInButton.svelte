@@ -71,7 +71,24 @@
       provider.addScope('email');
       provider.addScope('profile');
       
-      const result = await signInWithPopup(auth, provider);
+      // Set custom parameters to avoid popup issues
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      
+      let result;
+      try {
+        result = await signInWithPopup(auth, provider);
+      } catch (popupError) {
+        // Handle popup blocked or closed errors
+        if (popupError.code === 'auth/popup-blocked' || 
+            popupError.code === 'auth/popup-closed-by-user' ||
+            popupError.code === 'auth/cancelled-popup-request') {
+          throw new Error('Popup was blocked. Please allow popups for this site and try again.');
+        }
+        // Re-throw other errors
+        throw popupError;
+      }
       
       console.log('Google sign-in popup successful, user:', result.user.email);
       console.log('Getting ID token...');
@@ -134,8 +151,34 @@
       }
     } catch (err) {
       console.error("Google Sign-In error:", err);
-      const errorMessage = err?.message || err?.toString() || "Sign-in failed. Please try again.";
-      error = errorMessage;
+      
+      // Filter out Chrome extension errors that are harmless
+      const errorCode = err?.code || '';
+      const errorMessage = err?.message || err?.toString() || '';
+      
+      // Ignore runtime.lastError messages from Chrome extensions
+      if (errorMessage.includes('message port closed') || 
+          errorMessage.includes('runtime.lastError') ||
+          errorMessage.includes('message channel closed') ||
+          errorMessage.includes('asynchronous response')) {
+        console.log('Ignoring Chrome extension error');
+        // Don't show error to user, just reset state
+        isPressed = false;
+        loading = false;
+        return;
+      }
+      
+      // Show user-friendly error messages
+      let displayError = errorMessage;
+      if (errorCode === 'auth/popup-blocked') {
+        displayError = 'Popup was blocked. Please allow popups and try again.';
+      } else if (errorCode === 'auth/popup-closed-by-user') {
+        displayError = 'Sign-in was cancelled.';
+      } else if (errorCode === 'auth/network-request-failed') {
+        displayError = 'Network error. Please check your connection.';
+      }
+      
+      error = displayError;
       
       // Release button press state on error
       isPressed = false;
