@@ -245,14 +245,17 @@ class AuthService {
       const existingUser = await User.findByEmail(email);
       if (existingUser) {
         if (!existingUser.isVerified) {
-          const resend = await this.generateAndSendOTP(existingUser.email);
+          // Send OTP in background without blocking the response
+          this.generateAndSendOTP(existingUser.email).catch(err => {
+            logger?.error?.(`Background OTP send failed for ${existingUser.email}:`, err);
+          });
+          
           const baseMsg = 'Account already exists but is not verified.';
           return {
             success: true,
-            message: resend.otpSent ? `${baseMsg} New verification code sent.` : baseMsg,
+            message: `${baseMsg} A new verification code has been sent to your email.`,
             user: existingUser.toJSON(),
-            otpSent: resend.otpSent,
-            emailPreviewURL: resend.emailPreviewURL,
+            otpSent: true,
             unverified: true
           };
         }
@@ -261,22 +264,23 @@ class AuthService {
         const isPatient = existingUser.role === 'patient';
         
         if (isPatient) {
-          const otpDetails = await this.generateAndSendOTP(existingUser.email);
+          // Send OTP in background without blocking the response
+          this.generateAndSendOTP(existingUser.email).catch(err => {
+            logger?.error?.(`Background OTP send failed for ${existingUser.email}:`, err);
+          });
+          
           const baseMessage = 'You already have a patient account with this email.';
-          const followUp = otpDetails.otpSent
-            ? ' Check your inbox for the verification code so you can continue.'
-            : ' We tried to send a verification code but ran into an issue.';
+          const followUp = ' Check your inbox for the verification code so you can continue.';
 
           return {
             success: true,
             message: `${baseMessage}${followUp}`,
             user: existingUser.toJSON(),
-            otpSent: otpDetails.otpSent,
-            otpExpires: otpDetails.otpExpires,
+            otpSent: true,
             accountType: 'patient',
-            suggestedAction: otpDetails.otpSent ? 'verify-otp' : 'resend-otp',
+            suggestedAction: 'verify-otp',
             reusedAccount: true,
-            statusCode: otpDetails.otpSent ? 200 : 202
+            statusCode: 200
           };
         } else {
           return {
@@ -301,29 +305,30 @@ class AuthService {
       const savedUser = await newUser.save();
       console.log(`[signup] created new user ${savedUser._id} (${savedUser.email})`);
 
-      const otpResult = await this.generateAndSendOTP(savedUser.email);
-      
-      if (!otpResult.otpSent) {
-        console.warn('User created but OTP sending failed:', otpResult.message);
-      }
+      // Send OTP in background without blocking the response
+      this.generateAndSendOTP(savedUser.email).catch(err => {
+        logger?.error?.(`Background OTP send failed for ${savedUser.email}:`, err);
+      });
 
-      try {
-        const Patient = (await import('../models/Patient.js')).default;
-        await Patient.updateMany(
-          { email: savedUser.email.toLowerCase(), $or: [ { userId: { $exists: false } }, { userId: null } ] },
-          { $set: { userId: savedUser._id, updatedAt: new Date() } }
-        );
-        console.log(`[signup] linked Patient docs to user ${savedUser._id}`);
-      } catch (linkErr) {
-        logger?.warn?.(`Failed to link Patient docs for ${savedUser.email}`);
-      }
+      // Link patient docs in background
+      (async () => {
+        try {
+          const Patient = (await import('../models/Patient.js')).default;
+          await Patient.updateMany(
+            { email: savedUser.email.toLowerCase(), $or: [ { userId: { $exists: false } }, { userId: null } ] },
+            { $set: { userId: savedUser._id, updatedAt: new Date() } }
+          );
+          console.log(`[signup] linked Patient docs to user ${savedUser._id}`);
+        } catch (linkErr) {
+          logger?.warn?.(`Failed to link Patient docs for ${savedUser.email}`);
+        }
+      })();
 
       return {
         success: true,
         message: 'User registered successfully. Please check your email for verification code.',
         user: savedUser.toJSON(),
-        otpSent: otpResult.otpSent,
-        emailPreviewURL: otpResult.emailPreviewURL
+        otpSent: true
       };
 
     } catch (error) {
