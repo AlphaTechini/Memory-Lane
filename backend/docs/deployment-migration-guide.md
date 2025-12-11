@@ -77,7 +77,7 @@ MAX_LOGIN_ATTEMPTS=5
 LOGIN_WINDOW_MS=900000
 
 # Email Configuration (if using email features)
-EMAIL_FROM=noreply@yourdomain.com
+EMAIL_FROM=noreply@memorylane.cyberpunk.work
 EMAIL_SMTP_HOST=smtp.gmail.com
 EMAIL_SMTP_PORT=587
 EMAIL_SMTP_USER=your-email@gmail.com

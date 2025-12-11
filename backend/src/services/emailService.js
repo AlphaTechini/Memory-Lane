@@ -130,7 +130,7 @@ class EmailService {
       </div>
     `;
 
-    const fromAddress = process.env.EMAIL_FROM || 'noreply@sensay.ai';
+    const fromAddress = process.env.EMAIL_FROM || 'noreply@memorylane.cyberpunk.work';
     const mailOptions = {
       from: fromAddress,
       to: email,
@@ -177,7 +177,7 @@ class EmailService {
     `;
 
     const mailOptions = {
-      from: process.env.EMAIL_FROM || 'noreply@sensay.ai',
+      from: process.env.EMAIL_FROM || 'noreply@memorylane.cyberpunk.work',
       to: email,
       subject: 'Welcome to Sensay AI!',
       html
@@ -234,7 +234,7 @@ class EmailService {
     `;
 
     const mailOptions = {
-      from: process.env.EMAIL_FROM || 'noreply@sensay.ai',
+      from: process.env.EMAIL_FROM || 'noreply@memorylane.cyberpunk.work',
       to: patientEmail,
       subject: `${caretakerName} shared replicas with you on Sensay AI`,
       html
@@ -248,7 +248,7 @@ class EmailService {
       await this.initialize();
       
       // Test by sending a simple test email to the configured FROM address
-      const testEmail = process.env.EMAIL_FROM || 'noreply@sensay.ai';
+      const testEmail = process.env.EMAIL_FROM || 'noreply@memorylane.cyberpunk.work';
       
       await this.sendEmail({
         from: testEmail,

@@ -91,7 +91,7 @@ SUPAVEC_TIMEOUT=30000
 GOOGLE_APPLICATION_CREDENTIALS=./serviceAccountKey.json
 
 # Email (Nodemailer) – for caretaker OTP / notifications
-EMAIL_FROM=noreply@example.com
+EMAIL_FROM=noreply@memorylane.cyberpunk.work
 EMAIL_SMTP_HOST=smtp.example.com
 EMAIL_SMTP_PORT=465
 EMAIL_SMTP_USER=your-smtp-user
