@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 // Simple XSS prevention: strip tags and limit length
 function sanitize(input) {
@@ -11,11 +11,17 @@ function sanitize(input) {
  * @param {Object} opts
  */
 export async function feedbackRoutes(fastify, opts) {
-  const { EMAIL_SMTP_HOST, EMAIL_SMTP_PORT, EMAIL_SMTP_USER, EMAIL_SMTP_PASS, FEEDBACK_TO } = process.env;
+  const { RESEND_API_KEY, EMAIL_FROM, FEEDBACK_TO } = process.env;
 
   // Validate email configuration on startup
-  if (!EMAIL_SMTP_HOST || !EMAIL_SMTP_USER || !EMAIL_SMTP_PASS) {
-    fastify.log.warn('Email configuration incomplete. Feedback functionality may not work.');
+  if (!RESEND_API_KEY) {
+    fastify.log.warn('RESEND_API_KEY not configured. Feedback functionality may not work.');
+  }
+
+  // Initialize Resend client
+  let resend;
+  if (RESEND_API_KEY) {
+    resend = new Resend(RESEND_API_KEY);
   }
 
   /**
@@ -53,24 +59,13 @@ export async function feedbackRoutes(fastify, opts) {
         });
       }
 
-      // Check if email is configured
-      if (!EMAIL_SMTP_HOST || !EMAIL_SMTP_USER || !EMAIL_SMTP_PASS) {
-        request.log.error('Email not configured');
+      // Check if Resend is configured
+      if (!resend) {
+        request.log.error('Resend API key not configured');
         return reply.code(500).send({ 
           error: 'Email service is not configured. Please contact support.' 
         });
       }
-
-      // Create email transporter
-      const transporter = nodemailer.createTransport({
-        host: EMAIL_SMTP_HOST,
-        port: parseInt(EMAIL_SMTP_PORT) || 587,
-        secure: parseInt(EMAIL_SMTP_PORT) === 465,
-        auth: { 
-          user: EMAIL_SMTP_USER, 
-          pass: EMAIL_SMTP_PASS 
-        },
-      });
 
       // Get user info if authenticated
       let userInfo = '';
@@ -78,12 +73,15 @@ export async function feedbackRoutes(fastify, opts) {
         userInfo = `\n\nUser Info:\nUser ID: ${request.user.userId}\nUsername: ${request.user.username || 'N/A'}\nRole: ${request.user.role || 'N/A'}`;
       }
 
-      // Send email
-      await transporter.sendMail({
-        from: `Memory Lane Feedback <${EMAIL_SMTP_USER}>`,
-        to: FEEDBACK_TO || EMAIL_SMTP_USER,
-        subject: `Feedback from ${name}`,
+      const fromAddress = EMAIL_FROM || 'noreply@sensay.ai';
+      const toAddress = FEEDBACK_TO || fromAddress;
+
+      // Send email via Resend
+      const response = await resend.emails.send({
+        from: fromAddress,
+        to: toAddress,
         replyTo: email,
+        subject: `Feedback from ${name}`,
         text: `Name: ${name}\nEmail: ${email}${userInfo}\n\nFeedback:\n${sanitizedBody}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -101,6 +99,10 @@ export async function feedbackRoutes(fastify, opts) {
         `
       });
 
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
       request.log.info({ email, name }, 'Feedback submitted successfully');
 
       return reply.send({ 
@@ -116,5 +118,4 @@ export async function feedbackRoutes(fastify, opts) {
     }
   });
 }
-
 export default feedbackRoutes;

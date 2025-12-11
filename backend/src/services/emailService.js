@@ -1,9 +1,9 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import logger from '../utils/logger.js';
 
 class EmailService {
   constructor() {
-    this.transporter = null;
+    this.resend = null;
     this._initialized = false;
     this.retryConfig = {
       maxRetries: 3,
@@ -15,31 +15,20 @@ class EmailService {
   async initialize() {
     if (this._initialized) return;
 
-    // Try configured port first, then fallback to common working ports (465 then 587)
-    const configuredPort = parseInt(process.env.SMTP_PORT || process.env.EMAIL_SMTP_PORT) || undefined;
-    const tryPorts = [];
-    if (configuredPort) tryPorts.push(configuredPort);
-    // Ensure we try 465 (SMTPS) then 587 (STARTTLS) if not already included
-    if (!tryPorts.includes(465)) tryPorts.push(465);
-    if (!tryPorts.includes(587)) tryPorts.push(587);
-
-    let lastError = null;
-    for (const port of tryPorts) {
-      try {
-        logger.info(`Attempting to initialize email service on port ${port}`);
-        this.transporter = await this.setupTransporter({ portOverride: port });
-        this._initialized = true;
-        logger.info(`Email service initialized successfully on port ${port}`);
-        return;
-      } catch (err) {
-        lastError = err;
-        logger.warn(`Email service initialization failed on port ${port}: ${err && err.message}`);
-        // continue to next port
+    try {
+      const apiKey = process.env.RESEND_API_KEY;
+      
+      if (!apiKey) {
+        throw new Error('RESEND_API_KEY not configured. Please set RESEND_API_KEY in your environment.');
       }
-    }
 
-    // After attempting all ports, log but do not throw to avoid bringing down signup flow.
-    logger.error('Failed to initialize email service on all tried ports; emails will be queued or retried on demand.', lastError);
+      this.resend = new Resend(apiKey);
+      this._initialized = true;
+      logger.info('Email service initialized successfully with Resend API');
+    } catch (error) {
+      logger.error('Failed to initialize email service:', error.message);
+      throw error;
+    }
   }
 
   generateOTP() {
@@ -47,81 +36,40 @@ class EmailService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  async setupTransporter(options = {}) {
-    // Support multiple env naming conventions: SMTP_USER/SMTP_PASS or EMAIL_SMTP_USER/EMAIL_SMTP_PASS
-    const user = process.env.SMTP_USER || process.env.EMAIL_SMTP_USER;
-    const pass = process.env.SMTP_PASS || process.env.EMAIL_SMTP_PASS;
-    const host = process.env.SMTP_HOST || process.env.EMAIL_SMTP_HOST || 'smtp.gmail.com';
-
-    if (!user || !pass) {
-      throw new Error('SMTP credentials not configured. Please set SMTP_USER/SMTP_PASS or EMAIL_SMTP_USER/EMAIL_SMTP_PASS in your environment.');
-    }
-
-    // Allow caller to override port for probing different protocols
-    const configuredPort = parseInt(process.env.SMTP_PORT || process.env.EMAIL_SMTP_PORT) || undefined;
-    const port = options.portOverride || configuredPort || 465;
-    const secure = port === 465; // SMTPS if 465
-
-    const smtpConfig = {
-      host,
-      port,
-      secure,
-      auth: { user, pass },
-      pool: true,
-      maxConnections: 5,
-      connectionTimeout: 60000,
-      socketTimeout: 75000,
-      greetingTimeout: 30000,
-      tls: { rejectUnauthorized: false }
-    };
-
-    const transporter = nodemailer.createTransport(smtpConfig);
-    // verify may throw; caller should handle and we log detailed errors
-    await transporter.verify();
-    logger.info(`SMTP connection verified successfully (host=${host} port=${port} secure=${secure})`);
-    return transporter;
-  }
-
   async sendEmail(mailOptions, retryCount = 0) {
-    // Ensure transporter exists; try initialize if needed (initialize is non-throwing)
-    if (!this._initialized || !this.transporter) {
+    // Ensure client exists; try initialize if needed
+    if (!this._initialized || !this.resend) {
       try {
         await this.initialize();
       } catch (initErr) {
-        // initialize logs errors but shouldn't throw; ensure we still try a last-ditch setup here
-        logger.warn('Email service initialize reported errors; attempting on-demand transporter setup before send');
+        logger.error('Email service initialization failed:', initErr.message);
+        throw initErr;
       }
-
-      // If transporter still not present, attempt on-demand setup with fallback ports
-      if (!this.transporter) {
-        const configuredPort = parseInt(process.env.SMTP_PORT || process.env.EMAIL_SMTP_PORT) || undefined;
-        const tryPorts = [];
-        if (configuredPort) tryPorts.push(configuredPort);
-        if (!tryPorts.includes(465)) tryPorts.push(465);
-        if (!tryPorts.includes(587)) tryPorts.push(587);
-
-        for (const port of tryPorts) {
-          try {
-            this.transporter = await this.setupTransporter({ portOverride: port });
-            this._initialized = true;
-            break;
-          } catch (err) {
-            logger.warn(`On-demand transporter setup failed on port ${port}: ${err && err.message}`);
-          }
-        }
-        }
-      }
+    }
 
     try {
-      if (!this.transporter) throw new Error('No SMTP transporter available');
-      const info = await this.transporter.sendMail(mailOptions);
+      if (!this.resend) throw new Error('Resend client not available');
+
+      const response = await this.resend.emails.send({
+        from: mailOptions.from,
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        html: mailOptions.html,
+        text: mailOptions.text
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
       logger.info('Email sent successfully:', {
-        messageId: info.messageId,
+        messageId: response.data?.id,
         to: mailOptions.to,
         subject: mailOptions.subject,
         retryCount
       });
-      return info;
+
+      return { messageId: response.data?.id };
     } catch (error) {
       logger.error('Email send failed:', {
         error: error.message,
@@ -145,7 +93,6 @@ class EmailService {
       throw error;
     }
   }
-
   async sendOTPEmail(email, otp, isResend = false) {
     const subject = isResend ? 'Your New OTP Code - Sensay AI' : 'Your OTP Code - Sensay AI';
     const actionText = isResend ? 'requested a new' : 'requested an';
@@ -183,9 +130,9 @@ class EmailService {
       </div>
     `;
 
-    const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_SMTP_USER || 'noreply@sensay.ai';
+    const fromAddress = process.env.EMAIL_FROM || 'noreply@sensay.ai';
     const mailOptions = {
-      from: `"Sensay AI" <${fromAddress}>`,
+      from: fromAddress,
       to: email,
       subject,
       html
@@ -230,7 +177,7 @@ class EmailService {
     `;
 
     const mailOptions = {
-      from: `"Sensay AI" <${process.env.SMTP_USER}>`,
+      from: process.env.EMAIL_FROM || 'noreply@sensay.ai',
       to: email,
       subject: 'Welcome to Sensay AI!',
       html
@@ -287,7 +234,7 @@ class EmailService {
     `;
 
     const mailOptions = {
-      from: `"Sensay AI" <${process.env.SMTP_USER}>`,
+      from: process.env.EMAIL_FROM || 'noreply@sensay.ai',
       to: patientEmail,
       subject: `${caretakerName} shared replicas with you on Sensay AI`,
       html
@@ -299,8 +246,19 @@ class EmailService {
   async testEmailConfig() {
     try {
       await this.initialize();
+      
+      // Test by sending a simple test email to the configured FROM address
+      const testEmail = process.env.EMAIL_FROM || 'noreply@sensay.ai';
+      
+      await this.sendEmail({
+        from: testEmail,
+        to: testEmail,
+        subject: 'Sensay AI - Email Configuration Test',
+        html: '<p>This is a test email from Sensay AI. Your email configuration is working correctly.</p>'
+      });
+      
       logger.info('Email configuration test successful');
-      return { success: true, message: 'Email service is properly configured' };
+      return { success: true, message: 'Email service is properly configured and working' };
     } catch (error) {
       logger.error('Email configuration test failed:', error);
       return { success: false, message: error.message };
@@ -308,10 +266,8 @@ class EmailService {
   }
 
   async closeConnections() {
-    if (this.transporter && this.transporter.close) {
-      this.transporter.close();
-      logger.info('Email service connections closed');
-    }
+    // Resend API doesn't require connection cleanup
+    logger.info('Email service ready for shutdown');
   }
 }
 
