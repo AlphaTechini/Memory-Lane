@@ -586,7 +586,17 @@ class AuthService {
         };
       }
 
-      const user = await User.findByEmail(email);
+      // Load OTP fields explicitly (they are stored with select:false)
+      const user = await User.findOne({ email: email.toLowerCase() }).select('+otpCode +otpExpires');
+
+      // Log whether OTP fields are present (mask the code for safety)
+      try {
+        const masked = user?.otpCode ? String(user.otpCode).replace(/.(?=.{2})/g, '*') : null;
+        logger.info(`verifyOTP - user lookup`, { email: user?.email, hasOtp: Boolean(user?.otpCode), otpMasked: masked, otpExpires: user?.otpExpires });
+      } catch (logErr) {
+        // non-fatal logging error
+        logger?.warn?.('verifyOTP logging failed', logErr?.message || logErr);
+      }
       if (!user) {
         return {
           success: false,
