@@ -49,18 +49,20 @@
     error = '';
 
     try {
+      const payloadEmail = (email || '').trim().toLowerCase();
+
       const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ 
-          email, 
+          email: payloadEmail,
           otpCode 
         })
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (response.ok && data.success) {
         success = 'Email verified successfully! Redirecting...';
@@ -89,7 +91,10 @@
           }
         }, 1500);
       } else {
-        error = data.message || 'Verification failed';
+        // Show detailed error message if available
+        console.error('[verify-otp] failed', response.status, data);
+        const details = Array.isArray(data?.errors) ? ` — ${data.errors.join(', ')}` : '';
+        error = (data?.message || 'Verification failed') + details;
       }
     } catch (err) {
       console.error('OTP verification failed:', err);
