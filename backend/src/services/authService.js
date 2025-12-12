@@ -372,7 +372,8 @@ class AuthService {
         };
       }
 
-      const user = await User.findByEmail(email);
+      // Include non-selected sensitive fields (otpCode, otpExpires) when fetching
+      const user = await User.findOne({ email: email.toLowerCase() }).select('+otpCode +otpExpires');
       if (!user) {
         return {
           success: false,
@@ -515,7 +516,8 @@ class AuthService {
   async generateAndSendOTP(email) {
     try {
       logger.info(`Generating OTP for: ${email}`);
-      const user = await User.findByEmail(email);
+      // Include otp fields which are not selected by default in the schema
+      const user = await User.findOne({ email: email.toLowerCase() }).select('+otpCode +otpExpires');
       if (!user) {
         logger.error(`User not found for OTP: ${email}`);
         return {
