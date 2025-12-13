@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema({
   email: {
@@ -111,6 +112,21 @@ userSchema.methods.toSafeObject = function() {
   delete obj.passwordResetToken;
   delete obj.passwordResetExpires;
   return obj;
+};
+
+// Hash password before saving if modified
+userSchema.pre('save', async function() {
+  // Use async middleware (no `next` callback). If password wasn't modified, do nothing.
+  if (!this.isModified('password')) return;
+  const rounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 12;
+  const salt = await bcrypt.genSalt(rounds);
+  this.password = await bcrypt.hash(this.password, salt);
+});
+
+// Compare a raw password with the hashed password
+userSchema.methods.comparePassword = async function(candidate) {
+  if (!this.password) return false;
+  return bcrypt.compare(candidate, this.password);
 };
 
 // Static methods
