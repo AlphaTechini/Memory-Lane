@@ -117,16 +117,43 @@ userSchema.methods.toSafeObject = function() {
 // Hash password before saving if modified
 userSchema.pre('save', async function() {
   // Use async middleware (no `next` callback). If password wasn't modified, do nothing.
-  if (!this.isModified('password')) return;
-  const rounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 12;
-  const salt = await bcrypt.genSalt(rounds);
-  this.password = await bcrypt.hash(this.password, salt);
+    if (!this.isModified('password')) return next();
+    // If password already looks like a bcrypt hash, skip re-hashing
+    if (/^\$2[aby]\$/.test(this.password)) return next();
+    const rounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 12;
+    const salt = await bcrypt.genSalt(rounds);
+    this.password = await bcrypt.hash(this.password, salt);
+    return next();
 });
 
 // Compare a raw password with the hashed password
 userSchema.methods.comparePassword = async function(candidate) {
   if (!this.password) return false;
-  return bcrypt.compare(candidate, this.password);
+    const isHashed = /^\$2[aby]\$/.test(this.password);
+    if (isHashed) {
+      // Normal path: stored password is a bcrypt hash
+      return bcrypt.compare(candidate, this.password);
+    }
+
+    // Stored password appears to be plain-text (legacy). Compare directly.
+    const matchesPlain = candidate === this.password;
+    if (matchesPlain) {
+      try {
+        // Upgrade to hashed password on successful login
+        const rounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 12;
+        const salt = await bcrypt.genSalt(rounds);
+        const hashed = await bcrypt.hash(candidate, salt);
+        // Set hashed password and save. Pre-save hook will detect it's already hashed and skip re-hashing.
+        this.password = hashed;
+        await this.save();
+      } catch (e) {
+        // Non-fatal: if upgrade fails, still allow login
+        console.warn('Failed to upgrade password hash for user', this._id, e?.message || e);
+      }
+      return true;
+    }
+
+    return false;
 };
 
 // Static methods
