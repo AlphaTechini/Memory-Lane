@@ -14,7 +14,7 @@
   let { children } = $props();
 
   // Banner version key (increment if you release a new update)
-  const BANNER_VERSION = "v3";
+  const BANNER_VERSION = "v4";
 
   let showBanner = $state(true);
 

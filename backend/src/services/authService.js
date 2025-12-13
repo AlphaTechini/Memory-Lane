@@ -372,9 +372,11 @@ class AuthService {
         };
       }
 
-      // Include non-selected sensitive fields (otpCode, otpExpires) when fetching
-      const user = await User.findOne({ email: email.toLowerCase() }).select('+otpCode +otpExpires');
-      if (!user) {
+      // CRITICAL: Explicitly select password field (it has select:false in schema)
+      const userWithPassword = await User.findOne({ email: email.toLowerCase() }).select('+password');
+      logger?.info?.(`[login] user lookup`, { email: email.toLowerCase(), found: Boolean(userWithPassword), hasPassword: Boolean(userWithPassword?.password) });
+      
+      if (!userWithPassword) {
         return {
           success: false,
           message: 'Invalid email or password',
@@ -382,7 +384,9 @@ class AuthService {
         };
       }
 
-      const isPasswordValid = await user.comparePassword(password);
+      const isPasswordValid = await userWithPassword.comparePassword(password);
+      logger?.info?.(`[login] password comparison`, { email: email.toLowerCase(), passwordValid: isPasswordValid });
+      
       if (!isPasswordValid) {
         return {
           success: false,
@@ -391,10 +395,10 @@ class AuthService {
         };
       }
 
-      if (!user.isVerified) {
+      if (!userWithPassword.isVerified) {
         // Send OTP in background for unverified users trying to login
-        this.generateAndSendOTP(user.email).catch(err => {
-          logger?.error?.(`Background OTP send failed for ${user.email}:`, err);
+        this.generateAndSendOTP(userWithPassword.email).catch(err => {
+          logger?.error?.(`Background OTP send failed for ${userWithPassword.email}:`, err);
         });
         
         return {
@@ -402,19 +406,19 @@ class AuthService {
           message: 'Account not verified. A verification code has been sent to your email.',
           errors: ['Account not verified'],
           unverified: true,
-          user: user.toJSON()
+          user: userWithPassword.toJSON()
         };
       }
 
-      user.lastLogin = new Date();
-      await user.save();
+      userWithPassword.lastLogin = new Date();
+      await userWithPassword.save();
 
-      const token = this.generateToken(user);
+      const token = this.generateToken(userWithPassword);
 
       return {
         success: true,
         message: 'Login successful',
-        user: user.toJSON(),
+        user: userWithPassword.toJSON(),
         token
       };
 
