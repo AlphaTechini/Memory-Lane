@@ -4,7 +4,6 @@
   import { onMount } from 'svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import GoogleSignInButton from '$lib/components/GoogleSignInButton.svelte';
-  import { apiUrl } from '$lib/utils/api.js';
 
   let email = $state('');
   let password = $state('');
@@ -27,8 +26,8 @@
 
   $effect(() => {
     if (browser) {
-      const token = localStorage.getItem('authToken');
-      if (token) {
+      const userData = localStorage.getItem('userData');
+      if (userData && userData !== 'null') {
         goto('/dashboard');
       }
     }
@@ -78,16 +77,18 @@
     error = '';
 
     try {
-      const response = await fetch(apiUrl('/auth/signup'), {
+      // Use SvelteKit API route for cookie-based auth
+      const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({ 
-          email, 
+          email: email.trim(), 
           password, 
-          firstName, 
-          lastName,
+          firstName: firstName.trim(), 
+          lastName: lastName.trim(),
           role: 'caretaker'
         })
       });
@@ -95,8 +96,7 @@
       const data = await response.json();
 
       if (response.ok && data.success) {
-        localStorage.setItem('userEmail', email);
-        // Handle both new signups and existing unverified accounts
+        localStorage.setItem('userEmail', email.trim());
         if (data.unverified || data.otpSent) {
           goto('/verify-otp');
         } else {

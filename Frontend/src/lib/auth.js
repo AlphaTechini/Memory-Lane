@@ -1,64 +1,69 @@
 import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
-
 import { apiUrl } from './utils/api.js';
 
 /**
- * Get the authentication token from localStorage
+ * Get the authentication token (deprecated - now using httpOnly cookies)
+ * Kept for backward compatibility with existing code
  */
 export function getAuthToken() {
-  if (!browser) return null;
-  return localStorage.getItem('authToken');
+  // Token is now stored in httpOnly cookie, not accessible from JS
+  // Return null - auth is handled server-side
+  return null;
 }
 
 /**
- * Check if user is authenticated
+ * Check if user is authenticated (client-side check via cached data)
  */
 export function isAuthenticated() {
-  // Require a token to be present for API-authenticated actions. Cached UI data is handled in verifyAuth().
   if (!browser) return false;
-  const token = getAuthToken();
-  return !!token;
+  const userData = localStorage.getItem('userData');
+  return userData && userData !== 'null';
 }
 
 /**
  * Clear authentication data and redirect to login
  */
-export function logout() {
+export async function logout() {
   if (!browser) return;
   
-  localStorage.removeItem('authToken');
+  try {
+    // Call server to clear cookie
+    await fetch('/api/auth/logout', { method: 'POST' });
+  } catch (e) {
+    console.error('Logout error:', e);
+  }
+  
   localStorage.removeItem('userEmail');
   localStorage.removeItem('userData');
   goto('/login');
 }
 
 /**
- * Make an authenticated API call
+ * Make an authenticated API call to the backend
+ * Uses SvelteKit server routes which have access to the httpOnly cookie
  */
 export async function apiCall(endpoint, options = {}) {
-  const token = getAuthToken();
-  
-  // Don't set Content-Type for FormData - let browser handle it
   const isFormData = options.body instanceof FormData;
-  // Don't set Content-Type for DELETE requests with no body
   const isDeleteWithoutBody = options.method === 'DELETE' && !options.body;
   
   const config = {
     ...options,
+    credentials: 'include', // Include cookies
     headers: {
-      ...(token && { 'Authorization': `Bearer ${token}` }),
       ...(!isFormData && !isDeleteWithoutBody && { 'Content-Type': 'application/json' }),
       ...options.headers
     }
   };
 
   try {
-    const response = await fetch(apiUrl(endpoint), config);
+    // For internal API routes, use relative path
+    const url = endpoint.startsWith('/api/') ? endpoint : apiUrl(endpoint);
+    const response = await fetch(url, config);
     
-    // Handle unauthorized responses
     if (response.status === 401) {
-      logout();
+      localStorage.removeItem('userData');
+      goto('/login');
       throw new Error('Unauthorized');
     }
     
@@ -72,53 +77,43 @@ export async function apiCall(endpoint, options = {}) {
 }
 
 /**
- * Verify token and get user data
+ * Verify auth and get user data
  */
 export async function verifyAuth() {
   if (!browser) return null;
 
-  // If we have cached user data, return it immediately so the UI can render quickly.
-  // If an auth token also exists, kick off a background verification to refresh the cache.
+  // Check cached user data first
   try {
     const cachedUserRaw = localStorage.getItem('userData');
-    // Guard against literal string "null" (can happen if code does JSON.stringify(null))
     if (cachedUserRaw && cachedUserRaw !== 'null') {
       const user = JSON.parse(cachedUserRaw);
-
-      // Background verification if token exists
-      const token = getAuthToken();
-      if (token) {
-        // Fire-and-forget: verify token and refresh user cache if needed
-        (async () => {
-          try {
-            const resp = await apiCall('/api/auth/me');
-            if (resp.ok) {
-              const data = await resp.json();
-              if (data.success && data.user) {
-                localStorage.setItem('userData', JSON.stringify(data.user));
-              }
+      
+      // Background refresh
+      (async () => {
+        try {
+          const resp = await fetch('/api/auth/me', { credentials: 'include' });
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data.success && data.user) {
+              localStorage.setItem('userData', JSON.stringify(data.user));
             }
-          } catch {
-            // If verification fails (401), apiCall will handle logout.
+          } else if (resp.status === 401) {
+            localStorage.removeItem('userData');
           }
-        })();
-      }
-
+        } catch {
+          // Ignore background errors
+        }
+      })();
+      
       return user;
-    } else if (cachedUserRaw === 'null') {
-      // Clean up invalid cached entry
-      localStorage.removeItem('userData');
     }
   } catch {
     localStorage.removeItem('userData');
   }
 
-  // No cached user: only verify via API if a token is present
-  const token = getAuthToken();
-  if (!token) return null;
-
+  // No cached user, verify via API
   try {
-    const response = await apiCall('/api/auth/me');
+    const response = await fetch('/api/auth/me', { credentials: 'include' });
     if (response.ok) {
       const data = await response.json();
       if (data.success && data.user) {
@@ -134,7 +129,6 @@ export async function verifyAuth() {
 
 /**
  * Protect a route - redirect to login if not authenticated
- * @param {boolean} requireVerification - Whether to require email verification (default: true)
  */
 export async function protectRoute(requireVerification = true) {
   if (!browser) return false;
@@ -156,14 +150,12 @@ export async function protectRoute(requireVerification = true) {
 }
 
 /**
- * Soft protection - redirects to login if not authenticated
- * Can optionally store a redirect URL to come back to after login
+ * Require auth for an action
  */
 export function requireAuthForAction(redirectAfterLogin = null) {
   if (!browser) return false;
   
   if (!isAuthenticated()) {
-    // Store where to redirect after login (optional)
     if (redirectAfterLogin) {
       localStorage.setItem('redirectAfterLogin', redirectAfterLogin);
     }
@@ -174,7 +166,7 @@ export function requireAuthForAction(redirectAfterLogin = null) {
 }
 
 /**
- * Check if user is authenticated without redirecting
+ * Check auth status without redirecting
  */
 export function checkAuthStatus() {
   return isAuthenticated();
@@ -195,7 +187,22 @@ export function getUserRole() {
   } catch {
     // Ignore parsing errors
   }
-  // If there's an auth token but no cached user data, assume default caretaker role until verified
-  if (getAuthToken()) return 'caretaker';
+  return null;
+}
+
+/**
+ * Get cached user data
+ */
+export function getCachedUser() {
+  if (!browser) return null;
+  
+  try {
+    const userDataRaw = localStorage.getItem('userData');
+    if (userDataRaw && userDataRaw !== 'null') {
+      return JSON.parse(userDataRaw);
+    }
+  } catch {
+    // Ignore parsing errors
+  }
   return null;
 }

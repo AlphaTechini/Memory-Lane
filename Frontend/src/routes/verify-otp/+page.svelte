@@ -3,9 +3,6 @@
   import { goto } from '$app/navigation';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 
-  import getApiBase from '$lib/apiBase.js';
-  const API_BASE_URL = getApiBase();
-
   let email = $state('');
   let otpCode = $state('');
   let loading = $state(false);
@@ -21,7 +18,6 @@
       if (storedEmail) {
         email = storedEmail;
       } else {
-        // No email found, redirect to signup
         goto('/signup');
       }
     }
@@ -51,11 +47,13 @@
     try {
       const payloadEmail = (email || '').trim().toLowerCase();
 
-      const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+      // Use SvelteKit API route for cookie-based auth
+      const response = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({ 
           email: payloadEmail,
           otpCode 
@@ -67,20 +65,13 @@
       if (response.ok && data.success) {
         success = 'Email verified successfully! Redirecting...';
         
-        // Store token and user data
-        if (data.token) {
-          localStorage.setItem('authToken', data.token);
-        }
-        
-        // Store user data for immediate availability
+        // Store user data for immediate availability (token is in httpOnly cookie)
         if (data.user) {
           localStorage.setItem('userData', JSON.stringify(data.user));
         }
         
-        // Clear email from storage
         localStorage.removeItem('userEmail');
         
-        // Redirect to intended destination or dashboard
         setTimeout(() => {
           const redirectTo = localStorage.getItem('redirectAfterLogin');
           if (redirectTo) {
@@ -91,7 +82,6 @@
           }
         }, 1500);
       } else {
-        // Show detailed error message if available
         console.error('[verify-otp] failed', response.status, data);
         const details = Array.isArray(data?.errors) ? ` — ${data.errors.join(', ')}` : '';
         error = (data?.message || 'Verification failed') + details;
@@ -111,11 +101,13 @@
     error = '';
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
+      // Use SvelteKit API route
+      const response = await fetch('/api/auth/resend-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({ email })
       });
 
@@ -123,9 +115,8 @@
 
       if (response.ok && data.success) {
         success = 'New verification code sent to your email';
-        resendCooldown = 60; // 60 second cooldown
+        resendCooldown = 60;
         
-        // Clear success message after 3 seconds
         setTimeout(() => {
           success = '';
         }, 3000);
@@ -141,7 +132,7 @@
   }
 
   function handleOTPInput(event) {
-    const value = event.target.value.replace(/\D/g, ''); // Only digits
+    const value = event.target.value.replace(/\D/g, '');
     if (value.length <= 6) {
       otpCode = value;
     }

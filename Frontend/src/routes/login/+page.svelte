@@ -4,7 +4,6 @@
   import { onMount } from 'svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import GoogleSignInButton from '$lib/components/GoogleSignInButton.svelte';
-  import { apiUrl } from '$lib/utils/api.js';
 
   let email = $state('');
   let password = $state('');
@@ -16,8 +15,8 @@
   // Check if already logged in
   $effect(() => {
     if (browser) {
-      const token = localStorage.getItem('authToken');
-      if (token) {
+      const userData = localStorage.getItem('userData');
+      if (userData && userData !== 'null') {
         goto('/dashboard');
       }
     }
@@ -45,34 +44,28 @@
     error = '';
 
     try {
-      // Patient login uses different endpoint and payload
-      const endpoint = userType === 'patient' ? '/auth/patient-login' : '/auth/login';
+      // Use SvelteKit API routes for cookie-based auth
+      const endpoint = userType === 'patient' ? '/api/auth/patient-login' : '/api/auth/login';
       const requestBody = userType === 'patient' ? { email: email.trim() } : { email: email.trim(), password };
       
-      console.log('Login attempt:', { endpoint, email: email.trim(), userType });
-      
-      const response = await fetch(apiUrl(endpoint), {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
-      console.log('Login response:', { status: response.status, success: data.success, message: data.message });
 
       if (response.ok && data.success) {
         if (userType === 'patient') {
-          // Patient gets direct access - store token and redirect
-          localStorage.setItem('authToken', data.token);
           if (data.patient) {
-            // Normalize patient shape to match caretaker `user` shape expected by the app
             const normalized = { ...data.patient, role: 'patient' };
             localStorage.setItem('userData', JSON.stringify(normalized));
           }
           
-          // Check for redirect after login
           const redirectTo = localStorage.getItem('redirectAfterLogin');
           if (redirectTo) {
             localStorage.removeItem('redirectAfterLogin');
@@ -81,16 +74,12 @@
             goto('/dashboard');
           }
         } else {
-          // Caretaker login - store token and user data
-          localStorage.setItem('authToken', data.token);
           if (data.user) {
             const normalized = { ...data.user, role: data.user.role || 'caretaker' };
             localStorage.setItem('userData', JSON.stringify(normalized));
           }
           
-          // Check if user is verified
           if (data.user && data.user.isVerified) {
-            // Check for redirect after login
             const redirectTo = localStorage.getItem('redirectAfterLogin');
             if (redirectTo) {
               localStorage.removeItem('redirectAfterLogin');
@@ -99,13 +88,11 @@
               goto('/dashboard');
             }
           } else {
-            // Redirect to OTP verification
             localStorage.setItem('userEmail', email.trim());
             goto('/verify-otp');
           }
         }
       } else {
-        // Handle unverified account case
         if (data.unverified && data.user) {
           localStorage.setItem('userEmail', email.trim());
           goto('/verify-otp');
