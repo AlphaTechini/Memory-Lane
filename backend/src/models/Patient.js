@@ -70,6 +70,6 @@ patientSchema.statics.findByEmail = function(email, caretakerId) {
   return this.findOne(query);
 };
 
-const Patient = mongoose.model('Patient', patientSchema);
+const Patient = mongoose.model('Patient', patientSchema, 'patients');
 
 export default Patient;

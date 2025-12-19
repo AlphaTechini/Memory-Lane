@@ -67,7 +67,7 @@ conversationSchema.pre('save', function(next) {
   next();
 });
 
-const MongoConversation = mongoose.model('Conversation', conversationSchema);
+const MongoConversation = mongoose.model('Conversation', conversationSchema, 'conversations');
 
 const normalizeMessage = (message = {}) => ({
   id: message.id || message._id || message.timestamp?.valueOf?.() || Date.now().toString(),

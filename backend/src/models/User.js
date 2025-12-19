@@ -115,23 +115,17 @@ userSchema.methods.toSafeObject = function() {
 };
 
 // Hash password before saving if modified
-userSchema.pre('save', async function(next) {
-  try {
-    // Skip if password not modified or doesn't exist
-    if (!this.isModified('password') || !this.password) return next();
-    
-    // If password already looks like a bcrypt hash, skip re-hashing
-    if (/^\$2[aby]\$/.test(this.password)) return next();
-    
-    const rounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 12;
-    const salt = await bcrypt.genSalt(rounds);
-    this.password = await bcrypt.hash(this.password, salt);
-    console.log('Password hashed for user:', this.email);
-    return next();
-  } catch (err) {
-    console.error('Error hashing password:', err);
-    return next(err);
-  }
+userSchema.pre('save', async function() {
+  // Skip if password not modified or doesn't exist
+  if (!this.isModified('password') || !this.password) return;
+  
+  // If password already looks like a bcrypt hash, skip re-hashing
+  if (/^\$2[aby]\$/.test(this.password)) return;
+  
+  const rounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 12;
+  const salt = await bcrypt.genSalt(rounds);
+  this.password = await bcrypt.hash(this.password, salt);
+  console.log('Password hashed in pre-save hook for user:', this.email);
 });
 
 // Compare a raw password with the hashed password
@@ -206,6 +200,6 @@ userSchema.statics.findByGoogleId = function(googleId) {
   return this.findOne({ googleId });
 };
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model('User', userSchema, 'users');
 
 export default User;
