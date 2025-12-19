@@ -47,7 +47,9 @@
     try {
       // Patient login uses different endpoint and payload
       const endpoint = userType === 'patient' ? '/auth/patient-login' : '/auth/login';
-      const requestBody = userType === 'patient' ? { email } : { email, password };
+      const requestBody = userType === 'patient' ? { email: email.trim() } : { email: email.trim(), password };
+      
+      console.log('Login attempt:', { endpoint, email: email.trim(), userType });
       
       const response = await fetch(apiUrl(endpoint), {
         method: 'POST',
@@ -58,6 +60,7 @@
       });
 
       const data = await response.json();
+      console.log('Login response:', { status: response.status, success: data.success, message: data.message });
 
       if (response.ok && data.success) {
         if (userType === 'patient') {
@@ -86,7 +89,7 @@
           }
           
           // Check if user is verified
-          if (data.user.isVerified) {
+          if (data.user && data.user.isVerified) {
             // Check for redirect after login
             const redirectTo = localStorage.getItem('redirectAfterLogin');
             if (redirectTo) {
@@ -97,22 +100,22 @@
             }
           } else {
             // Redirect to OTP verification
-            localStorage.setItem('userEmail', email);
+            localStorage.setItem('userEmail', email.trim());
             goto('/verify-otp');
           }
         }
       } else {
         // Handle unverified account case
         if (data.unverified && data.user) {
-          localStorage.setItem('userEmail', email);
+          localStorage.setItem('userEmail', email.trim());
           goto('/verify-otp');
         } else {
-          error = data.message || (userType === 'patient' ? 'Patient login failed' : 'Login failed');
+          error = data.message || data.errors?.[0] || (userType === 'patient' ? 'Patient login failed' : 'Login failed');
         }
       }
     } catch (err) {
       console.error('Login request failed:', err);
-      error = 'Network error. Please try again.';
+      error = 'Network error. Please check your connection and try again.';
     } finally {
       loading = false;
     }

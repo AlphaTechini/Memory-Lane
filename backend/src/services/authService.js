@@ -295,7 +295,7 @@ class AuthService {
 
       const newUser = new User({
         email: email.toLowerCase().trim(),
-        password,
+        password: password, // Will be hashed by pre-save hook
         firstName: firstName?.trim(),
         lastName: lastName?.trim(),
         role: role || 'caretaker',
@@ -303,7 +303,7 @@ class AuthService {
       });
 
       const savedUser = await newUser.save();
-      console.log(`[signup] created new user ${savedUser._id} (${savedUser.email})`);
+      logger?.info?.(`[signup] created new user ${savedUser._id} (${savedUser.email})`);
 
       // Send OTP in background without blocking the response
       this.generateAndSendOTP(savedUser.email).catch(err => {
@@ -373,7 +373,7 @@ class AuthService {
       }
 
       // CRITICAL: Explicitly select password field (it has select:false in schema)
-      const userWithPassword = await User.findOne({ email: email.toLowerCase() }).select('+password');
+      const userWithPassword = await User.findOne({ email: email.toLowerCase() }).select('+password +otpCode +otpExpires');
       logger?.info?.(`[login] user lookup`, { email: email.toLowerCase(), found: Boolean(userWithPassword), hasPassword: Boolean(userWithPassword?.password) });
       
       if (!userWithPassword) {
@@ -381,6 +381,15 @@ class AuthService {
           success: false,
           message: 'Invalid email or password',
           errors: ['Invalid credentials']
+        };
+      }
+
+      // Check if user has a password (Google users might not have one)
+      if (!userWithPassword.password) {
+        return {
+          success: false,
+          message: 'This account uses Google Sign-In. Please use the Google button to login.',
+          errors: ['No password set - use Google Sign-In']
         };
       }
 
@@ -423,6 +432,7 @@ class AuthService {
       };
 
     } catch (error) {
+      logger?.error?.('[login] unexpected error', error);
       throw error;
     }
   }

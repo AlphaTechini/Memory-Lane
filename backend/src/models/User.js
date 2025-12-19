@@ -115,24 +115,43 @@ userSchema.methods.toSafeObject = function() {
 };
 
 // Hash password before saving if modified
-userSchema.pre('save', async function() {
-  // Use async middleware (no `next` callback). If password wasn't modified, do nothing.
-    if (!this.isModified('password')) return next();
+userSchema.pre('save', async function(next) {
+  try {
+    // Skip if password not modified or doesn't exist
+    if (!this.isModified('password') || !this.password) return next();
+    
     // If password already looks like a bcrypt hash, skip re-hashing
     if (/^\$2[aby]\$/.test(this.password)) return next();
+    
     const rounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 12;
     const salt = await bcrypt.genSalt(rounds);
     this.password = await bcrypt.hash(this.password, salt);
+    console.log('Password hashed for user:', this.email);
     return next();
+  } catch (err) {
+    console.error('Error hashing password:', err);
+    return next(err);
+  }
 });
 
 // Compare a raw password with the hashed password
 userSchema.methods.comparePassword = async function(candidate) {
-  if (!this.password) return false;
+  try {
+    if (!this.password) {
+      console.warn('comparePassword called but no password stored for user', this._id);
+      return false;
+    }
+    
+    if (!candidate) {
+      console.warn('comparePassword called with empty candidate for user', this._id);
+      return false;
+    }
+
     const isHashed = /^\$2[aby]\$/.test(this.password);
+    
     if (isHashed) {
       // Normal path: stored password is a bcrypt hash
-      return bcrypt.compare(candidate, this.password);
+      return await bcrypt.compare(candidate, this.password);
     }
 
     // Stored password appears to be plain-text (legacy). Compare directly.
@@ -154,6 +173,10 @@ userSchema.methods.comparePassword = async function(candidate) {
     }
 
     return false;
+  } catch (error) {
+    console.error('Error in comparePassword for user', this._id, error);
+    return false;
+  }
 };
 
 // Static methods
