@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { VITE_API_BASE_URL } from '$env/static/private';
+import { dev } from '$app/environment';
 
 const API_BASE_URL = VITE_API_BASE_URL || 'https://memory-lane-d5l0.onrender.com';
 
@@ -22,7 +23,7 @@ export async function POST({ request, cookies }) {
       cookies.set('authToken', data.token, {
         path: '/',
         httpOnly: true,
-        secure: true,
+        secure: !dev,
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 7 // 7 days
       });
