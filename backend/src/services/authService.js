@@ -293,9 +293,17 @@ class AuthService {
         }
       }
 
+      // Hash password before creating user to ensure it's always hashed
+      const bcrypt = (await import('bcryptjs')).default;
+      const rounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 12;
+      const salt = await bcrypt.genSalt(rounds);
+      const hashedPassword = await bcrypt.hash(password, salt);
+      
+      console.log('[signup] Password hashed, creating user...');
+      
       const newUser = new User({
         email: email.toLowerCase().trim(),
-        password: password, // Will be hashed by pre-save hook
+        password: hashedPassword, // Already hashed
         firstName: firstName?.trim(),
         lastName: lastName?.trim(),
         role: role || 'caretaker',
@@ -303,7 +311,7 @@ class AuthService {
       });
 
       const savedUser = await newUser.save();
-      logger?.info?.(`[signup] created new user ${savedUser._id} (${savedUser.email})`);
+      console.log(`[signup] Created new user ${savedUser._id} (${savedUser.email})`);
 
       // Send OTP in background without blocking the response
       this.generateAndSendOTP(savedUser.email).catch(err => {
@@ -374,7 +382,13 @@ class AuthService {
 
       // CRITICAL: Explicitly select password field (it has select:false in schema)
       const userWithPassword = await User.findOne({ email: email.toLowerCase() }).select('+password +otpCode +otpExpires');
-      logger?.info?.(`[login] user lookup`, { email: email.toLowerCase(), found: Boolean(userWithPassword), hasPassword: Boolean(userWithPassword?.password) });
+      
+      console.log('[login] User lookup result:', {
+        email: email.toLowerCase(),
+        found: Boolean(userWithPassword),
+        hasPassword: Boolean(userWithPassword?.password),
+        passwordLength: userWithPassword?.password?.length || 0
+      });
       
       if (!userWithPassword) {
         return {
@@ -386,6 +400,7 @@ class AuthService {
 
       // Check if user has a password (Google users might not have one)
       if (!userWithPassword.password) {
+        console.log('[login] User has no password - likely Google Sign-In user');
         return {
           success: false,
           message: 'This account uses Google Sign-In. Please use the Google button to login.',
@@ -393,8 +408,9 @@ class AuthService {
         };
       }
 
+      console.log('[login] Attempting password comparison...');
       const isPasswordValid = await userWithPassword.comparePassword(password);
-      logger?.info?.(`[login] password comparison`, { email: email.toLowerCase(), passwordValid: isPasswordValid });
+      console.log('[login] Password comparison result:', isPasswordValid);
       
       if (!isPasswordValid) {
         return {

@@ -137,44 +137,62 @@ userSchema.pre('save', async function(next) {
 // Compare a raw password with the hashed password
 userSchema.methods.comparePassword = async function(candidate) {
   try {
+    console.log('[comparePassword] Starting comparison for user:', this._id);
+    console.log('[comparePassword] Stored password exists:', !!this.password);
+    console.log('[comparePassword] Candidate password exists:', !!candidate);
+    
     if (!this.password) {
-      console.warn('comparePassword called but no password stored for user', this._id);
+      console.warn('[comparePassword] No password stored for user', this._id);
       return false;
     }
     
     if (!candidate) {
-      console.warn('comparePassword called with empty candidate for user', this._id);
+      console.warn('[comparePassword] Empty candidate password for user', this._id);
       return false;
     }
 
-    const isHashed = /^\$2[aby]\$/.test(this.password);
+    const storedPassword = String(this.password);
+    const candidatePassword = String(candidate);
+    
+    const isHashed = /^\$2[aby]\$/.test(storedPassword);
+    console.log('[comparePassword] Password is hashed:', isHashed);
     
     if (isHashed) {
       // Normal path: stored password is a bcrypt hash
-      return await bcrypt.compare(candidate, this.password);
+      const result = await bcrypt.compare(candidatePassword, storedPassword);
+      console.log('[comparePassword] Bcrypt comparison result:', result);
+      return result;
     }
 
-    // Stored password appears to be plain-text (legacy). Compare directly.
-    const matchesPlain = candidate === this.password;
+    // Stored password is plain-text (legacy data). Compare directly.
+    console.log('[comparePassword] Comparing plain-text passwords');
+    const matchesPlain = candidatePassword === storedPassword;
+    console.log('[comparePassword] Plain-text match:', matchesPlain);
+    
     if (matchesPlain) {
+      // Upgrade to hashed password on successful login
       try {
-        // Upgrade to hashed password on successful login
         const rounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 12;
         const salt = await bcrypt.genSalt(rounds);
-        const hashed = await bcrypt.hash(candidate, salt);
-        // Set hashed password and save. Pre-save hook will detect it's already hashed and skip re-hashing.
-        this.password = hashed;
-        await this.save();
+        const hashed = await bcrypt.hash(candidatePassword, salt);
+        
+        // Use updateOne to avoid triggering pre-save hook issues
+        await this.constructor.updateOne(
+          { _id: this._id },
+          { $set: { password: hashed } }
+        );
+        console.log('[comparePassword] Password upgraded to hash for user:', this._id);
       } catch (e) {
         // Non-fatal: if upgrade fails, still allow login
-        console.warn('Failed to upgrade password hash for user', this._id, e?.message || e);
+        console.warn('[comparePassword] Failed to upgrade password hash:', e?.message || e);
       }
       return true;
     }
 
+    console.log('[comparePassword] Password mismatch for user:', this._id);
     return false;
   } catch (error) {
-    console.error('Error in comparePassword for user', this._id, error);
+    console.error('[comparePassword] Error for user', this._id, ':', error?.message || error);
     return false;
   }
 };
