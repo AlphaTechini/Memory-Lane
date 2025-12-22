@@ -1,5 +1,5 @@
 <div align="center">
-	<h1>Supavec Memory Care Platform</h1>
+	<h1>Memory Lane</h1>
 	<p><strong>AI-assisted memory support</strong> combining caregiver-managed replicas, simplified patient access, conversational history, and secure gallery sharing.</p>
 	<p>
 		Backend: Fastify + Firestore · Frontend: SvelteKit · Auth: JWT (Caretaker & Patient) · External: Supavec API, Cloudinary, Nodemailer
