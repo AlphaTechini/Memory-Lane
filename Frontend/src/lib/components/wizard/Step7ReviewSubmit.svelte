@@ -310,8 +310,9 @@
   async function pollReplica(id, attempts = 6, delayMs = 1500) {
     for (let i=0;i<attempts;i++) {
       try {
-        const resp = await fetch(`${API_BASE_URL}/api/replicas/${id}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+        const resp = await fetch('/api/replicas', {
+          method: 'GET',
+          credentials: 'include'
         });
         if (resp.ok) {
           const data = await safeJson(resp);
@@ -392,12 +393,12 @@
         }
       }, 3000);
 
-      const response = await fetch(`${API_BASE_URL}/api/replicas`, {
+      const response = await fetch('/api/replicas', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(submissionData)
       });
 

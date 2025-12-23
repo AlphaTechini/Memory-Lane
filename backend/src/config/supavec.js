@@ -19,12 +19,6 @@ export const supavecConfig = {
   apiKey,
   isConfigured: Boolean(apiKey),
   isProperlyConfigured: () => Boolean(apiKey),
-  baseUrl: "https://api.supavec.com",
-  headers: {
-    base: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-  },
+  baseUrl: process.env.SUPAVEC_BASE_URL || "https://api.supavec.com",
+  timeout: parseInt(process.env.SUPAVEC_TIMEOUT || '30000', 10),
 };

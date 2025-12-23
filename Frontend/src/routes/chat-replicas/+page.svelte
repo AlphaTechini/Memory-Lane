@@ -154,9 +154,9 @@
           const token = getAuthToken();
           console.debug('Reconcile attempt - token present:', !!token);
           // Do not set Content-Type when there's no body, Fastify rejects empty JSON bodies
-          const recRes = await fetch(apiUrl('/api/replicas/reconcile'), {
+          const recRes = await fetch('/api/replicas/reconcile', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
+            credentials: 'include'
           });
           if (recRes.ok) {
             const recData = await recRes.json();
@@ -317,11 +317,9 @@
       console.log('Calling reconcile endpoint...');
       console.debug('fetchAllReplicas - token present:', !!token);
       // Do not set Content-Type for an empty POST body (Fastify throws on empty JSON body)
-      const reconcileResponse = await fetch(apiUrl('/api/replicas/reconcile'), {
+      const reconcileResponse = await fetch('/api/replicas/reconcile', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include'
       });
       
       if (reconcileResponse.ok) {
@@ -376,10 +374,9 @@
     isLoadingConversations = true;
     try {
       const token = getAuthToken();
-      const response = await fetch(`${API_BASE_URL}/api/replicas/${replicaId}/conversations`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await fetch(`/api/replicas/${replicaId}/conversations`, {
+        method: 'GET',
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -427,10 +424,8 @@
       const token = getAuthToken();
       // Backend currently exposes GET /api/conversations/:conversationId (no /messages suffix)
       // Try canonical route first; if a future /messages sub-route appears, we can fallback.
-      let response = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      let response = await fetch(`/api/conversations/${conversationId}`, {
+        credentials: 'include'
       });
 
       if (response.ok) {
@@ -569,12 +564,12 @@
         if (!requireAuthForAction('chat with your replica')) return;
         
         // Chat with specific replica
-        response = await fetch(`${API_BASE_URL}/api/replicas/${selectedReplica.replicaId}/chat`, {
+        response = await fetch(`/api/replicas/${selectedReplica.replicaId}/chat`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Content-Type': 'application/json'
           },
+          credentials: 'include',
           body: JSON.stringify({
             message: text,
             conversationId: currentConversationId, // Include current conversation ID

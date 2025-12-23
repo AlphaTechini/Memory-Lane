@@ -12,7 +12,7 @@ const supavecApi = axios.create({
 });
 
 /**
- * Upload a file to Supavec.
+ * Upload a file to Supavec following the official API documentation.
  * @param {Buffer} fileBuffer - The file content as a buffer.
  * @param {string} filename - The name of the file.
  * @param {object} [metadata] - Optional metadata for the file.
@@ -37,9 +37,9 @@ export const uploadFile = async (fileBuffer, filename, metadata, namespace) => {
       form.append('namespace', namespace);
     }
 
-    const response = await supavecApi.post('/upload_file', form, {
+    const response = await supavecApi.post('/files/upload_file', form, {
       headers: {
-        ...supavecConfig.headers.base,
+        'Authorization': `Bearer ${supavecConfig.apiKey}`,
         ...form.getHeaders(),
       },
     });
@@ -55,7 +55,7 @@ export const uploadFile = async (fileBuffer, filename, metadata, namespace) => {
 };
 
 /**
- * Upload text to Supavec.
+ * Upload text to Supavec following the official API documentation.
  * @param {string} text - The text content to upload.
  * @param {string} [title] - Optional title for the text.
  * @param {string} [namespace] - Optional namespace for the text.
@@ -67,22 +67,32 @@ export const uploadText = async (text, title, namespace) => {
     return { success: false, message: 'Supavec API not configured.' };
   }
 
+  const context = logApiRequest('SUPAVEC', 'uploadText', { title, namespace });
+
   try {
-    const response = await supavecApi.post('/upload_text', {
+    const response = await supavecApi.post('/files/upload_text', {
       text,
       title,
       namespace,
-    }, { headers: supavecConfig.headers.base });
+    }, { 
+      headers: {
+        'Authorization': `Bearer ${supavecConfig.apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
+    logApiResponse(context, true, response.data);
     return response.data;
   } catch (error) {
-    logger.error('Error uploading text to Supavec:', error.message);
-    throw error;
+    const standardizedError = mapSupavecError(error);
+    logger.error('Error uploading text to Supavec:', standardizedError.originalError);
+    logApiResponse(context, false, null, error);
+    throw standardizedError;
   }
 };
 
 /**
- * List files in Supavec.
+ * List files in Supavec following the official API documentation.
  * @param {string} [namespace] - Optional namespace to filter by.
  * @param {number} [limit] - Optional limit for pagination.
  * @param {string} [cursor] - Optional cursor for pagination.
@@ -94,46 +104,101 @@ export const listFiles = async (namespace, limit, cursor) => {
     return { success: false, message: 'Supavec API not configured.' };
   }
 
+  const context = logApiRequest('SUPAVEC', 'listFiles', { namespace, limit });
+
   try {
-    const response = await supavecApi.get('/view_files', {
-      headers: supavecConfig.headers.base,
+    const response = await supavecApi.get('/files/user_files', {
+      headers: {
+        'Authorization': `Bearer ${supavecConfig.apiKey}`,
+        'Content-Type': 'application/json'
+      },
       params: { namespace, limit, cursor },
     });
 
+    logApiResponse(context, true, response.data);
     return response.data;
   } catch (error) {
-    logger.error('Error listing files from Supavec:', error.message);
-    throw error;
+    const standardizedError = mapSupavecError(error);
+    logger.error('Error listing files from Supavec:', standardizedError.originalError);
+    logApiResponse(context, false, null, error);
+    throw standardizedError;
   }
 };
 
 /**
- * Delete a file from Supavec.
- * @param {string} file_id - The ID of the file to delete.
+ * Overwrite text content in Supavec following the official API documentation.
+ * @param {string} file_id - The ID of the file to overwrite.
+ * @param {string} text - The new text content.
  * @param {string} [namespace] - Optional namespace for the file.
  * @returns {Promise<object>} The response from the API.
  */
-export const deleteFile = async (file_id, namespace) => {
+export const overwriteText = async (file_id, text, namespace) => {
   if (!supavecConfig.isProperlyConfigured()) {
-    logger.warn('Supavec API not configured, skipping file deletion.');
+    logger.warn('Supavec API not configured, skipping text overwrite.');
     return { success: false, message: 'Supavec API not configured.' };
   }
 
+  const context = logApiRequest('SUPAVEC', 'overwriteText', { file_id, namespace });
+
   try {
-    const response = await supavecApi.delete('/delete_file', {
-      headers: supavecConfig.headers.base,
-      params: { file_id, namespace },
+    const response = await supavecApi.post('/files/overwrite_text', {
+      file_id,
+      text,
+      namespace,
+    }, { 
+      headers: {
+        'Authorization': `Bearer ${supavecConfig.apiKey}`,
+        'Content-Type': 'application/json'
+      }
     });
 
+    logApiResponse(context, true, response.data);
     return response.data;
   } catch (error) {
-    logger.error('Error deleting file from Supavec:', error.message);
-    throw error;
+    const standardizedError = mapSupavecError(error);
+    logger.error('Error overwriting text in Supavec:', standardizedError.originalError);
+    logApiResponse(context, false, null, error);
+    throw standardizedError;
   }
 };
 
 /**
- * Send a chat message to Supavec.
+ * Resync a file in Supavec following the official API documentation.
+ * @param {string} file_id - The ID of the file to resync.
+ * @param {string} [namespace] - Optional namespace for the file.
+ * @returns {Promise<object>} The response from the API.
+ */
+export const resyncFile = async (file_id, namespace) => {
+  if (!supavecConfig.isProperlyConfigured()) {
+    logger.warn('Supavec API not configured, skipping file resync.');
+    return { success: false, message: 'Supavec API not configured.' };
+  }
+
+  const context = logApiRequest('SUPAVEC', 'resyncFile', { file_id, namespace });
+
+  try {
+    const response = await supavecApi.post('/files/resync_file', {
+      file_id,
+      namespace,
+    }, { 
+      headers: {
+        'Authorization': `Bearer ${supavecConfig.apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    logApiResponse(context, true, response.data);
+    return response.data;
+  } catch (error) {
+    const standardizedError = mapSupavecError(error);
+    logger.error('Error resyncing file in Supavec:', standardizedError.originalError);
+    logApiResponse(context, false, null, error);
+    throw standardizedError;
+  }
+};
+
+/**
+ * Send a chat message to Supavec following the official API documentation.
  * @param {Array<object>} messages - The conversation history.
  * @param {Array<string>} [kb_ids] - Optional knowledge base IDs to use for context.
  * @param {string} [model] - Optional model to use.
@@ -150,13 +215,18 @@ export const sendChatMessage = async (messages, kb_ids, model, max_tokens, strea
   const context = logApiRequest('SUPAVEC', 'sendChatMessage', { messageCount: messages?.length, kb_ids });
 
   try {
-    const response = await supavecApi.post('/chat', {
+    const response = await supavecApi.post('/chat/chat', {
       messages,
       kb_ids,
       model,
       max_tokens,
       stream,
-    }, { headers: supavecConfig.headers.base });
+    }, { 
+      headers: {
+        'Authorization': `Bearer ${supavecConfig.apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
     logApiResponse(context, true, response.data);
     return response.data;
@@ -169,7 +239,7 @@ export const sendChatMessage = async (messages, kb_ids, model, max_tokens, strea
 };
 
 /**
- * Search the knowledge base.
+ * Search the knowledge base following the official API documentation.
  * @param {string} query - The search query.
  * @param {number} [top_k] - The number of top hits to return.
  * @param {string} [namespace] - The namespace to search within.
@@ -182,18 +252,28 @@ export const searchKnowledgeBase = async (query, top_k, namespace, filters) => {
     return { success: false, message: 'Supavec API not configured.' };
   }
 
+  const context = logApiRequest('SUPAVEC', 'searchKnowledgeBase', { query, top_k, namespace });
+
   try {
-    const response = await supavecApi.post('/search', {
+    const response = await supavecApi.post('/retrieval/search', {
       query,
       top_k,
       namespace,
       filters,
-    }, { headers: supavecConfig.headers.base });
+    }, { 
+      headers: {
+        'Authorization': `Bearer ${supavecConfig.apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
+    logApiResponse(context, true, response.data);
     return response.data;
   } catch (error) {
-    logger.error('Error searching knowledge base in Supavec:', error.message);
-    throw error;
+    const standardizedError = mapSupavecError(error);
+    logger.error('Error searching knowledge base in Supavec:', standardizedError.originalError);
+    logApiResponse(context, false, null, error);
+    throw standardizedError;
   }
 };
 
@@ -421,6 +501,49 @@ export const streamChatResponse = async (messages, replicaIds, options = {}) => 
 };
 
 // ===== NAMESPACE MANAGEMENT UTILITIES =====
+
+/**
+ * Delete a file from Supavec (legacy function for backward compatibility).
+ * Note: Supavec API doesn't have a direct delete endpoint in the current docs.
+ * This function is kept for backward compatibility but may not work.
+ * @param {string} file_id - The ID of the file to delete.
+ * @param {string} [namespace] - Optional namespace for the file.
+ * @returns {Promise<object>} The response from the API.
+ */
+export const deleteFile = async (file_id, namespace) => {
+  if (!supavecConfig.isProperlyConfigured()) {
+    logger.warn('Supavec API not configured, skipping file deletion.');
+    return { success: false, message: 'Supavec API not configured.' };
+  }
+
+  const context = logApiRequest('SUPAVEC', 'deleteFile', { file_id, namespace });
+
+  try {
+    // Note: This endpoint may not exist in the current Supavec API
+    // Keeping for backward compatibility
+    const response = await supavecApi.delete('/files/delete_file', {
+      headers: {
+        'Authorization': `Bearer ${supavecConfig.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      params: { file_id, namespace },
+    });
+
+    logApiResponse(context, true, response.data);
+    return response.data;
+  } catch (error) {
+    const standardizedError = mapSupavecError(error);
+    logger.error('Error deleting file from Supavec:', standardizedError.originalError);
+    logApiResponse(context, false, null, error);
+    
+    // Return a more helpful error message
+    return { 
+      success: false, 
+      message: 'File deletion may not be supported by current Supavec API version',
+      error: standardizedError.message 
+    };
+  }
+};
 
 /**
  * Validate namespace access for a user.
@@ -756,11 +879,14 @@ export const healthCheck = async (timeout = 10000) => {
     const healthApi = axios.create({
       baseURL: supavecConfig.baseUrl,
       timeout: timeout,
-      headers: supavecConfig.headers.base
+      headers: {
+        'Authorization': `Bearer ${supavecConfig.apiKey}`,
+        'Content-Type': 'application/json'
+      }
     });
 
     // Try to list files with a very small limit to test connectivity
-    const response = await healthApi.get('/view_files', {
+    const response = await healthApi.get('/files/user_files', {
       params: { limit: 1 }
     });
 

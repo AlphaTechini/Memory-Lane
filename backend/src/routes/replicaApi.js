@@ -1,4 +1,4 @@
-import { uploadText, listFiles, sendChatMessage, deleteFile, searchKnowledgeBase } from '../services/supavecService.js';
+import { uploadText, listFiles, sendChatMessage, deleteFile, searchKnowledgeBase, overwriteText, resyncFile } from '../services/supavecService.js';
 import { authenticateToken, requireCaretaker, requirePatient, validatePatientCaretakerRelationship, validateSupavecNamespace } from '../middleware/auth.js';
 import * as replicaAbstraction from '../services/replicaAbstractionService.js';
 import User from '../models/User.js';

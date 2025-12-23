@@ -46,9 +46,9 @@
     if (replicas.length === 0) {
       try {
         console.debug('train-models reconcile - token present:', !!localStorage.getItem('authToken'));
-        const rec = await fetch(`${API_BASE_URL}/api/replicas/reconcile`, {
+        const rec = await fetch('/api/replicas/reconcile', {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+          credentials: 'include'
         });
         if (rec.ok) {
           const diff = await rec.json();
@@ -65,10 +65,9 @@
 
   async function loadUserReplicas() {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/user/replicas`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
+      const response = await fetch('/api/user/replicas', {
+        method: 'GET',
+        credentials: 'include'
       });
 
       if (!response.ok) {
@@ -168,10 +167,9 @@
     if (!selectedReplica) return;
     
     try {
-      const response = await fetch(`${API_BASE_URL}/api/replicas/${selectedReplica.replicaId}/kb`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
+      const response = await fetch(`/api/replicas/${selectedReplica.replicaId}/kb`, {
+        method: 'GET',
+        credentials: 'include'
       });
       
       if (response.ok) {
@@ -225,12 +223,12 @@
         requestBody.filename = newKnowledgeBase.filename.trim();
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/replicas/${selectedReplica.replicaId}/kb`, {
+      const response = await fetch(`/api/replicas/${selectedReplica.replicaId}/kb`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(requestBody)
       });
 
@@ -275,11 +273,9 @@
     }
     
     try {
-      const response = await fetch(`${API_BASE_URL}/api/replicas/${selectedReplica.replicaId}/kb/${entryId}`, {
+      const response = await fetch(`/api/replicas/${selectedReplica.replicaId}/kb/${entryId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
+        credentials: 'include'
       });
       
       const data = await response.json();
@@ -327,12 +323,12 @@
       let successCount = 0;
       for (const training of trainingData) {
         try {
-          const response = await fetch(`${API_BASE_URL}/api/replicas/${selectedReplica.replicaId}/kb`, {
+          const response = await fetch(`/api/replicas/${selectedReplica.replicaId}/kb`, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+              'Content-Type': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify(training)
           });
 
