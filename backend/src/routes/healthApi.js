@@ -174,8 +174,8 @@ export default async function healthRoutes(fastify) {
    */
   fastify.get('/health/supavec', async (request, reply) => {
     try {
-      const { getServiceStatus } = await import('../services/supavecService.js');
-      const status = await getServiceStatus();
+      const { healthCheck } = await import('../services/supavecService.js');
+      const status = await healthCheck();
       
       return {
         status: 'success',
@@ -188,6 +188,9 @@ export default async function healthRoutes(fastify) {
         status: 'error',
         timestamp: new Date().toISOString(),
         error: error.message
+      });
+    }
+  });
       });
     }
   });
