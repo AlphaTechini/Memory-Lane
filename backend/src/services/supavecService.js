@@ -2,13 +2,11 @@ import axios from 'axios';
 import { supavecConfig } from '../config/supavec.js';
 import logger from '../utils/logger.js';
 import FormData from 'form-data';
-import { transformError, mapSupavecError } from '../utils/errorHandler.js';
+import { mapSupavecError } from '../utils/errorHandler.js';
 import { logApiRequest, logApiResponse } from '../utils/apiLogger.js';
 
-const supavecApi = axios.create({
-  baseURL: supavecConfig.baseUrl,
-  timeout: 30000,
-});
+// Helper to build full URL for each endpoint
+const getFullUrl = (endpoint) => `${supavecConfig.baseUrl}${endpoint}`;
 
 /**
  * Upload a file to Supavec following the official API documentation.
@@ -35,13 +33,14 @@ export const uploadFile = async (fileBuffer, filename, chunk_size, chunk_overlap
     if (chunk_size) params.append('chunk_size', chunk_size.toString());
     if (chunk_overlap) params.append('chunk_overlap', chunk_overlap.toString());
 
-    const url = `/upload_file${params.toString() ? '?' + params.toString() : ''}`;
+    const url = getFullUrl(`/upload_file${params.toString() ? '?' + params.toString() : ''}`);
 
-    const response = await supavecApi.post(url, form, {
+    const response = await axios.post(url, form, {
       headers: {
         'authorization': supavecConfig.apiKey,
         ...form.getHeaders(),
       },
+      timeout: 30000
     });
 
     logApiResponse(context, true, response.data);
@@ -85,11 +84,12 @@ export const uploadText = async (contents, name, chunk_size = 1000, chunk_overla
       requestBody.chunk_overlap = chunk_overlap;
     }
 
-    const response = await supavecApi.post('/upload_text', requestBody, { 
+    const response = await axios.post(getFullUrl('/upload_text'), requestBody, { 
       headers: {
         'Content-Type': 'application/json',
         'authorization': supavecConfig.apiKey
-      }
+      },
+      timeout: 30000
     });
 
     logApiResponse(context, true, response.data);
@@ -132,11 +132,12 @@ export const listFiles = async (pagination = {}, order_dir = 'desc') => {
       requestBody.order_dir = order_dir;
     }
 
-    const response = await supavecApi.post('/user_files', requestBody, {
+    const response = await axios.post(getFullUrl('/user_files'), requestBody, {
       headers: {
         'Content-Type': 'application/json',
         'authorization': supavecConfig.apiKey
-      }
+      },
+      timeout: 30000
     });
 
     logApiResponse(context, true, response.data);
@@ -176,11 +177,12 @@ export const overwriteText = async (file_id, contents, name, chunk_size, chunk_o
     if (chunk_size) requestBody.chunk_size = chunk_size;
     if (chunk_overlap) requestBody.chunk_overlap = chunk_overlap;
 
-    const response = await supavecApi.post('/overwrite_text', requestBody, { 
+    const response = await axios.post(getFullUrl('/overwrite_text'), requestBody, { 
       headers: {
         'Content-Type': 'application/json',
         'authorization': supavecConfig.apiKey
-      }
+      },
+      timeout: 30000
     });
 
     logApiResponse(context, true, response.data);
@@ -214,11 +216,12 @@ export const resyncFile = async (file_id, chunk_size, chunk_overlap) => {
     if (chunk_size) requestBody.chunk_size = chunk_size;
     if (chunk_overlap) requestBody.chunk_overlap = chunk_overlap;
 
-    const response = await supavecApi.post('/resync_file', requestBody, { 
+    const response = await axios.post(getFullUrl('/resync_file'), requestBody, { 
       headers: {
         'Content-Type': 'application/json',
         'authorization': supavecConfig.apiKey
-      }
+      },
+      timeout: 30000
     });
 
     logApiResponse(context, true, response.data);
@@ -245,13 +248,14 @@ export const deleteFile = async (file_id) => {
   const context = logApiRequest('SUPAVEC', 'deleteFile', { file_id });
 
   try {
-    const response = await supavecApi.post('/delete_file', {
+    const response = await axios.post(getFullUrl('/delete_file'), {
       file_id
     }, { 
       headers: {
         'Content-Type': 'application/json',
         'authorization': supavecConfig.apiKey
-      }
+      },
+      timeout: 30000
     });
 
     logApiResponse(context, true, response.data);
@@ -288,11 +292,12 @@ export const searchKnowledgeBase = async (query, file_ids, k = 3, include_embedd
       include_embeddings
     };
 
-    const response = await supavecApi.post('/search', requestBody, { 
+    const response = await axios.post(getFullUrl('/search'), requestBody, { 
       headers: {
         'Content-Type': 'application/json',
         'authorization': supavecConfig.apiKey
-      }
+      },
+      timeout: 30000
     });
 
     logApiResponse(context, true, response.data);
@@ -329,11 +334,12 @@ export const sendChatMessage = async (query, file_ids, k = 3, stream = false) =>
       stream
     };
 
-    const response = await supavecApi.post('/chat', requestBody, { 
+    const response = await axios.post(getFullUrl('/chat'), requestBody, { 
       headers: {
         'Content-Type': 'application/json',
         'authorization': supavecConfig.apiKey
-      }
+      },
+      timeout: 30000
     });
 
     logApiResponse(context, true, response.data);
@@ -577,19 +583,15 @@ export const healthCheck = async (timeout = 10000) => {
   }
 
   try {
-    // Create a test axios instance with shorter timeout for health checks
-    const healthApi = axios.create({
-      baseURL: supavecConfig.baseUrl,
-      timeout: timeout,
+    // Try to list files with a very small limit to test connectivity
+    await axios.post(getFullUrl('/user_files'), {
+      pagination: { limit: 1, offset: 0 }
+    }, {
       headers: {
         'Content-Type': 'application/json',
         'authorization': supavecConfig.apiKey
-      }
-    });
-
-    // Try to list files with a very small limit to test connectivity
-    const response = await healthApi.post('/user_files', {
-      pagination: { limit: 1, offset: 0 }
+      },
+      timeout: timeout
     });
 
     const responseTime = Date.now() - startTime;
