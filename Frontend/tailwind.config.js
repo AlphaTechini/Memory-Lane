@@ -23,12 +23,16 @@ export default {
         },
         // Calming accent colors
         teal: {
+          50: '#E0F2F1',
+          100: '#B2DFDB',
           400: '#4DB6AC',
           500: '#26A69A',
           600: '#00897B',
           700: '#00796B',
         },
         coral: {
+          50: '#FBE9E7',
+          100: '#FFCCBC',
           400: '#FF8A80',
           500: '#FF7043',
           600: '#F4511E',
