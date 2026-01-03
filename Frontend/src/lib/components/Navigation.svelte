@@ -12,14 +12,13 @@
   $effect(() => {
     currentPath = $page.url.pathname;
     isAuthenticated = checkAuthStatus();
-    // Use cached role immediately to avoid UI flash, then refresh from API
     try {
       userRole = getUserRole();
     } catch (e) {
       userRole = null;
     }
     loadUserRole();
-    showMobileMenu = false; // Close mobile menu on navigation
+    showMobileMenu = false;
   });
   
   async function loadUserRole() {
@@ -32,15 +31,12 @@
       const response = await apiCall('/api/auth/me', { method: 'GET' });
       if (response.ok) {
         const data = await response.json();
-        // API may return { user: {...} } or { patient: {...} }
         const resolved = data.user || data.patient || data;
-        // Update cached userData in a consistent shape
         try { localStorage.setItem('userData', JSON.stringify(resolved)); } catch (e) {}
         userRole = resolved?.role || 'caretaker';
       }
     } catch (error) {
       console.error('Failed to load user role:', error);
-      // Preserve any cached role if API fails, otherwise default to caretaker
       try {
         userRole = getUserRole() || 'caretaker';
       } catch {
@@ -53,229 +49,244 @@
     localStorage.removeItem('authToken');
     goto('/login');
   }
+
+  function goHome() {
+    goto('/dashboard');
+  }
 </script>
 
-<nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
-  <div class="max-w-6xl mx-auto flex items-center justify-between">
-    <div class="flex items-center gap-4 lg:gap-8">
-      <div class="flex items-center gap-2 lg:gap-4">
-        {#if typeof window !== 'undefined' && window.history.length > 1 && currentPath !== '/dashboard'}
-          <button
-            onclick={() => window.history.back()}
-            class="flex items-center justify-center w-8 h-8 lg:w-10 lg:h-10 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors mr-1 lg:mr-2"
-            title="Go back"
-            aria-label="Go back"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lg:w-5 lg:h-5 text-gray-700 dark:text-gray-200">
-              <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
-          </button>
-        {/if}
+<!-- Skip to main content link for accessibility -->
+<a href="#main-content" class="skip-link">Skip to main content</a>
 
-        <a href="/dashboard" class="flex items-center gap-2">
-          <img src="/logo.png" alt="Memory Lane Logo" class="h-8 lg:h-10 w-auto" />
-          <h1 class="text-lg lg:text-xl font-bold text-gray-900 dark:text-gray-100">Memory Lane</h1>
-        </a>
-      </div>
+<nav class="bg-cream-50 dark:bg-charcoal-800 border-b-2 border-cream-300 dark:border-charcoal-600 px-4 py-3">
+  <div class="max-w-6xl mx-auto flex items-center justify-between">
+    <!-- Logo and Home - Always visible, large touch target -->
+    <a 
+      href="/dashboard" 
+      class="flex items-center gap-3 min-h-touch px-3 py-2 rounded-tactile hover:bg-cream-200 dark:hover:bg-charcoal-700 transition-colors"
+      aria-label="Go to Home - Memory Lane"
+    >
+      <img src="/logo.png" alt="" class="h-10 w-auto" aria-hidden="true" />
+      <span class="text-accessible-lg font-bold text-charcoal-800 dark:text-cream-100">Memory Lane</span>
+    </a>
+    
+    <!-- Desktop Navigation - Always visible with labels -->
+    <div class="hidden md:flex items-center gap-2">
+      <!-- Home Button - Always prominent -->
+      <button
+        onclick={goHome}
+        class="nav-item-accessible {currentPath === '/dashboard' ? 'active' : ''}"
+        aria-current={currentPath === '/dashboard' ? 'page' : undefined}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        <span>Home</span>
+      </button>
       
-      <div class="hidden md:flex items-center gap-2 lg:gap-4">
+      <button
+        onclick={() => goto('/chat-replicas')}
+        class="nav-item-accessible {currentPath === '/chat-replicas' || currentPath === '/' ? 'active' : ''}"
+        aria-current={currentPath === '/chat-replicas' ? 'page' : undefined}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+        </svg>
+        <span>Chat</span>
+      </button>
+      
+      <button
+        onclick={() => goto('/gallery')}
+        class="nav-item-accessible {currentPath.startsWith('/gallery') ? 'active' : ''}"
+        aria-current={currentPath.startsWith('/gallery') ? 'page' : undefined}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+          <circle cx="9" cy="9" r="2"/>
+          <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+        </svg>
+        <span>Photos</span>
+      </button>
+      
+      {#if userRole !== 'patient'}
         <button
-          onclick={() => goto('/dashboard')}
-          class="px-3 py-2 text-sm font-medium rounded-md transition-colors
-            {currentPath === '/dashboard'
-              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-              : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'}"
+          onclick={() => goto('/create-replicas')}
+          class="nav-item-accessible {currentPath.startsWith('/create-replicas') ? 'active' : ''}"
+          aria-current={currentPath.startsWith('/create-replicas') ? 'page' : undefined}
         >
-          Dashboard
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="16"/>
+            <line x1="8" y1="12" x2="16" y2="12"/>
+          </svg>
+          <span>Create</span>
         </button>
         
         <button
-          onclick={() => goto('/chat-replicas')}
-          class="px-3 py-2 text-sm font-medium rounded-md transition-colors
-            {currentPath === '/chat-replicas' || currentPath === '/' 
-              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-              : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'}"
+          onclick={() => goto('/manage-patients')}
+          class="nav-item-accessible {currentPath.startsWith('/manage-patients') ? 'active' : ''}"
+          aria-current={currentPath.startsWith('/manage-patients') ? 'page' : undefined}
         >
-          Chat
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <span>Patients</span>
         </button>
-        
-        {#if userRole !== 'patient'}
-          <button
-            onclick={() => goto('/create-replicas')}
-            class="px-3 py-2 text-sm font-medium rounded-md transition-colors relative
-              {currentPath.startsWith('/create-replicas') 
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-                : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'}"
-          >
-            Create Replica
-            {#if !isAuthenticated}
-              <span class="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full"></span>
-            {/if}
-          </button>
-          
-          <button
-            onclick={() => goto('/manage-patients')}
-            class="px-3 py-2 text-sm font-medium rounded-md transition-colors relative
-              {currentPath.startsWith('/manage-patients') 
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-                : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'}"
-          >
-            Manage Patients
-            {#if !isAuthenticated}
-              <span class="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full"></span>
-            {/if}
-          </button>
-        {/if}
-        
-        
-        <button
-          onclick={() => goto('/gallery')}
-          class="px-3 py-2 text-sm font-medium rounded-md transition-colors relative
-            {currentPath.startsWith('/gallery') 
-              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-              : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'}"
-        >
-          Gallery
-          {#if !isAuthenticated}
-            <span class="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full"></span>
-          {/if}
-        </button>
-      </div>
+      {/if}
     </div>
     
-    <div class="flex items-center gap-2 lg:gap-4">
-      <!-- Theme Toggle -->
-      <ThemeToggle />
+    <!-- Right side actions -->
+    <div class="flex items-center gap-2">
+      <!-- Theme Toggle - only show for caretakers -->
+      {#if userRole !== 'patient'}
+        <ThemeToggle />
+      {/if}
       
       <!-- Mobile menu button -->
       <button
         onclick={() => showMobileMenu = !showMobileMenu}
-        class="md:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-        aria-label="Toggle menu"
+        class="md:hidden btn-tactile-secondary min-w-[48px] min-h-[48px] p-2"
+        aria-label={showMobileMenu ? 'Close menu' : 'Open menu'}
+        aria-expanded={showMobileMenu}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 dark:text-gray-200">
-          <line x1="3" y1="6" x2="21" y2="6"></line>
-          <line x1="3" y1="12" x2="21" y2="12"></line>
-          <line x1="3" y1="18" x2="21" y2="18"></line>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          {#if showMobileMenu}
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          {:else}
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          {/if}
         </svg>
       </button>
       
+      <!-- Auth buttons - Desktop -->
       {#if isAuthenticated}
         <button
           onclick={logout}
-          class="hidden md:block px-3 lg:px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+          class="hidden md:flex btn-tactile btn-tactile-danger"
         >
-          Logout
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          <span>Logout</span>
         </button>
       {:else}
         <div class="hidden md:flex items-center gap-2">
           <button
             onclick={() => goto('/login')}
-            class="px-3 lg:px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            class="btn-tactile btn-tactile-secondary"
           >
             Log In
           </button>
           <button
             onclick={() => goto('/signup')}
-            class="px-3 lg:px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+            class="btn-tactile btn-tactile-primary"
           >
             Sign Up
           </button>
         </div>
       {/if}
-      <!-- Feedback and About buttons -->
-      <button
-        onclick={() => goto('/feedback')}
-        class="hidden md:block px-3 lg:px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 transition-colors"
-      >
-        Feedback
-      </button>
-      <button
-        onclick={() => goto('/about')}
-        class="hidden md:block px-3 lg:px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
-      >
-        About
-      </button>
     </div>
   </div>
   
-  <!-- Mobile menu -->
+  <!-- Mobile menu - Full screen, large touch targets -->
   {#if showMobileMenu}
-    <div class="md:hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-3">
-      <div class="flex flex-col gap-2">
+    <div class="md:hidden fixed inset-0 top-[72px] bg-cream-50 dark:bg-charcoal-800 z-50 p-4 overflow-y-auto">
+      <div class="flex flex-col gap-3">
         <button
           onclick={() => { goto('/dashboard'); showMobileMenu = false; }}
-          class="w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors
-            {currentPath === '/dashboard'
-              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-              : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'}"
+          class="btn-tactile btn-tactile-secondary w-full justify-start gap-4 text-left {currentPath === '/dashboard' ? 'ring-2 ring-teal-500' : ''}"
         >
-          Dashboard
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <span class="text-accessible-lg font-semibold">Home</span>
         </button>
         
         <button
           onclick={() => { goto('/chat-replicas'); showMobileMenu = false; }}
-          class="w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors
-            {currentPath === '/chat-replicas' || currentPath === '/' 
-              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-              : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'}"
+          class="btn-tactile btn-tactile-secondary w-full justify-start gap-4 text-left {currentPath === '/chat-replicas' ? 'ring-2 ring-teal-500' : ''}"
         >
-          Chat
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+          </svg>
+          <span class="text-accessible-lg font-semibold">Chat</span>
+        </button>
+        
+        <button
+          onclick={() => { goto('/gallery'); showMobileMenu = false; }}
+          class="btn-tactile btn-tactile-secondary w-full justify-start gap-4 text-left {currentPath.startsWith('/gallery') ? 'ring-2 ring-teal-500' : ''}"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+            <circle cx="9" cy="9" r="2"/>
+            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+          </svg>
+          <span class="text-accessible-lg font-semibold">Photos</span>
         </button>
         
         {#if userRole !== 'patient'}
           <button
             onclick={() => { goto('/create-replicas'); showMobileMenu = false; }}
-            class="w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors
-              {currentPath.startsWith('/create-replicas') 
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-                : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'}"
+            class="btn-tactile btn-tactile-secondary w-full justify-start gap-4 text-left {currentPath.startsWith('/create-replicas') ? 'ring-2 ring-teal-500' : ''}"
           >
-            Create Replica
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="16"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            <span class="text-accessible-lg font-semibold">Create Replica</span>
           </button>
           
           <button
             onclick={() => { goto('/manage-patients'); showMobileMenu = false; }}
-            class="w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors
-              {currentPath.startsWith('/manage-patients') 
-                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-                : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'}"
+            class="btn-tactile btn-tactile-secondary w-full justify-start gap-4 text-left {currentPath.startsWith('/manage-patients') ? 'ring-2 ring-teal-500' : ''}"
           >
-            Manage Patients
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <span class="text-accessible-lg font-semibold">Manage Patients</span>
           </button>
         {/if}
         
-        <button
-          onclick={() => { goto('/gallery'); showMobileMenu = false; }}
-          class="w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors
-            {currentPath.startsWith('/gallery') 
-              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-              : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'}"
-        >
-          Gallery
-        </button>
-        
-        <hr class="my-2 border-gray-200 dark:border-gray-700">
+        <hr class="my-3 border-cream-300 dark:border-charcoal-600">
         
         {#if isAuthenticated}
           <button
             onclick={() => { logout(); showMobileMenu = false; }}
-            class="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+            class="btn-tactile btn-tactile-danger w-full justify-start gap-4"
           >
-            Logout
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            <span class="text-accessible-lg font-semibold">Logout</span>
           </button>
         {:else}
           <button
             onclick={() => { goto('/login'); showMobileMenu = false; }}
-            class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 rounded-md transition-colors"
+            class="btn-tactile btn-tactile-secondary w-full justify-center"
           >
-            Log In
+            <span class="text-accessible-lg font-semibold">Log In</span>
           </button>
           <button
             onclick={() => { goto('/signup'); showMobileMenu = false; }}
-            class="w-full text-left px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            class="btn-tactile btn-tactile-primary w-full justify-center"
           >
-            Sign Up
+            <span class="text-accessible-lg font-semibold">Sign Up</span>
           </button>
         {/if}
       </div>

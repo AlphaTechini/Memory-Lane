@@ -4,14 +4,22 @@ import { browser } from '$app/environment';
 const key = 'color-theme';
 
 /**
- * Initializes the theme store.
- * On the client, it reads the theme from the DOM (set by the FOUC script in app.html).
- * On the server, it defaults to 'light' since the theme is unknown.
+ * Warm Clarity Theme Store
+ * Defaults to light mode for better accessibility with dementia/amnesia patients.
+ * Dark mode is still available but light (cream) is the recommended default.
  */
 function getInitialTheme() {
     if (!browser) return 'light';
-    // app.html sets document.documentElement.classList for FOUC prevention
-    return document.documentElement.classList.contains('dark') ? 'dark' : (localStorage.getItem(key) || 'light');
+    
+    // Check if user has explicitly set a preference
+    const stored = localStorage.getItem(key);
+    if (stored) {
+        return stored;
+    }
+    
+    // Default to light mode for accessibility
+    // (Warm cream backgrounds are easier on older eyes)
+    return 'light';
 }
 
 export const theme = writable(getInitialTheme());
@@ -22,6 +30,16 @@ export const theme = writable(getInitialTheme());
 theme.subscribe((value) => {
     if (!browser) return;
     localStorage.setItem(key, value);
-    if (value === 'dark') document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
+    if (value === 'dark') {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
 });
+
+/**
+ * Toggle between light and dark themes
+ */
+export function toggleTheme() {
+    theme.update(current => current === 'dark' ? 'light' : 'dark');
+}
