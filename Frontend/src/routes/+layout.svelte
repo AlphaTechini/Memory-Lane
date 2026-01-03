@@ -40,6 +40,7 @@
     $page.route.id?.includes('/verify-otp')
   );
 
+  let isHomepage = $derived($page.route.id === '/');
   let isDashboard = $derived($page.route.id === '/dashboard');
 </script>
 
@@ -53,7 +54,7 @@
 
 <div class="min-h-screen bg-cream-50 dark:bg-charcoal-900 text-charcoal-800 dark:text-cream-100 font-accessible transition-colors duration-200">
 
-  {#if showBanner}
+  {#if showBanner && !isHomepage}
     <div class="fixed top-0 left-0 w-full z-50">
       <div class="bg-teal-500 text-white text-center px-6 py-4 shadow-lg relative" role="alert">
         <p class="text-accessible-lg font-semibold mb-2">Welcome to Memory Lane</p>
@@ -77,19 +78,19 @@
     </div>
   {/if}
 
-  {#if !isAuthPage}
+  {#if !isAuthPage && !isHomepage}
     <Navigation />
   {/if}
   
   <main 
     id="main-content" 
-    class={isAuthPage ? '' : (showBanner ? 'pt-24' : 'pt-0')}
+    class={isAuthPage || isHomepage ? '' : (showBanner ? 'pt-24' : 'pt-0')}
   >
     {@render children()}
   </main>
 
-  <!-- Home Anchor Button - Always visible except on dashboard and auth pages -->
-  {#if !isAuthPage && !isDashboard}
+  <!-- Home Anchor Button - Always visible except on dashboard, auth pages, and homepage -->
+  {#if !isAuthPage && !isDashboard && !isHomepage}
     <button
       onclick={() => goto('/dashboard')}
       class="home-anchor-btn"
