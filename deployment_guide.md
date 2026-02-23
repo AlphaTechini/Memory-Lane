@@ -13,7 +13,33 @@ In the AWS Console, ensure your Security Group has the following **Inbound Rules
 | TCP | 80 | 0.0.0.0/0 | HTTP (for Nginx/Frontend) |
 | TCP | 443 | 0.0.0.0/0 | HTTPS |
 
-## 2. Prepare Private Repository Access
+## 2. DynamoDB Connectivity (Easy Mode)
+
+To connect to DynamoDB without manually managing Access Keys:
+
+1.  **Create an IAM Role**:
+    *   Go to **IAM > Roles > Create role**.
+    *   Select **AWS Service** and **EC2**.
+    *   Attach the policy: `AmazonDynamoDBFullAccess`.
+    *   Name it `EC2MemoryLaneRole`.
+2.  **Attach to Instance**:
+    *   Go to **EC2 > Instances**.
+    *   Select your instance > **Actions > Security > Modify IAM role**.
+    *   Select `EC2MemoryLaneRole` and save.
+
+The Go RAG engine will now automatically authenticate with DynamoDB using this role.
+
+### Required DynamoDB Tables
+You must create these 4 tables in the AWS Console before starting the app:
+
+| Table Name | Partition Key (Type) | Sort Key (Type) |
+| --- | --- | --- |
+| `IdentityCore` | `pk` (String) | `sk` (String) |
+| `MemoryChunks` | `pk` (String) | `sk` (String) |
+| `TokenIndex` | `pk` (String) | `sk` (String) |
+| `ReviewQueue` | `pk` (String) | *(None)* |
+
+## 3. Prepare Private Repository Access
 
 Since your repo is private, the EC2 instance needs permission to clone it. 
 
