@@ -57,16 +57,22 @@ export const getIdentity = async (userId, key) => {
 };
 
 /**
- * Search long-term memory for relevant chunks.
+ * Search long-term memory for relevant chunks, scoped to a replica.
  * @param {string} userId - User ID
  * @param {string} query - Search query
  * @param {number} [topK=3] - Number of results
+ * @param {string} [replicaId=''] - Replica ID to scope search
  * @returns {Promise<object>} Search response with scored chunks
  */
-export const searchMemory = async (userId, query, topK = 3) => {
+export const searchMemory = async (userId, query, topK = 3, replicaId = '') => {
     try {
         const { data } = await withRetry(() =>
-            client.post('/memory/search', { user_id: userId, query, top_k: topK })
+            client.post('/memory/search', {
+                user_id: userId,
+                replica_id: replicaId,
+                query,
+                top_k: topK,
+            })
         );
         return data;
     } catch (err) {
@@ -76,19 +82,21 @@ export const searchMemory = async (userId, query, topK = 3) => {
 };
 
 /**
- * Store a memory chunk.
+ * Store a memory chunk, scoped to a replica.
  * @param {string} userId - User ID
  * @param {string} content - Memory content
  * @param {number} importance - Importance score (0-1)
  * @param {string} source - Source type ("conversation", "file", "manual")
  * @param {string} [sessionId] - Session ID
+ * @param {string} [replicaId=''] - Replica ID to scope storage
  * @returns {Promise<object>} Store response with chunk_id
  */
-export const storeMemory = async (userId, content, importance = 0.5, source = 'conversation', sessionId = '') => {
+export const storeMemory = async (userId, content, importance = 0.5, source = 'conversation', sessionId = '', replicaId = '') => {
     try {
         const { data } = await withRetry(() =>
             client.post('/memory/store', {
                 user_id: userId,
+                replica_id: replicaId,
                 content,
                 importance,
                 source,

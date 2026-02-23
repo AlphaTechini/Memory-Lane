@@ -13,7 +13,7 @@ export const authenticateToken = async (request, reply) => {
   try {
     // Extract token from Authorization header
     const authHeader = request.headers.authorization;
-    
+
     if (!authHeader) {
       reply.code(401).send({
         success: false,
@@ -33,7 +33,7 @@ export const authenticateToken = async (request, reply) => {
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    
+
     if (!token) {
       reply.code(401).send({
         success: false,
@@ -59,13 +59,13 @@ export const authenticateToken = async (request, reply) => {
       reply.code(401).send({ success: false, message: 'Invalid token id format', errors: ['Malformed user id in token'] });
       return;
     }
-    
+
     // Check if this is a patient token
     if (decoded.type === 'patient') {
       // Handle patient authentication
       const Patient = (await import('../models/Patient.js')).default;
       const patient = await Patient.findById(decoded.id);
-      
+
       if (!patient || !patient.isActive) {
         reply.code(401).send({
           success: false,
@@ -87,11 +87,11 @@ export const authenticateToken = async (request, reply) => {
         isVerified: true // Patients are automatically verified through caretaker
       };
       request.isPatient = true;
-      
+
     } else {
       // Handle regular user authentication
       const user = await authService.getUserById(decoded.id);
-      
+
       if (!user) {
         reply.code(401).send({
           success: false,
@@ -146,14 +146,14 @@ export const authenticateToken = async (request, reply) => {
 export const optionalAuth = async (request, reply) => {
   try {
     const authHeader = request.headers.authorization;
-    
+
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
-      
+
       if (token) {
         const decoded = authService.verifyToken(token);
         const user = await authService.getUserById(decoded.id);
-        
+
         if (user && user.isVerified) {
           request.user = {
             id: user._id,
@@ -165,7 +165,7 @@ export const optionalAuth = async (request, reply) => {
         }
       }
     }
-    
+
     // Continue regardless of token validity
   } catch (error) {
     // Silently fail for optional auth
@@ -180,7 +180,7 @@ export const optionalAuth = async (request, reply) => {
 export const requireCaretaker = async (request, reply) => {
   // First authenticate
   await authenticateToken(request, reply);
-  
+
   // Ensure this is a caretaker, not a patient
   if (request.isPatient || request.user.role !== 'caretaker') {
     reply.code(403).send({
@@ -199,7 +199,7 @@ export const requireCaretaker = async (request, reply) => {
 export const requirePatient = async (request, reply) => {
   // First authenticate
   await authenticateToken(request, reply);
-  
+
   // Ensure this is a patient, not a caretaker
   if (!request.isPatient || request.user.role !== 'patient') {
     reply.code(403).send({
@@ -219,9 +219,9 @@ export const requirePatient = async (request, reply) => {
 export const validatePatientCaretakerRelationship = async (request, reply) => {
   // Only apply to patient requests
   if (!request.isPatient) return;
-  
+
   const caretakerIdFromRequest = request.params.caretakerId || request.query.caretakerId || request.body.caretakerId;
-  
+
   if (caretakerIdFromRequest && caretakerIdFromRequest !== request.user.caretakerId.toString()) {
     reply.code(403).send({
       success: false,
@@ -248,7 +248,7 @@ export const validatePatientCaretakerRelationship = async (request, reply) => {
     try {
       const User = (await import('../models/User.js')).default;
       const caretaker = await User.findById(request.user.caretakerId);
-      
+
       if (!caretaker) {
         reply.code(403).send({
           success: false,
@@ -261,15 +261,15 @@ export const validatePatientCaretakerRelationship = async (request, reply) => {
       // Check if replica exists in caretaker's namespace and validate email whitelist
       const replicaAbstraction = await import('../services/replicaAbstractionService.js');
       const accessValidation = await replicaAbstraction.validateReplicaAccess(
-        replicaId, 
+        replicaId,
         request.user.caretakerId,
-        { 
+        {
           userRole: 'patient',
           patientEmail: request.user.email,
           namespace: request.user.caretakerId // Use caretaker ID as namespace
         }
       );
-      
+
       if (!accessValidation.success || !accessValidation.hasAccess) {
         reply.code(403).send({
           success: false,
@@ -297,11 +297,11 @@ export const validatePatientCaretakerRelationship = async (request, reply) => {
 export const requireAdmin = async (request, reply) => {
   // First authenticate
   await authenticateToken(request, reply);
-  
+
   // Check if user has admin role (you'd need to add role field to User model)
   // For now, we'll check if user email is in admin list
   const adminEmails = process.env.ADMIN_EMAILS?.split(',') || [];
-  
+
   if (!adminEmails.includes(request.user.email)) {
     reply.code(403).send({
       success: false,
@@ -367,19 +367,4 @@ export const cleanupRateLimit = () => {
 // Clean up every hour
 setInterval(cleanupRateLimit, 60 * 60 * 1000);
 
-/**
- * Middleware to check if the user (caretaker) has a Supavec-compatible ID.
- * In our case, this is just their standard user ID.
- * This replaces the old `validateSensayLink` middleware.
- */
-export const validateSupavecNamespace = async (request, reply) => {
-  const userId = request.user?.id;
-  if (!userId) {
-    return reply.status(401).send({ success: false, error: 'Authentication required' });
-  }
-  const user = await User.findById(userId).select('id role');
-  if (!user || user.role !== 'caretaker') {
-    return reply.status(403).send({ success: false, error: 'Caretaker role required for this operation' });
-  }
-  // The user's ID is the namespace, so if they exist, the namespace is valid.
-};
+// End of auth middleware

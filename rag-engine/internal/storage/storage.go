@@ -15,11 +15,11 @@ type Storage interface {
 
 	// Memory operations
 	StoreMemory(ctx context.Context, chunk *models.MemoryChunk) error
-	SearchMemoryByTokens(ctx context.Context, userID string, tokens []string) ([]models.MemoryChunk, error)
+	SearchMemoryByTokens(ctx context.Context, userID, replicaID string, tokens []string) ([]models.MemoryChunk, error)
 
 	// Token index operations
 	IndexTokens(ctx context.Context, entries []models.TokenEntry) error
-	LookupTokens(ctx context.Context, userID string, tokens []string) ([]string, error) // returns chunk IDs
+	LookupTokens(ctx context.Context, userID, replicaID string, tokens []string) ([]string, error) // returns chunk IDs
 
 	// Review queue operations
 	StoreReview(ctx context.Context, item *models.ReviewItem) error

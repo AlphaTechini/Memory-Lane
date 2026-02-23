@@ -79,7 +79,7 @@ func (h *Handler) SearchMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results, err := h.memory.Search(r.Context(), req.UserID, req.Query, req.TopK)
+	results, err := h.memory.Search(r.Context(), req.UserID, req.ReplicaID, req.Query, req.TopK)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.MemorySearchResponse{
 			Success: false, Error: err.Error(),
@@ -108,6 +108,7 @@ func (h *Handler) StoreMemory(w http.ResponseWriter, r *http.Request) {
 	chunkID, err := h.memory.Store(
 		r.Context(),
 		req.UserID,
+		req.ReplicaID,
 		req.Content,
 		req.Source,
 		req.SessionID,

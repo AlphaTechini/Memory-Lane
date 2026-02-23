@@ -21,8 +21,8 @@ func NewMemoryService(store storage.Storage) *MemoryService {
 	return &MemoryService{store: store}
 }
 
-// Store persists a memory chunk and indexes its tokens.
-func (s *MemoryService) Store(ctx context.Context, userID, content, source, sessionID string, importance float64) (string, error) {
+// Store persists a memory chunk and indexes its tokens, scoped to a replica.
+func (s *MemoryService) Store(ctx context.Context, userID, replicaID, content, source, sessionID string, importance float64) (string, error) {
 	if userID == "" || content == "" {
 		return "", fmt.Errorf("user_id and content are required")
 	}
@@ -33,6 +33,7 @@ func (s *MemoryService) Store(ctx context.Context, userID, content, source, sess
 
 	chunk := &models.MemoryChunk{
 		UserID:     userID,
+		ReplicaID:  replicaID,
 		ChunkID:    chunkID,
 		Content:    content,
 		Tokens:     tokens,
@@ -52,6 +53,7 @@ func (s *MemoryService) Store(ctx context.Context, userID, content, source, sess
 		entries[i] = models.TokenEntry{
 			Token:     t,
 			UserID:    userID,
+			ReplicaID: replicaID,
 			ChunkID:   chunkID,
 			Timestamp: now,
 		}
@@ -63,9 +65,9 @@ func (s *MemoryService) Store(ctx context.Context, userID, content, source, sess
 	return chunkID, nil
 }
 
-// Search finds the most relevant memory chunks for a query.
+// Search finds the most relevant memory chunks for a query, scoped to a replica.
 // Scoring: score = overlap * 0.7 + importance * 0.3
-func (s *MemoryService) Search(ctx context.Context, userID, query string, topK int) ([]models.ScoredChunk, error) {
+func (s *MemoryService) Search(ctx context.Context, userID, replicaID, query string, topK int) ([]models.ScoredChunk, error) {
 	if userID == "" || query == "" {
 		return nil, fmt.Errorf("user_id and query are required")
 	}
@@ -78,8 +80,8 @@ func (s *MemoryService) Search(ctx context.Context, userID, query string, topK i
 		return nil, nil
 	}
 
-	// Fetch candidate chunks
-	chunks, err := s.store.SearchMemoryByTokens(ctx, userID, queryTokens)
+	// Fetch candidate chunks scoped to replica
+	chunks, err := s.store.SearchMemoryByTokens(ctx, userID, replicaID, queryTokens)
 	if err != nil {
 		return nil, err
 	}

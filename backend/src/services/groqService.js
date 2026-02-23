@@ -54,6 +54,7 @@ export const toolDefinitions = [
                 properties: {
                     query: { type: 'string', description: 'Natural language search query describing what to look for' },
                     top_k: { type: 'integer', description: 'Number of results to return (default: 3)' },
+                    replica_id: { type: 'string', description: 'Optional replica ID for scoping the search' },
                 },
                 required: ['query'],
             },
@@ -70,6 +71,7 @@ export const toolDefinitions = [
                     content: { type: 'string', description: 'The memory content to store' },
                     importance: { type: 'number', description: 'Importance score between 0.0 and 1.0 (higher = more important)' },
                     source: { type: 'string', enum: ['conversation', 'file', 'manual'], description: 'Source of the memory' },
+                    replica_id: { type: 'string', description: 'Optional replica ID for scoping the memory storage' },
                 },
                 required: ['content'],
             },
@@ -97,9 +99,10 @@ export const isConfigured = () => Boolean(GROQ_API_KEY);
  * @param {string} userId - User ID for context
  * @param {string} toolName - Name of the tool to execute
  * @param {object} args - Tool arguments
+ * @param {string} [replicaId=''] - Replica ID for scoping
  * @returns {Promise<object>} Tool execution result
  */
-export const executeTool = async (userId, toolName, args) => {
+export const executeTool = async (userId, toolName, args, replicaId = '') => {
     const start = Date.now();
     let result;
 
@@ -109,10 +112,10 @@ export const executeTool = async (userId, toolName, args) => {
                 result = await getIdentity(userId, args.key);
                 break;
             case 'search_memory':
-                result = await searchMemory(userId, args.query, args.top_k || 3);
+                result = await searchMemory(userId, args.query, args.top_k || 3, replicaId);
                 break;
             case 'store_memory':
-                result = await storeMemory(userId, args.content, args.importance || 0.5, args.source || 'conversation');
+                result = await storeMemory(userId, args.content, args.importance || 0.5, args.source || 'conversation', '', replicaId);
                 break;
             default:
                 result = { success: false, error: `Unknown tool: ${toolName}` };
@@ -129,9 +132,10 @@ export const executeTool = async (userId, toolName, args) => {
  * Execute all tool calls from a model response in parallel.
  * @param {string} userId - User ID for context
  * @param {Array} toolCalls - Array of tool call objects from the model
+ * @param {string} [replicaId=''] - Replica ID for scoping
  * @returns {Promise<Array>} Array of tool message objects to send back
  */
-const executeToolCalls = async (userId, toolCalls) => {
+const executeToolCalls = async (userId, toolCalls, replicaId = '') => {
     const results = await Promise.all(
         toolCalls.map(async (tc) => {
             let args;
@@ -144,7 +148,7 @@ const executeToolCalls = async (userId, toolCalls) => {
                 logger.warn(`Failed to parse tool arguments for ${tc.function.name}:`, e.message);
             }
 
-            const result = await executeTool(userId, tc.function.name, args);
+            const result = await executeTool(userId, tc.function.name, args, replicaId);
 
             return {
                 role: 'tool',
@@ -171,7 +175,7 @@ const executeToolCalls = async (userId, toolCalls) => {
  * @param {object} [options] - Additional options
  * @param {string} [options.systemPrompt] - System prompt for the model
  * @param {number} [options.maxTokens] - Maximum output tokens
- * @param {number} [options.temperature] - Sampling temperature
+ * @param {string} [options.replicaId] - Replica ID for scoping tool calls
  * @returns {Promise<object>} Final response with text content
  */
 export const chatCompletion = async (messages, userId, options = {}) => {
@@ -188,6 +192,7 @@ export const chatCompletion = async (messages, userId, options = {}) => {
     const model = options.model || GROQ_MODEL;
     const maxTokens = options.maxTokens || 2048;
     const temperature = options.temperature ?? 0.7;
+    const replicaId = options.replicaId || '';
 
     // Build the full messages array with an optional system prompt
     const fullMessages = [];
@@ -255,7 +260,7 @@ export const chatCompletion = async (messages, userId, options = {}) => {
             conversationMessages.push(assistantMessage);
 
             // Execute tools and append results
-            const toolResults = await executeToolCalls(userId, assistantMessage.tool_calls);
+            const toolResults = await executeToolCalls(userId, assistantMessage.tool_calls, replicaId);
             conversationMessages.push(...toolResults);
 
         } catch (err) {

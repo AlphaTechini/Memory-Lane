@@ -112,9 +112,9 @@ func (s *DynamoStorage) StoreMemory(ctx context.Context, chunk *models.MemoryChu
 	return nil
 }
 
-func (s *DynamoStorage) SearchMemoryByTokens(ctx context.Context, userID string, tokens []string) ([]models.MemoryChunk, error) {
+func (s *DynamoStorage) SearchMemoryByTokens(ctx context.Context, userID, replicaID string, tokens []string) ([]models.MemoryChunk, error) {
 	// First, look up chunk IDs from the token index
-	chunkIDs, err := s.LookupTokens(ctx, userID, tokens)
+	chunkIDs, err := s.LookupTokens(ctx, userID, replicaID, tokens)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +174,7 @@ func (s *DynamoStorage) IndexTokens(ctx context.Context, entries []models.TokenE
 	return nil
 }
 
-func (s *DynamoStorage) LookupTokens(ctx context.Context, userID string, tokens []string) ([]string, error) {
+func (s *DynamoStorage) LookupTokens(ctx context.Context, userID, replicaID string, tokens []string) ([]string, error) {
 	chunkSet := make(map[string]bool)
 	for _, t := range tokens {
 		out, err := s.client.Query(ctx, &dynamodb.QueryInput{

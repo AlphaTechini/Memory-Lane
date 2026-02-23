@@ -16,6 +16,7 @@ type IdentityFact struct {
 // MemoryChunk represents a single piece of long-term memory.
 type MemoryChunk struct {
 	UserID     string    `json:"user_id" bson:"user_id"`
+	ReplicaID  string    `json:"replica_id" bson:"replica_id"`
 	ChunkID    string    `json:"chunk_id" bson:"chunk_id"`
 	Content    string    `json:"content" bson:"content"`
 	Tokens     []string  `json:"tokens" bson:"tokens"`
@@ -29,6 +30,7 @@ type MemoryChunk struct {
 type TokenEntry struct {
 	Token     string    `json:"token" bson:"token"`
 	UserID    string    `json:"user_id" bson:"user_id"`
+	ReplicaID string    `json:"replica_id" bson:"replica_id"`
 	ChunkID   string    `json:"chunk_id" bson:"chunk_id"`
 	Timestamp time.Time `json:"timestamp" bson:"timestamp"`
 }
@@ -44,13 +46,13 @@ const (
 
 // ReviewItem is a proposed set of changes waiting for caretaker approval.
 type ReviewItem struct {
-	SessionID              string              `json:"session_id" bson:"session_id"`
-	UserID                 string              `json:"user_id" bson:"user_id"`
-	Status                 ReviewStatus        `json:"status" bson:"status"`
+	SessionID               string             `json:"session_id" bson:"session_id"`
+	UserID                  string             `json:"user_id" bson:"user_id"`
+	Status                  ReviewStatus       `json:"status" bson:"status"`
 	ProposedIdentityUpdates []IdentityProposal `json:"proposed_identity_updates" bson:"proposed_identity_updates"`
-	ProposedMemories       []MemoryProposal    `json:"proposed_memories" bson:"proposed_memories"`
-	CreatedAt              time.Time           `json:"created_at" bson:"created_at"`
-	ReviewedAt             *time.Time          `json:"reviewed_at,omitempty" bson:"reviewed_at,omitempty"`
+	ProposedMemories        []MemoryProposal   `json:"proposed_memories" bson:"proposed_memories"`
+	CreatedAt               time.Time          `json:"created_at" bson:"created_at"`
+	ReviewedAt              *time.Time         `json:"reviewed_at,omitempty" bson:"reviewed_at,omitempty"`
 }
 
 // IdentityProposal is one proposed identity fact change inside a review.
@@ -96,9 +98,10 @@ type IdentityResponse struct {
 
 // MemorySearchRequest is the JSON body for POST /memory/search.
 type MemorySearchRequest struct {
-	UserID string `json:"user_id"`
-	Query  string `json:"query"`
-	TopK   int    `json:"top_k"`
+	UserID    string `json:"user_id"`
+	ReplicaID string `json:"replica_id"`
+	Query     string `json:"query"`
+	TopK      int    `json:"top_k"`
 }
 
 // ScoredChunk pairs a memory chunk with its relevance score.
@@ -117,6 +120,7 @@ type MemorySearchResponse struct {
 // MemoryStoreRequest is the JSON body for POST /memory/store.
 type MemoryStoreRequest struct {
 	UserID     string  `json:"user_id"`
+	ReplicaID  string  `json:"replica_id"`
 	Content    string  `json:"content"`
 	Importance float64 `json:"importance"`
 	Source     string  `json:"source"`

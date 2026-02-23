@@ -91,18 +91,18 @@ func (s *MongoStorage) ensureIndexes(ctx context.Context) error {
 		return err
 	}
 
-	// MemoryChunks: index on user_id, and compound on user_id + chunk_id
+	// MemoryChunks: compound index on user_id + replica_id + chunk_id
 	_, err = s.db.Collection(memoryCollection).Indexes().CreateMany(ctx, []mongo.IndexModel{
-		{Keys: bson.D{{Key: "user_id", Value: 1}}},
+		{Keys: bson.D{{Key: "user_id", Value: 1}, {Key: "replica_id", Value: 1}}},
 		{Keys: bson.D{{Key: "user_id", Value: 1}, {Key: "chunk_id", Value: 1}}, Options: options.Index().SetUnique(true)},
 	})
 	if err != nil {
 		return err
 	}
 
-	// TokenIndex: compound on user_id + token
+	// TokenIndex: compound on user_id + replica_id + token
 	_, err = s.db.Collection(tokenCollection).Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: bson.D{{Key: "user_id", Value: 1}, {Key: "token", Value: 1}},
+		Keys: bson.D{{Key: "user_id", Value: 1}, {Key: "replica_id", Value: 1}, {Key: "token", Value: 1}},
 	})
 	if err != nil {
 		return err
@@ -151,15 +151,18 @@ func (s *MongoStorage) StoreMemory(ctx context.Context, chunk *models.MemoryChun
 	return nil
 }
 
-func (s *MongoStorage) SearchMemoryByTokens(ctx context.Context, userID string, tokens []string) ([]models.MemoryChunk, error) {
+func (s *MongoStorage) SearchMemoryByTokens(ctx context.Context, userID, replicaID string, tokens []string) ([]models.MemoryChunk, error) {
 	if len(tokens) == 0 {
 		return nil, nil
 	}
 
-	// Find all chunks for this user that contain any of the query tokens
+	// Build filter scoped to user + replica
 	filter := bson.M{
 		"user_id": userID,
 		"tokens":  bson.M{"$in": tokens},
+	}
+	if replicaID != "" {
+		filter["replica_id"] = replicaID
 	}
 
 	cursor, err := s.db.Collection(memoryCollection).Find(ctx, filter)
@@ -192,13 +195,16 @@ func (s *MongoStorage) IndexTokens(ctx context.Context, entries []models.TokenEn
 	return nil
 }
 
-func (s *MongoStorage) LookupTokens(ctx context.Context, userID string, tokens []string) ([]string, error) {
+func (s *MongoStorage) LookupTokens(ctx context.Context, userID, replicaID string, tokens []string) ([]string, error) {
 	if len(tokens) == 0 {
 		return nil, nil
 	}
 	filter := bson.M{
 		"user_id": userID,
 		"token":   bson.M{"$in": tokens},
+	}
+	if replicaID != "" {
+		filter["replica_id"] = replicaID
 	}
 	cursor, err := s.db.Collection(tokenCollection).Find(ctx, filter)
 	if err != nil {

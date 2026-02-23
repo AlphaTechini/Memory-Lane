@@ -250,7 +250,6 @@ async function replicaRoutes(fastify, options) {
         description,
         createdAt: new Date(),
         apiSource: abstractionResult.apiSource,
-        supavecNamespace: abstractionResult.namespace,
         migrationStatus: 'COMPLETED',
         selectedSegments: selectedSegments || []
       };

@@ -8,8 +8,58 @@
 import logger from '../utils/logger.js';
 import { searchMemory, storeMemory, healthCheck as ragHealthCheck } from './ragClient.js';
 
+// ---------------------------------------------------------------------------
+// Training-text chunker:  splits a big training blob into topical pieces
+// ---------------------------------------------------------------------------
+
+const MAX_CHUNK_CHARS = 800;  // ≈ 200 tokens
+
 /**
- * Create a new replica by storing its training data in RAG engine.
+ * Split training text into topical chunks.
+ * Strategy: split on double-newlines (paragraph/section boundaries) first,
+ * then fall back to MAX_CHUNK_CHARS hard splits if any section is still huge.
+ */
+function chunkTrainingText(text) {
+  if (!text || text.length <= MAX_CHUNK_CHARS) return [text].filter(Boolean);
+
+  // 1. Split on double-newline (paragraph/section boundaries)
+  const sections = text.split(/\n\n+/).map(s => s.trim()).filter(Boolean);
+
+  const chunks = [];
+  let buffer = '';
+
+  for (const section of sections) {
+    // If adding this section would exceed the limit, flush the buffer
+    if (buffer.length + section.length + 2 > MAX_CHUNK_CHARS && buffer.length > 0) {
+      chunks.push(buffer.trim());
+      buffer = '';
+    }
+
+    // If the section itself is too long, hard-split it
+    if (section.length > MAX_CHUNK_CHARS) {
+      if (buffer.length > 0) {
+        chunks.push(buffer.trim());
+        buffer = '';
+      }
+      // Hard split the oversized section
+      for (let i = 0; i < section.length; i += MAX_CHUNK_CHARS) {
+        chunks.push(section.slice(i, i + MAX_CHUNK_CHARS).trim());
+      }
+    } else {
+      buffer += (buffer ? '\n\n' : '') + section;
+    }
+  }
+  if (buffer.trim()) chunks.push(buffer.trim());
+
+  return chunks;
+}
+
+// ---------------------------------------------------------------------------
+// Replica CRUD
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a new replica by storing its training data as chunked memories in RAG engine.
  * @param {object} replicaData - Replica configuration data
  * @param {string} userId - User ID creating the replica
  * @returns {Promise<object>} Created replica information
@@ -22,21 +72,32 @@ export const createReplica = async (replicaData, userId) => {
       ?.map(t => `${t.title}\n${t.content}`)
       .join('\n\n') || '';
 
-    // Store the training data as the replica's initial memory
-    const result = await storeMemory(
-      userId,
-      trainingContent,
-      1.0, // max importance for training data
-      'manual',
-      `replica-init-${Date.now()}`
-    );
+    // Generate a stable replica ID
+    const replicaId = `replica-${userId}-${Date.now()}`;
 
-    const replicaId = result.chunk_id || `replica-${userId}-${Date.now()}`;
+    // Chunk the training text into topical pieces
+    const chunks = chunkTrainingText(trainingContent);
+    logger.info(`Chunked training text into ${chunks.length} pieces for replica ${replicaId}`);
+
+    // Store each chunk individually, scoped to this replica
+    const chunkIds = [];
+    for (const chunk of chunks) {
+      const result = await storeMemory(
+        userId,
+        chunk,
+        1.0, // max importance for training data
+        'manual',
+        `init-${Date.now()}`,
+        replicaId,
+      );
+      if (result.chunk_id) chunkIds.push(result.chunk_id);
+    }
 
     return {
       success: true,
       apiSource: 'RAG',
       replicaId,
+      chunks: chunkIds.length,
       createdAt: new Date().toISOString(),
     };
   } catch (error) {
@@ -72,8 +133,12 @@ export const deleteReplica = async (replicaId, userId) => {
   };
 };
 
+// ---------------------------------------------------------------------------
+// Chat
+// ---------------------------------------------------------------------------
+
 /**
- * Send a chat message via Groq + RAG Engine.
+ * Send a chat message via Groq + RAG Engine, scoped to a specific replica.
  * 
  * @param {string} replicaId - Replica ID to chat with
  * @param {string} message - User message
@@ -120,6 +185,7 @@ export const sendChatMessage = async (
     model: options.model,
     maxTokens: options.maxTokens,
     temperature: options.temperature,
+    replicaId,  // <— scopes all tool calls to this replica
   });
 
   if (!groqResult.success || !groqResult.response) {
@@ -148,6 +214,10 @@ export const sendChatMessage = async (
     iterations: groqResult.iterations,
   };
 };
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 /**
  * Build a system prompt for a replica.
