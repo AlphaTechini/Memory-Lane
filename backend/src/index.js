@@ -11,7 +11,6 @@ import galleryRoutes from './routes/gallery/index.js';
 import replicaImageRoutes from './routes/replicaImageRoutes.js';
 import genericChatRoutes from './routes/genericChatRoutes.js';
 import databaseConfig from './config/database.js';
-import { validateMigrationConfig } from './config/migration.js';
 
 // (dotenv already loaded via loadEnv.js)
 
@@ -188,13 +187,7 @@ await server.register(multipart, {
   }
 });
 
-// Validate migration configuration on startup
-try {
-  validateMigrationConfig();
-} catch (err) {
-  server.log.error({ err }, 'Migration configuration validation failed');
-  process.exit(1);
-}
+// (Migration config removed — Groq+RAG is the sole API path)
 
 // Connect to MongoDB before registering routes to ensure database is ready
 try {
