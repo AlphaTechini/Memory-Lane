@@ -2,7 +2,9 @@ package storage
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/memory-lane/rag-engine/internal/models"
@@ -27,17 +29,48 @@ type MongoStorage struct {
 
 // NewMongoStorage connects to MongoDB and returns a ready storage backend.
 func NewMongoStorage(ctx context.Context, uri string) (*MongoStorage, error) {
-	client, err := mongo.Connect(options.Client().ApplyURI(uri))
+	// Add retryWrites and connection timeout if not already specified
+	connectCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	clientOpts := options.Client().ApplyURI(uri).
+		SetConnectTimeout(10 * time.Second).
+		SetServerSelectionTimeout(10 * time.Second)
+
+	// For Atlas SRV connections on Windows, Go's TLS stack can fail with
+	// "tls: internal error" due to certificate chain issues. Use a custom
+	// TLS config as a workaround.
+	if strings.Contains(uri, "mongodb+srv") || strings.Contains(uri, "tls=true") {
+		tlsCfg := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+		clientOpts.SetTLSConfig(tlsCfg)
+	}
+
+	client, err := mongo.Connect(clientOpts)
 	if err != nil {
 		return nil, fmt.Errorf("mongo connect: %w", err)
 	}
 
 	// Verify connection
-	if err := client.Ping(ctx, nil); err != nil {
+	if err := client.Ping(connectCtx, nil); err != nil {
 		return nil, fmt.Errorf("mongo ping: %w", err)
 	}
 
-	db := client.Database(dbName)
+	// Extract database name from URI, default to "sensay"
+	dbNameToUse := dbName
+	if idx := strings.LastIndex(uri, "/"); idx > 0 {
+		candidate := uri[idx+1:]
+		// Remove query parameters
+		if qmark := strings.Index(candidate, "?"); qmark > 0 {
+			candidate = candidate[:qmark]
+		}
+		if candidate != "" && !strings.Contains(candidate, ":") {
+			dbNameToUse = candidate
+		}
+	}
+
+	db := client.Database(dbNameToUse)
 	s := &MongoStorage{client: client, db: db}
 
 	// Create indexes

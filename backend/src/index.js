@@ -94,8 +94,8 @@ await server.register(rateLimit, {
 // We also expose a protected endpoint that allows the frontend (or a dev script) to
 // register its current exposed origin at runtime (useful when running with `--host`).
 const defaultFrontendOrigins = [
-  'http://localhost:5173', 
-  'http://localhost:5174', 
+  'http://localhost:5173',
+  'http://localhost:5174',
   'http://localhost:3000',
   'https://memorylane.cyberpunk.work'
 ];
@@ -220,6 +220,9 @@ await server.register(apiRoutes);
 // Register health check routes with enhanced monitoring
 const healthRoutes = (await import('./routes/healthApi.js')).default;
 await server.register(healthRoutes);
+// Register review routes (caretaker review queue for memory proposals)
+const reviewRoutes = (await import('./routes/reviewRoutes.js')).default;
+await server.register(reviewRoutes);
 
 // Admin routes (import conditionally to avoid loading in production accidentally)
 if (process.env.NODE_ENV === 'development' || process.env.ENABLE_ADMIN_ROUTES === 'true') {
@@ -243,7 +246,7 @@ server.setErrorHandler((error, request, reply) => {
     // Fallback to simple error logging if structured logging fails
     server.log.error(error);
   }
-  
+
   // Validation errors
   if (error.name === 'ValidationError') {
     const errors = Object.values(error.errors).map(err => err.message);
@@ -254,7 +257,7 @@ server.setErrorHandler((error, request, reply) => {
     });
     return;
   }
-  
+
   // JWT errors
   if (error.name === 'JsonWebTokenError') {
     reply.code(401).send({
@@ -264,7 +267,7 @@ server.setErrorHandler((error, request, reply) => {
     });
     return;
   }
-  
+
   // Default error response
   reply.code(error.statusCode || 500).send({
     success: false,
