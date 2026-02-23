@@ -13,61 +13,68 @@ In the AWS Console, ensure your Security Group has the following **Inbound Rules
 | TCP | 80 | 0.0.0.0/0 | HTTP (for Nginx/Frontend) |
 | TCP | 443 | 0.0.0.0/0 | HTTPS |
 
-## 2. DynamoDB Connectivity (Easy Mode)
+## 2. DynamoDB Setup (Step-by-Step)
 
-To connect to DynamoDB without manually managing Access Keys:
+Before the app can store memories, you must create these 4 tables in the DynamoDB Console.
 
-1.  **Create an IAM Role**:
-    *   Go to **IAM > Roles > Create role**.
-    *   Select **AWS Service** and **EC2**.
-    *   Attach the policy: `AmazonDynamoDBFullAccess`.
-    *   Name it `EC2MemoryLaneRole`.
-2.  **Attach to Instance**:
-    *   Go to **EC2 > Instances**.
-    *   Select your instance > **Actions > Security > Modify IAM role**.
-    *   Select `EC2MemoryLaneRole` and save.
+### Step 1: Create Tables
+Go to **DynamoDB > Tables > Create table** and repeat for each:
 
-The Go RAG engine will now automatically authenticate with DynamoDB using this role.
+1.  **Table name**: `IdentityCore`
+    *   **Partition key**: `pk` (String)
+    *   **Sort key**: `sk` (String)
+2.  **Table name**: `MemoryChunks`
+    *   **Partition key**: `pk` (String)
+    *   **Sort key**: `sk` (String)
+3.  **Table name**: `TokenIndex`
+    *   **Partition key**: `pk` (String)
+    *   **Sort key**: `sk` (String)
+4.  **Table name**: `ReviewQueue`
+    *   **Partition key**: `pk` (String)
+    *   **Sort key**: *(Leave empty)*
 
-### Required DynamoDB Tables
-You must create these 4 tables in the AWS Console before starting the app:
+> [!TIP]
+> Use **"Default settings"** for Table settings (On-demand capacity) to stay within most free tiers.
 
-| Table Name | Partition Key (Type) | Sort Key (Type) |
-| --- | --- | --- |
-| `IdentityCore` | `pk` (String) | `sk` (String) |
-| `MemoryChunks` | `pk` (String) | `sk` (String) |
-| `TokenIndex` | `pk` (String) | `sk` (String) |
-| `ReviewQueue` | `pk` (String) | *(None)* |
+### Step 2: Grant EC2 Access (IAM)
+1.  Go to **IAM > Roles > Create role**.
+2.  Select **AWS Service** and **EC2**.
+3.  Choose Use Case: **EC2 - Allows EC2 instances to call AWS services on your behalf**.
+4.  Attach policy: `AmazonDynamoDBFullAccess`.
+5.  Name it `EC2MemoryLaneRole`.
+### Step 2: Connect EC2 to DynamoDB (The "Bridge")
+Now that your tables and role exist, you must "connect" them by giving the role to your instance:
 
-## 3. Prepare Private Repository Access
+1.  **Go to EC2 Console > Instances**.
+2.  Select your running `memory-lane` instance.
+3.  Click **Actions > Security > Modify IAM role**.
+4.  Select the `EC2MemoryLaneRole` you created in the previous step.
+5.  Click **Update IAM role**.
 
-Since your repo is private, the EC2 instance needs permission to clone it. 
+---
 
-### Method A: SSH Key (Recommended)
-1. On the EC2: `ssh-keygen -t ed25519 -C "your-email@example.com"`
-2. Display public key: `cat ~/.ssh/id_ed25519.pub`
-3. Add this key to **GitHub Settings > SSH and GPG keys > New SSH key**.
-4. Update `deploy.sh` to use the SSH URL: `git@github.com:AlphaTechini/Memory-Lane.git`.
+## 3. Clone and Deploy
 
-## 3. Deployment Command
-
-Once the SSH key is set up, run the deployment script:
+Since the repo is public, you can clone via HTTPS directly on the EC2.
 
 ```bash
-# Get the script (if you haven't copied it yet)
-curl -o deploy.sh https://raw.githubusercontent.com/AlphaTechini/Memory-Lane/main/deploy.sh
+# SSH into EC2, then:
+sudo yum update -y
+sudo yum install -y git
+git clone https://github.com/AlphaTechini/Memory-Lane.git
+cd Memory-Lane
 chmod +x deploy.sh
 ./deploy.sh
 ```
 
 ## 4. Environment Variables
 
-PM2 will start the apps, but you need to provide your secrets. Create a `.env` file in `/home/ec2-user/memory-lane/backend` and `/home/ec2-user/memory-lane/rag-engine`.
+Create a `.env` file in `/home/ec2-user/memory-lane/backend` and `/home/ec2-user/memory-lane/rag-engine`.
 
 **Backend `.env`:**
 ```env
 PORT=3000
-MONGODB_URI=your_atlas_uri
+MONGODB_URI=your_atlas_uri (optional if using Dynamo)
 GROQ_API_KEY=your_key
 RAG_ENGINE_URL=http://localhost:8081
 JWT_SECRET=your_secret
@@ -75,7 +82,8 @@ JWT_SECRET=your_secret
 
 **RAG Engine `.env`:**
 ```env
-MONGODB_URI=your_atlas_uri
+STORAGE_BACKEND=dynamodb
+AWS_REGION=eu-north-1  # Replace with your instance region
 PORT=8081
 ```
 
@@ -84,4 +92,3 @@ PORT=8081
 - `pm2 status` - See running services.
 - `pm2 logs` - See real-time logs.
 - `pm2 restart all` - Restart after env changes.
-- `pm2 stop rag-engine` - Stop specific service.

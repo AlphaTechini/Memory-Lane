@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # Configuration
-# For private repos, ensure you have added the EC2's SSH public key to GitHub
-REPO_URL="git@github.com:AlphaTechini/Memory-Lane.git"
+REPO_URL="https://github.com/AlphaTechini/Memory-Lane.git"
 APP_DIR="/home/ec2-user/memory-lane"
 
 echo "🚀 Starting Deployment on EC2 ($HOSTTYPE)..."
