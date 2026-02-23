@@ -10,7 +10,7 @@ module.exports = {
                 AWS_REGION: 'eu-north-1'
             },
             autorestart: true,
-            watch: false,
+            watch: false
         },
         {
             name: 'backend',
@@ -19,12 +19,10 @@ module.exports = {
             env: {
                 PORT: '3000',
                 RAG_ENGINE_URL: 'http://localhost:8081',
-                NODE_ENV: 'production',
+                NODE_ENV: 'production'
             },
-            wait_ready: true,
-            listen_timeout: 3000,
             autorestart: true,
-            watch: false,
+            watch: false
         }
     ]
 };

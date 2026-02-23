@@ -55,10 +55,16 @@ Create a `.env` file in the project directories on your server.
 **Location:** `~/memory-lane/backend/.env`
 ```env
 PORT=3000
-MONGODB_URI=your_atlas_uri (optional if using Dynamo)
+MONGODB_URL=your_atlas_uri (optional if using Dynamo)
 GROQ_API_KEY=your_key
 RAG_ENGINE_URL=http://localhost:8081
 JWT_SECRET=your_secret
+FRONTEND_URL=your_frontend_url (e.g., https://memorylane.cyberpunk.work)
+CLOUDINARY_CLOUD_NAME=your_cloudinary_name
+CLOUDINARY_API_KEY=your_cloudinary_key
+CLOUDINARY_API_SECRET=your_cloudinary_secret
+EMAIL_FROM=noreply@yourdomain.com
+RESEND_API_KEY=your_resend_key
 ```
 
 **Location:** `~/memory-lane/rag-engine/.env`
