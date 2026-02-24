@@ -7,6 +7,7 @@
 
 import { healthCheck as ragHealth } from '../services/ragClient.js';
 import logger from '../utils/logger.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 /**
  * Register review routes on the Fastify server.
@@ -20,7 +21,7 @@ export default async function reviewRoutes(server) {
      * Requires caretaker role.
      */
     server.get('/api/reviews', {
-        preHandler: [server.authenticate],
+        preHandler: [authenticateToken],
     }, async (request, reply) => {
         try {
             const userId = request.user.id || request.user._id;
@@ -60,7 +61,7 @@ export default async function reviewRoutes(server) {
      * Approve a review — commits proposed memories and identity updates.
      */
     server.post('/api/reviews/:sessionId/approve', {
-        preHandler: [server.authenticate],
+        preHandler: [authenticateToken],
     }, async (request, reply) => {
         try {
             const { sessionId } = request.params;
@@ -128,7 +129,7 @@ export default async function reviewRoutes(server) {
      * Reject a review — discards all proposals.
      */
     server.post('/api/reviews/:sessionId/reject', {
-        preHandler: [server.authenticate],
+        preHandler: [authenticateToken],
     }, async (request, reply) => {
         try {
             const { sessionId } = request.params;

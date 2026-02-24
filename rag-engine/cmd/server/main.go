@@ -87,13 +87,16 @@ func main() {
 
 // initStorage picks the right backend based on environment variables.
 func initStorage(ctx context.Context) (storage.Storage, error) {
-	awsKey := os.Getenv("AWS_ACCESS_KEY_ID")
-	awsSecret := os.Getenv("AWS_SECRET_ACCESS_KEY")
+	storageBackend := os.Getenv("STORAGE_BACKEND")
 	awsRegion := os.Getenv("AWS_REGION")
 
-	if awsKey != "" && awsSecret != "" && awsRegion != "" {
-		endpoint := os.Getenv("DYNAMODB_ENDPOINT") // e.g. http://localhost:8000 for local
-		log.Println("📦 DynamoDB credentials detected — using DynamoDB backend")
+	// If explicitly set to dynamodb, or if we have AWS keys
+	if storageBackend == "dynamodb" || (os.Getenv("AWS_ACCESS_KEY_ID") != "" && os.Getenv("AWS_SECRET_ACCESS_KEY") != "") {
+		if awsRegion == "" {
+			awsRegion = "eu-north-1" // Fallback to your instance's region just in case
+		}
+		endpoint := os.Getenv("DYNAMODB_ENDPOINT") // Optional for purely AWS cloud
+		log.Println("📦 Using DynamoDB backend (Region: " + awsRegion + ")")
 		return storage.NewDynamoStorage(ctx, awsRegion, endpoint)
 	}
 

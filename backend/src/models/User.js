@@ -10,7 +10,8 @@ const userSchema = new mongoose.Schema({
   },
   googleId: {
     type: String,
-    sparse: true
+    sparse: true,
+    unique: true
   },
   password: {
     type: String,
@@ -77,14 +78,14 @@ const userSchema = new mongoose.Schema({
 }, {
   timestamps: true, // Automatically adds createdAt and updatedAt
   toJSON: {
-    transform: function(doc, ret) {
+    transform: function (doc, ret) {
       ret.id = ret._id;
       delete ret.__v;
       return ret;
     }
   },
   toObject: {
-    transform: function(doc, ret) {
+    transform: function (doc, ret) {
       ret.id = ret._id;
       delete ret.__v;
       return ret;
@@ -94,16 +95,16 @@ const userSchema = new mongoose.Schema({
 
 // Indexes
 userSchema.index({ email: 1 }, { unique: true });
-userSchema.index({ googleId: 1 }, { unique: true, sparse: true });
+// (googleId index handled directly in schema props above to fix warnings)
 userSchema.index({ role: 1 });
 
 // Virtual for full name
-userSchema.virtual('fullName').get(function() {
+userSchema.virtual('fullName').get(function () {
   return `${this.firstName || ''} ${this.lastName || ''}`.trim();
 });
 
 // Instance methods
-userSchema.methods.toSafeObject = function() {
+userSchema.methods.toSafeObject = function () {
   const obj = this.toObject();
   delete obj.password;
   delete obj.verificationToken;
@@ -115,13 +116,13 @@ userSchema.methods.toSafeObject = function() {
 };
 
 // Hash password before saving if modified
-userSchema.pre('save', async function() {
+userSchema.pre('save', async function () {
   // Skip if password not modified or doesn't exist
   if (!this.isModified('password') || !this.password) return;
-  
+
   // If password already looks like a bcrypt hash, skip re-hashing
   if (/^\$2[aby]\$/.test(this.password)) return;
-  
+
   const rounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 12;
   const salt = await bcrypt.genSalt(rounds);
   this.password = await bcrypt.hash(this.password, salt);
@@ -129,17 +130,17 @@ userSchema.pre('save', async function() {
 });
 
 // Compare a raw password with the hashed password
-userSchema.methods.comparePassword = async function(candidate) {
+userSchema.methods.comparePassword = async function (candidate) {
   try {
     console.log('[comparePassword] Starting comparison for user:', this._id);
     console.log('[comparePassword] Stored password exists:', !!this.password);
     console.log('[comparePassword] Candidate password exists:', !!candidate);
-    
+
     if (!this.password) {
       console.warn('[comparePassword] No password stored for user', this._id);
       return false;
     }
-    
+
     if (!candidate) {
       console.warn('[comparePassword] Empty candidate password for user', this._id);
       return false;
@@ -147,10 +148,10 @@ userSchema.methods.comparePassword = async function(candidate) {
 
     const storedPassword = String(this.password);
     const candidatePassword = String(candidate);
-    
+
     const isHashed = /^\$2[aby]\$/.test(storedPassword);
     console.log('[comparePassword] Password is hashed:', isHashed);
-    
+
     if (isHashed) {
       // Normal path: stored password is a bcrypt hash
       const result = await bcrypt.compare(candidatePassword, storedPassword);
@@ -162,14 +163,14 @@ userSchema.methods.comparePassword = async function(candidate) {
     console.log('[comparePassword] Comparing plain-text passwords');
     const matchesPlain = candidatePassword === storedPassword;
     console.log('[comparePassword] Plain-text match:', matchesPlain);
-    
+
     if (matchesPlain) {
       // Upgrade to hashed password on successful login
       try {
         const rounds = parseInt(process.env.BCRYPT_ROUNDS, 10) || 12;
         const salt = await bcrypt.genSalt(rounds);
         const hashed = await bcrypt.hash(candidatePassword, salt);
-        
+
         // Use updateOne to avoid triggering pre-save hook issues
         await this.constructor.updateOne(
           { _id: this._id },
@@ -192,11 +193,11 @@ userSchema.methods.comparePassword = async function(candidate) {
 };
 
 // Static methods
-userSchema.statics.findByEmail = function(email) {
+userSchema.statics.findByEmail = function (email) {
   return this.findOne({ email: email.toLowerCase() });
 };
 
-userSchema.statics.findByGoogleId = function(googleId) {
+userSchema.statics.findByGoogleId = function (googleId) {
   return this.findOne({ googleId });
 };
 
