@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Memory Lane - Preserve Memories, Restore Connections</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;700&amp;family=Playfair+Display:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#0f2c59", // Deep Navy Blue
+                        secondary: "#557c55", // Soft Sage Green
+                        "background-light": "#fdfbf7", // Warm Ivory
+                        "background-dark": "#101522",
+                    },
+                    fontFamily: {
+                        display: ["Lexend", "sans-serif"],
+                        serif: ["Playfair Display", "serif"],
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Playfair Display', serif;
+        }
+    </style>
+</head>
+<body class="bg-background-light text-slate-900 dark:bg-background-dark dark:text-slate-100 overflow-x-hidden">
+<!-- Top Navigation -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm sticky top-0 z-50 px-6 py-4 md:px-10 lg:px-40">
+<div class="flex items-center gap-4">
+<div class="size-8 text-primary dark:text-blue-400">
+<span class="material-symbols-outlined text-4xl">psychology</span>
+</div>
+<h2 class="text-primary dark:text-white text-2xl font-bold leading-tight tracking-tight">Memory Lane</h2>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-slate-700 dark:text-slate-300 hover:text-primary dark:hover:text-blue-300 text-sm font-medium transition-colors font-display" href="#">How it Works</a>
+<a class="text-slate-700 dark:text-slate-300 hover:text-primary dark:hover:text-blue-300 text-sm font-medium transition-colors font-display" href="#">Security</a>
+<a class="text-slate-700 dark:text-slate-300 hover:text-primary dark:hover:text-blue-300 text-sm font-medium transition-colors font-display" href="#">For Doctors</a>
+</nav>
+<div class="flex items-center gap-4">
+<a class="hidden sm:block text-slate-700 dark:text-slate-300 hover:text-primary dark:hover:text-blue-300 text-sm font-medium transition-colors font-display" href="#">Log In</a>
+<button class="flex cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-6 bg-primary hover:bg-primary/90 transition-colors text-white text-sm font-bold tracking-wide font-display shadow-lg shadow-blue-900/10">
+<span class="truncate">Get Started</span>
+</button>
+</div>
+</header>
+<main class="flex flex-col min-h-screen">
+<!-- Hero Section -->
+<section class="relative w-full">
+<div class="@container">
+<div class="@[480px]:p-6 lg:p-10 max-w-7xl mx-auto">
+<div class="relative flex min-h-[560px] flex-col gap-6 overflow-hidden rounded-2xl bg-cover bg-center bg-no-repeat items-start justify-center px-6 py-12 @[480px]:px-12 md:px-20 shadow-2xl" data-alt="Doctor compassionately consulting with senior patient" style='background-image: linear-gradient(to right, rgba(15, 44, 89, 0.85) 0%, rgba(15, 44, 89, 0.4) 60%, rgba(0,0,0,0) 100%), url("https://lh3.googleusercontent.com/aida-public/AB6AXuCUJJ8hFBrrpIgIKD21WFoYOa2g9xggb5hgsoxQgCM9a0vTc6w1vVrVHZltj2LX6ZJq1JQYjRbW54q4KURUamds134861-_6xY_k1sVbf5Ef9TpKvLar-ZsogDFefn6bRKFv9twIoq49eDY48KhARmQyzvXvRRMOvBzfMhL2N5Bka9MhxHvGW02dEk0s4437fm9him1PjFWjIlhIOz5tOEn17xHLrRU_UJqcnpfelcxEMRZquybrB_43WDcPjron5FhxJHjxz1Vnw");'>
+<div class="flex flex-col gap-6 text-left max-w-2xl z-10">
+<span class="inline-block px-3 py-1 rounded-full bg-secondary/20 border border-secondary/40 text-green-100 text-xs font-bold tracking-wider uppercase backdrop-blur-md w-fit font-display">
+                                AI-Assisted Memory Therapy
+                            </span>
+<h1 class="text-white text-5xl md:text-6xl lg:text-7xl font-bold leading-tight drop-shadow-sm">
+                                Preserve Memories, <br/><span class="text-blue-200 italic">Restore Connections.</span>
+</h1>
+<h2 class="text-blue-50 text-lg md:text-xl font-light leading-relaxed font-display max-w-xl">
+                                Reconnect with loved ones through secure, caregiver-managed AI replicas designed specifically for reminiscence therapy and cognitive support.
+                            </h2>
+<div class="flex flex-col sm:flex-row gap-4 mt-4">
+<button class="flex min-w-[160px] cursor-pointer items-center justify-center rounded-lg h-14 px-8 bg-white text-primary hover:bg-blue-50 transition-colors text-base font-bold tracking-wide font-display shadow-lg">
+                                    Request Access
+                                </button>
+<button class="flex min-w-[160px] cursor-pointer items-center justify-center rounded-lg h-14 px-8 bg-transparent border border-white/30 text-white hover:bg-white/10 transition-colors text-base font-medium tracking-wide font-display backdrop-blur-sm">
+                                    View Demo
+                                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Trusted Banner -->
+<section class="border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 py-8">
+<div class="max-w-7xl mx-auto px-6 md:px-10">
+<h4 class="text-slate-500 dark:text-slate-400 text-sm font-bold tracking-widest uppercase text-center mb-8 font-display">Trusted by Leading Healthcare Professionals</h4>
+<div class="flex flex-wrap justify-center items-center gap-12 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+<!-- Placeholder Logos using simple SVGs/Text for generic representation -->
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-3xl">local_hospital</span>
+<span class="font-serif text-xl font-bold">St. Mary's</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-3xl">medical_services</span>
+<span class="font-serif text-xl font-bold">HealthCore</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-3xl">cardiology</span>
+<span class="font-serif text-xl font-bold">SeniorLife</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-3xl">neurology</span>
+<span class="font-serif text-xl font-bold">NeuroCare</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-3xl">psychiatry</span>
+<span class="font-serif text-xl font-bold">MindPath</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Feature Section -->
+<section class="py-20 px-6 md:px-10 lg:px-40 bg-background-light dark:bg-background-dark">
+<div class="max-w-7xl mx-auto flex flex-col gap-16">
+<div class="flex flex-col gap-4 text-center mx-auto max-w-3xl">
+<h2 class="text-primary dark:text-white text-4xl md:text-5xl font-bold leading-tight">
+                        Designed for Care &amp; Connection
+                    </h2>
+<p class="text-slate-600 dark:text-slate-300 text-lg font-light leading-relaxed font-display">
+                        Our platform bridges the gap between technology and compassionate care with features built for safety and ease of use.
+                    </p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Card 1 -->
+<div class="group flex flex-col gap-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 shadow-sm hover:shadow-xl hover:border-secondary/50 transition-all duration-300">
+<div class="size-14 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined text-3xl">smart_toy</span>
+</div>
+<div class="flex flex-col gap-3">
+<h3 class="text-slate-900 dark:text-white text-xl font-bold leading-tight">Caregiver-Managed AI</h3>
+<p class="text-slate-600 dark:text-slate-400 text-base font-display leading-relaxed">
+                                Family members control the narrative. The AI is trained only on approved memories, ensuring safe and positive interactions.
+                            </p>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="group flex flex-col gap-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 shadow-sm hover:shadow-xl hover:border-secondary/50 transition-all duration-300">
+<div class="size-14 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined text-3xl">touch_app</span>
+</div>
+<div class="flex flex-col gap-3">
+<h3 class="text-slate-900 dark:text-white text-xl font-bold leading-tight">Frictionless Access</h3>
+<p class="text-slate-600 dark:text-slate-400 text-base font-display leading-relaxed">
+                                Simple, voice-activated interfaces designed specifically for seniors. No complex logins or small buttons.
+                            </p>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="group flex flex-col gap-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 shadow-sm hover:shadow-xl hover:border-secondary/50 transition-all duration-300">
+<div class="size-14 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined text-3xl">collections</span>
+</div>
+<div class="flex flex-col gap-3">
+<h3 class="text-slate-900 dark:text-white text-xl font-bold leading-tight">Secure Memory Galleries</h3>
+<p class="text-slate-600 dark:text-slate-400 text-base font-display leading-relaxed">
+                                Upload and curate photos and audio stories in a protected, private environment accessible only by invited family.
+                            </p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Security Section -->
+<section class="py-20 px-6 md:px-10 lg:px-40 bg-background-light dark:bg-slate-950 border-y border-slate-200 dark:border-slate-800">
+<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+<div class="order-2 lg:order-1 relative h-[400px] w-full rounded-2xl overflow-hidden shadow-2xl">
+<div class="absolute inset-0 bg-primary/20 z-10"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-primary/60 to-transparent z-20"></div>
+<!-- Abstract security/technology visualization -->
+<div class="w-full h-full bg-slate-200 flex items-center justify-center bg-cover bg-center" data-alt="Secure digital lock abstract visualization" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDPSEmcifqM6GQRCGbQoCm-xx4mWjPc-6tuLia5Y3dIrsTBqWdEWhIruDi70WNZ0ELTcagaJynYFvimG1pWOuHkm-MOJIt0EfO9-INFMbxiMZ8oD9Hf7p7n1dVd0FT9O4e88R5hlyPjjGCLBq_WTYZRELYbTze0BBf7BaFsN8ffxeqRy2TcQGPZ7NNSXqlTOYN2W38To7b_SP3IWk1OGs7NLBFNlMRw9JyJdtu4xKpAfr1yd14SKoFlO5bwXQ0M0yOPPzwF7jEMYw");'>
+</div>
+<div class="absolute bottom-8 left-8 z-30 text-white">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-secondary">verified_user</span>
+<span class="font-bold tracking-wide uppercase text-sm">HIPAA Compliant Standard</span>
+</div>
+<p class="text-sm opacity-90 max-w-xs font-display">Your data never leaves our encrypted servers without your explicit permission.</p>
+</div>
+</div>
+<div class="order-1 lg:order-2 flex flex-col gap-6">
+<span class="text-secondary font-bold tracking-widest uppercase text-sm font-display">Uncompromised Privacy</span>
+<h2 class="text-slate-900 dark:text-white text-4xl md:text-5xl font-bold leading-tight">
+                        Your Memories are Sacred. <br/>We Keep Them Safe.
+                    </h2>
+<p class="text-slate-600 dark:text-slate-300 text-lg leading-relaxed font-display mb-4">
+                        We understand the sensitivity of personal history. That's why Memory Lane is built with enterprise-grade security from the ground up.
+                    </p>
+<ul class="flex flex-col gap-4">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary mt-0.5">lock</span>
+<div>
+<h4 class="font-bold text-slate-900 dark:text-white text-lg">End-to-End Encryption</h4>
+<p class="text-slate-600 dark:text-slate-400 text-sm font-display">Every conversation and photo is encrypted at rest and in transit.</p>
+</div>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary mt-0.5">mark_email_read</span>
+<div>
+<h4 class="font-bold text-slate-900 dark:text-white text-lg">Verified Access Only</h4>
+<p class="text-slate-600 dark:text-slate-400 text-sm font-display">Strict email verification ensures only invited family members can access the profile.</p>
+</div>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary mt-0.5">delete_forever</span>
+<div>
+<h4 class="font-bold text-slate-900 dark:text-white text-lg">Right to Forget</h4>
+<p class="text-slate-600 dark:text-slate-400 text-sm font-display">Delete any memory or the entire account instantly and permanently.</p>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- Final CTA -->
+<section class="relative py-24 px-6 md:px-10 lg:px-40 overflow-hidden">
+<!-- Background Image with Overlay -->
+<div class="absolute inset-0 z-0">
+<div class="absolute inset-0 bg-slate-900/60 z-10"></div>
+<div class="w-full h-full bg-cover bg-center" data-alt="Multigenerational family holding hands warmly" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBqtRhLrIFVaA4czRbcY9FTJV3U6kU8SNhljy6gWSeXjXo47VyMItOwyDD8ykASqfQRDQ5HXdSmnyID8qm5Fnd77MCQP2QIQqnVVGAqOZDoR9oGh0gVsetiY3Q6kg9NadmqCRy9PIqrb4chX4iV5hfjEeJ5zrY_5EqZIo5K3ektQoqnYTsGPu6mdhLqGGvtkLveeqdp6iCcuk3QpYRq1xIUPP6koFHXSVdsqEcap2KqfsF7sbNVoNdIonfC-5uJQjCbKObPxn56Aw");'>
+</div>
+</div>
+<div class="relative z-20 max-w-4xl mx-auto text-center flex flex-col items-center gap-8">
+<h2 class="text-white text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
+                    Bring Their Stories Back to Life
+                </h2>
+<p class="text-blue-100 text-lg md:text-xl leading-relaxed font-display max-w-2xl">
+                    Join thousands of families and healthcare professionals using Memory Lane to foster connection and joy.
+                </p>
+<div class="flex flex-col sm:flex-row gap-4 mt-4 w-full justify-center">
+<button class="flex min-w-[200px] cursor-pointer items-center justify-center rounded-full h-14 px-8 bg-primary hover:bg-blue-800 transition-colors text-white text-lg font-bold tracking-wide font-display shadow-xl shadow-blue-900/50">
+                        Get Started Free
+                    </button>
+<button class="flex min-w-[200px] cursor-pointer items-center justify-center rounded-full h-14 px-8 bg-white/10 hover:bg-white/20 border border-white/40 transition-colors text-white text-lg font-medium tracking-wide font-display backdrop-blur-sm">
+                        Schedule Consultation
+                    </button>
+</div>
+<p class="text-white/60 text-sm mt-4 font-display">No credit card required for 14-day trial.</p>
+</div>
+</section>
+</main>
+<footer class="bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 pt-16 pb-8 px-6 md:px-10 lg:px-40">
+<div class="max-w-7xl mx-auto">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+<div class="col-span-1 md:col-span-1 flex flex-col gap-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary dark:text-blue-400 text-3xl">psychology</span>
+<h3 class="font-serif text-xl font-bold text-slate-900 dark:text-white">Memory Lane</h3>
+</div>
+<p class="text-slate-500 dark:text-slate-400 text-sm font-display leading-relaxed">
+                        Preserving the past to enrich the present. A trusted partner in reminiscence therapy.
+                    </p>
+</div>
+<div>
+<h4 class="font-bold text-slate-900 dark:text-white mb-4">Platform</h4>
+<ul class="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-400 font-display">
+<li><a class="hover:text-primary transition-colors" href="#">How it Works</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Pricing</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">For Institutions</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Research</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold text-slate-900 dark:text-white mb-4">Company</h4>
+<ul class="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-400 font-display">
+<li><a class="hover:text-primary transition-colors" href="#">About Us</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Careers</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Contact</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Blog</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold text-slate-900 dark:text-white mb-4">Legal</h4>
+<ul class="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-400 font-display">
+<li><a class="hover:text-primary transition-colors" href="#">Privacy Policy</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Terms of Service</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Cookie Policy</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">HIPAA</a></li>
+</ul>
+</div>
+</div>
+<div class="border-t border-slate-100 dark:border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+<p class="text-slate-400 text-sm font-display">© 2023 Memory Lane Technologies Inc. All rights reserved.</p>
+<div class="flex gap-4">
+<a class="text-slate-400 hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined">public</span></a>
+<a class="text-slate-400 hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined">post_add</span></a>
+<a class="text-slate-400 hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined">share</span></a>
+</div>
+</div>
+</div>
+</footer>
+</body></html>
