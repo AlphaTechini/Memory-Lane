@@ -9,6 +9,12 @@ export default {
         secondary: "#557c55", // Soft Sage Green
         "background-light": "#fdfbf7", // Warm Ivory
         "background-dark": "#101522",
+        "surface-light": "#FFFFFF",
+        "surface-dark": "#1E1E1E",
+        "text-light": "#1A2E35",
+        "text-dark": "#E2E2E2",
+        "accent-sage": "#8FA38F",
+        "primary-hover": "#163c78",
         // Keep some legacy colors just in case they are used in other pages temporarily
         charcoal: {
           600: '#4A4A4A',

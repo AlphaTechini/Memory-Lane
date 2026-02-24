@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Memory Lane Patient Portal</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;family=Noto+Serif:ital,wght@0,400;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Config -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#0f49bd", // Deep Navy from request
+              "secondary": "#7D9D82", // Sage Green for accents
+              "background-light": "#FDFBF7", // Warm Ivory
+              "background-dark": "#101622",
+              "text-main": "#111318",
+              "text-sub": "#4A5568",
+            },
+            fontFamily: {
+              "display": ["Lexend", "sans-serif"],
+              "serif": ["Noto Serif", "serif"],
+            },
+            borderRadius: {
+              "DEFAULT": "0.5rem",
+              "lg": "1rem",
+              "xl": "1.5rem",
+              "2xl": "2rem",
+              "full": "9999px"
+            },
+          },
+        },
+      }
+    </script>
+</head>
+<body class="bg-background-light text-text-main font-display min-h-screen flex flex-col overflow-x-hidden">
+<!-- Top Navigation: Simplified for Elderly Accessibility -->
+<header class="w-full bg-white/80 border-b border-[#E2E8F0] px-6 py-6 flex items-center justify-between sticky top-0 z-50 backdrop-blur-sm">
+<!-- Massive Home Button -->
+<a class="flex items-center gap-3 bg-secondary/20 hover:bg-secondary/30 text-emerald-900 px-6 py-3 rounded-2xl transition-colors duration-200 group" href="#">
+<span class="material-symbols-outlined text-4xl group-hover:scale-110 transition-transform">home</span>
+<span class="text-2xl font-bold tracking-tight">Home</span>
+</a>
+<!-- Brand/Welcome -->
+<div class="flex items-center gap-4">
+<div class="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-3xl">psychology</span>
+</div>
+<h1 class="font-serif text-3xl md:text-4xl text-primary font-bold">Memory Lane</h1>
+</div>
+<!-- Log Out (Secondary Action) -->
+<button class="text-text-sub hover:text-red-600 font-medium text-xl px-4 py-2">
+            Log Out
+        </button>
+</header>
+<!-- Main Layout -->
+<main class="flex-grow p-6 md:p-10 lg:px-16 lg:py-12">
+<!-- Welcome Message -->
+<section class="mb-12 text-center">
+<h2 class="font-serif text-5xl md:text-6xl text-primary font-bold mb-4">Welcome back, Martha</h2>
+<p class="text-2xl text-text-sub font-light">We hope you are having a wonderful day.</p>
+</section>
+<!-- Split Screen Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-10 h-full max-w-[1600px] mx-auto">
+<!-- Left Section: Guide/Chat -->
+<div class="flex flex-col bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100 h-[800px]">
+<!-- Header -->
+<div class="bg-secondary/10 p-8 flex items-center gap-6 border-b border-secondary/20">
+<div class="relative">
+<img alt="Professional female guide smiling warmly" class="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md" data-alt="Friendly female guide portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCg8GHFRYOte11FTTPvuOD9ii6tExFv5-U_9x_LVqJoADNRf_-SCUwFe6M6GAkE8VyxaI55Uh3SI5Q8f_FAoDeF5EamiIIenTsJNL2O80EgfPzzi4Md34CLaOBIFIXCjGwzhRg8eTO3QIwnhboh8Zf2Gl8v1zu8p_RkomVhgZa4paXEvigJc8QP7fMg1NlFpGHkzlQmrSrtNmUoTTLG6BsUaEmMlQUWCEetiorbADIkfHvXGBdJiniW0xkpPP0FWl04kA52OUXYxg"/>
+<div class="absolute bottom-1 right-1 w-6 h-6 bg-green-500 rounded-full border-4 border-white"></div>
+</div>
+<div>
+<h3 class="text-3xl font-bold text-gray-900">Talk to Anna</h3>
+<p class="text-xl text-emerald-800 font-medium mt-1">Your Personal Guide</p>
+</div>
+</div>
+<!-- Chat Area -->
+<div class="flex-1 overflow-y-auto p-8 flex flex-col gap-8 bg-slate-50">
+<!-- Guide Message -->
+<div class="flex gap-4 items-start max-w-[90%]">
+<div class="w-16 h-16 rounded-full bg-secondary/20 flex-shrink-0 flex items-center justify-center text-emerald-800">
+<span class="material-symbols-outlined text-3xl">support_agent</span>
+</div>
+<div class="bg-white p-6 rounded-2xl rounded-tl-none shadow-sm border border-slate-100">
+<p class="text-2xl leading-relaxed text-gray-800">Hello Martha! It's so good to see you. How are you feeling this morning?</p>
+</div>
+</div>
+<!-- User Message (Example of past interaction) -->
+<div class="flex gap-4 items-start max-w-[90%] self-end flex-row-reverse">
+<div class="w-16 h-16 rounded-full bg-primary/10 flex-shrink-0 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-3xl">person</span>
+</div>
+<div class="bg-primary/10 p-6 rounded-2xl rounded-tr-none">
+<p class="text-2xl leading-relaxed text-gray-900">I am feeling quite good today, thank you Anna.</p>
+</div>
+</div>
+<!-- Guide Response -->
+<div class="flex gap-4 items-start max-w-[90%]">
+<div class="w-16 h-16 rounded-full bg-secondary/20 flex-shrink-0 flex items-center justify-center text-emerald-800">
+<span class="material-symbols-outlined text-3xl">support_agent</span>
+</div>
+<div class="bg-white p-6 rounded-2xl rounded-tl-none shadow-sm border border-slate-100">
+<p class="text-2xl leading-relaxed text-gray-800">That is wonderful to hear! Would you like to look at some photos of your grandchildren?</p>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="p-6 bg-white border-t border-slate-100">
+<form class="flex flex-col gap-4" onsubmit="event.preventDefault();">
+<label class="sr-only" for="chat-input">Type your message</label>
+<textarea class="w-full text-2xl p-6 rounded-2xl bg-slate-50 border-2 border-slate-200 focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all resize-none min-h-[120px] placeholder:text-slate-400" id="chat-input" placeholder="Type here to talk to Anna..."></textarea>
+<button class="w-full bg-primary hover:bg-blue-800 text-white text-2xl font-bold py-6 rounded-2xl shadow-lg hover:shadow-xl transition-all active:scale-[0.99] flex items-center justify-center gap-3" type="button">
+<span>Send Message</span>
+<span class="material-symbols-outlined text-3xl">send</span>
+</button>
+</form>
+</div>
+</div>
+<!-- Right Section: Photo Album -->
+<div class="flex flex-col h-full">
+<div class="flex items-center gap-4 mb-6">
+<span class="material-symbols-outlined text-4xl text-primary">photo_library</span>
+<h3 class="text-4xl font-serif font-bold text-gray-800">Your Family Album</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
+<!-- Photo 1 -->
+<article class="group relative bg-white rounded-3xl overflow-hidden shadow-lg border border-slate-100 transition-transform hover:-translate-y-1 hover:shadow-xl cursor-pointer">
+<div class="aspect-square w-full overflow-hidden">
+<img alt="Young woman smiling in a park" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Granddaughter Sarah smiling outdoors" src="https://lh3.googleusercontent.com/aida-public/AB6AXuArrUIco6lewBKyruCZrujjcVSl4oxbPTac-mDDJwZF_W8S37rLTiQPmH3IHJrB0ouT23S6Tmk3GHiLkh9vo0PxtgIja0dnLlbDY7deAfPGLZUMFv0Pe9VdA579Z7E7KssvVMZBD0bVnGpuAjYxI29-2UzFycL6C8liILqGO6otjMu7Q6VYP8IW9CbeUTvUROAGjrPNrYTizsEZXWHqzPD_8y4ThaDnLRLZN3c5rLbTDZ4OQDAgAQYt13NHEplmMF4XI2jnTG6fgg"/>
+</div>
+<div class="p-6 text-center bg-white absolute bottom-0 w-full bg-opacity-95 backdrop-blur-sm border-t border-slate-100">
+<p class="font-serif text-2xl font-bold text-gray-900">Granddaughter, Sarah</p>
+<p class="text-lg text-text-sub mt-1">Age 24</p>
+</div>
+</article>
+<!-- Photo 2 -->
+<article class="group relative bg-white rounded-3xl overflow-hidden shadow-lg border border-slate-100 transition-transform hover:-translate-y-1 hover:shadow-xl cursor-pointer">
+<div class="aspect-square w-full overflow-hidden">
+<img alt="Man in his 50s smiling" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Son Robert portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJVBAS8aL9qdDEGqCXHkN61p0KZocllfkGT1Kxs8Oag1XnBb2XirbUoCKytIwu6uhyNsi1wT9mTd4pGeFEFdchQ_yMH2OCDFtiPBif8B5BQlPME0cahJh8C5vZNVGz3vLprrNoGDn1SI03SpWhPHep04M2NuGxNreD0SM2SbZXtYf3KYrlm-q5dDMG4LMgQBSpMKwx-OgRrBLLDmTuZHNMWVin219xa7Otb7NBdnwazab7Q5VTdDOsGO40Zb9mXWF4SDhl_shh4A"/>
+</div>
+<div class="p-6 text-center bg-white absolute bottom-0 w-full bg-opacity-95 backdrop-blur-sm border-t border-slate-100">
+<p class="font-serif text-2xl font-bold text-gray-900">Your Son, Robert</p>
+<p class="text-lg text-text-sub mt-1">Visited yesterday</p>
+</div>
+</article>
+<!-- Photo 3 -->
+<article class="group relative bg-white rounded-3xl overflow-hidden shadow-lg border border-slate-100 transition-transform hover:-translate-y-1 hover:shadow-xl cursor-pointer">
+<div class="aspect-square w-full overflow-hidden">
+<img alt="Golden Retriever dog playing" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Family dog Buster" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCa82bb_vyJcwI1HM_ULvZVZFe76Xi_mIfTwFEtj_UzYSg8zHLdjpTNcnwpMc3in6VoENl5okCXcrDWNfz9f_qG8zyH0EtA_4yH0toNJ6-UskmtuJaUu0JXTbW6yBu4qKNYmKqHGJWvQAWCB4-hanZ8w1dBwT7e3GhIVXk0RMJyBRpRHSlo_pHXnpIa29TsEHtT0y5jhdRUM2u-2sSSQ5tfdL1bA1py8ZnOTaBhes-Nzul0g5KU2xTDhRYLsEeUA3KLRsbMXOovcw"/>
+</div>
+<div class="p-6 text-center bg-white absolute bottom-0 w-full bg-opacity-95 backdrop-blur-sm border-t border-slate-100">
+<p class="font-serif text-2xl font-bold text-gray-900">Buster the Dog</p>
+<p class="text-lg text-text-sub mt-1">He loves treats</p>
+</div>
+</article>
+<!-- Photo 4 -->
+<article class="group relative bg-white rounded-3xl overflow-hidden shadow-lg border border-slate-100 transition-transform hover:-translate-y-1 hover:shadow-xl cursor-pointer">
+<div class="aspect-square w-full overflow-hidden">
+<img alt="Young girl playing with flowers" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Great-granddaughter Lily" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnM0tmJ2q-Yv3NL7edjsBiU4SrwmFlMWb3oYUX8G7qDCJ4qg68YMYpON4IBqCpHcXUNe_IdW1vpIDUyixPwZ7zdDu8fRva2AAaus2sxa8Dt1PCvIvOKYrdeOXUnwmSsgF0Dlr6i82Ortq8iiPM3L1swDlSVEK7Ty42JbFzoPnnxwavmRivza8aFjx_kAk_WuWPm9_NnUpCxQsj2BwdwZIL9XsfwwNA3_X5b-h98hsxE93jWrQpq-wo4xVeyL0LsZFAzmvZTWZFbw"/>
+</div>
+<div class="p-6 text-center bg-white absolute bottom-0 w-full bg-opacity-95 backdrop-blur-sm border-t border-slate-100">
+<p class="font-serif text-2xl font-bold text-gray-900">Little Lily</p>
+<p class="text-lg text-text-sub mt-1">Age 6</p>
+</div>
+</article>
+</div>
+</div>
+</div>
+</main>
+</body></html>
