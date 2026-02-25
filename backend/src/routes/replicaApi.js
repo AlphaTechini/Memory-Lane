@@ -6,6 +6,8 @@ import crypto from 'crypto';
 import Patient from '../models/Patient.js';
 import Conversation from '../models/Conversation.js';
 import { REQUIRED_QUESTIONS, OPTIONAL_SEGMENTS, getQuestionText } from '../utils/questionBank.js';
+import { extractTextFromFile } from '../utils/fileExtractor.js';
+import { storeMemory } from '../services/ragClient.js';
 
 /**
  * Replica management routes
@@ -1751,6 +1753,59 @@ async function replicaRoutes(fastify, options) {
     } catch (error) {
       fastify.log.error(error, 'Error adding patient email');
       return reply.status(500).send({ success: false, error: 'Failed to add patient email' });
+    }
+  });
+
+  /**
+   * Train a Replica using a document file (PDF, DOCX, TXT) (protected route - caretakers only)
+   */
+  fastify.post('/api/replicas/:replicaId/train/file', {
+    preHandler: [authenticateToken, requireCaretaker]
+  }, async (request, reply) => {
+    try {
+      const { replicaId } = request.params;
+      const data = await request.file();
+
+      if (!data) {
+        return reply.status(400).send({ success: false, error: 'No file provided' });
+      }
+
+      const fileBuffer = await data.toBuffer();
+      const mimetype = data.mimetype;
+      const filename = data.filename;
+
+      // Ensure the replica belongs to the current user
+      const userId = request.user.id;
+      const user = await User.findById(userId);
+      if (!user.replicas.includes(replicaId)) {
+        return reply.status(403).send({ success: false, error: 'Not authorized to train this replica' });
+      }
+
+      // Step 1: Extract Text
+      const extractedText = await extractTextFromFile(fileBuffer, mimetype);
+      if (!extractedText || extractedText.trim().length === 0) {
+        return reply.status(400).send({ success: false, error: 'Could not extract text from the provided file.' });
+      }
+
+      // Step 2: Inject directly into RAG Memory scoped to replicaId
+      // importance=0.8 for direct file uploads
+      const ramResult = await storeMemory(userId, extractedText, 0.8, 'file', '', replicaId);
+
+      if (!ramResult.success) {
+        fastify.log.warn(`File extracted but RAG injection failed: ${ramResult.error}`);
+        return reply.status(500).send({ success: false, error: `RAG memory storage failed: ${ramResult.error}` });
+      }
+
+      return reply.send({
+        success: true,
+        message: 'File processed and memory trained successfully.',
+        filename,
+        ragInjected: true
+      });
+
+    } catch (error) {
+      fastify.log.error(error, 'Error training replica with bulk file');
+      return reply.status(500).send({ success: false, error: 'Failed to extract and train replica memory' });
     }
   });
 }

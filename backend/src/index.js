@@ -10,6 +10,7 @@ import authRoutes from './routes/authRoutes.js';
 import galleryRoutes from './routes/gallery/index.js';
 import replicaImageRoutes from './routes/replicaImageRoutes.js';
 import genericChatRoutes from './routes/genericChatRoutes.js';
+import journalRoutes from './routes/journalRoutes.js';
 import databaseConfig from './config/database.js';
 
 // (dotenv already loaded via loadEnv.js)
@@ -207,6 +208,7 @@ await server.register(replicaRoutes);
 await server.register(galleryRoutes);
 await server.register(replicaImageRoutes);
 await server.register(genericChatRoutes);
+await server.register(journalRoutes);
 // Register API routes (feedback, etc)
 const apiRoutes = (await import('./routes/api/index.js')).default;
 await server.register(apiRoutes);

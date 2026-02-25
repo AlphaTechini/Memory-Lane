@@ -10,11 +10,11 @@ function createInitialState() {
   return {
     // Current step
     currentStep: 0,
-    
+
     // Template info
     template: null,
     relationship: null,
-    
+
     // Basic info
     basics: {
       name: '',
@@ -23,17 +23,23 @@ function createInitialState() {
       preferredQuestion: '',
       consent: false
     },
-    
+
+    // Creation Path (questionnaire vs upload)
+    creationPath: 'questionnaire',
+
+    // Uploaded File Info (if path is upload)
+    uploadedFileInfo: null,
+
     // Answers
     requiredAnswers: {},
     optionalAnswers: {},
-    
+
     // Selected segments
     selectedSegments: [],
-    
+
     // Profile image
     profileImage: null,
-    
+
     // Knowledge Base (NEW - Step 7)
     knowledgeBase: {
       entries: [],
@@ -46,11 +52,11 @@ function createInitialState() {
         inputType: 'text' // 'text', 'url', 'file'
       }
     },
-    
+
     // UI state
     loading: false,
     error: '',
-    
+
     // Submission state
     replicaId: null,
     trainingStatus: null,
@@ -111,22 +117,22 @@ state.subscribe((value) => {
 export const coverageScore = derived(state, ($state) => {
   const template = $state.template;
   const requiredQuestions = template ? getRequiredQuestionsByTemplate(template) : REQUIRED_QUESTIONS;
-  
+
   const requiredCount = Object.keys($state.requiredAnswers).length;
   const requiredTotal = requiredQuestions.length;
   const requiredScore = (requiredCount / requiredTotal) * 70; // 70% weight for required
-  
+
   const optionalCount = Object.keys($state.optionalAnswers).length;
   const minOptionalRequired = 40;
   const optionalScore = Math.min(optionalCount / minOptionalRequired, 1) * 30; // 30% weight for optional
-  
+
   return Math.round(requiredScore + optionalScore);
 });
 
 // Store actions
 export const wizardStore = {
   subscribe: state.subscribe,
-  
+
   // Get current state synchronously
   getState: () => {
     let currentState;
@@ -135,21 +141,23 @@ export const wizardStore = {
     })();
     return currentState;
   },
-  
+
   // Helper functions
   canProceedToStep: (step, $state) => {
     switch (step) {
       case 2:
-        return $state.basics?.name?.trim() && 
-               $state.basics?.description?.trim() && 
-               $state.basics?.description?.trim().length <= 50 && 
-               $state.basics?.consent;
+        return $state.basics?.name?.trim() &&
+          $state.basics?.description?.trim() &&
+          $state.basics?.description?.trim().length <= 50 &&
+          $state.basics?.consent;
       case 3: {
+        if ($state.creationPath === 'upload') return true;
         const template = $state.template;
         const requiredQuestions = template ? getRequiredQuestionsByTemplate(template) : REQUIRED_QUESTIONS;
         return Object.keys($state.requiredAnswers).length === requiredQuestions.length;
       }
       case 4:
+        if ($state.creationPath === 'upload') return true;
         return $state.selectedSegments.length > 0;
       case 5:
         // Optional questions can be skipped - always allow proceeding to profile image
@@ -161,26 +169,31 @@ export const wizardStore = {
         return true;
     }
   },
-  
+
   isStepValid: (step, $state) => {
     switch (step) {
       case 1:
-        return $state.basics?.name?.trim() && 
-               $state.basics?.description?.trim() && 
-               $state.basics?.description?.trim().length <= 50 && 
-               $state.basics?.consent;
+        const baseValid = $state.basics?.name?.trim() &&
+          $state.basics?.description?.trim() &&
+          $state.basics?.description?.trim().length <= 50 &&
+          $state.basics?.consent;
+        if (!baseValid) return false;
+        if ($state.creationPath === 'upload' && !$state.uploadedFileInfo) return false;
+        return true;
       case 2: {
+        if ($state.creationPath === 'upload') return true;
         const template = $state.template;
         const requiredQuestions = template ? getRequiredQuestionsByTemplate(template) : REQUIRED_QUESTIONS;
         return Object.keys($state.requiredAnswers).length === requiredQuestions.length &&
-               requiredQuestions.every(q => {
-                 const answer = $state.requiredAnswers[q.id];
-                 // Some templates/questions may not define minLength — treat missing minLength as 0
-                 const minLen = typeof q.minLength === 'number' ? q.minLength : 0;
-                 return answer && answer.trim().length >= minLen;
-               });
+          requiredQuestions.every(q => {
+            const answer = $state.requiredAnswers[q.id];
+            // Some templates/questions may not define minLength — treat missing minLength as 0
+            const minLen = typeof q.minLength === 'number' ? q.minLength : 0;
+            return answer && answer.trim().length >= minLen;
+          });
       }
       case 3:
+        if ($state.creationPath === 'upload') return true;
         return $state.selectedSegments.length > 0;
       case 4:
         // Optional questions can be skipped - always allow proceeding
@@ -189,6 +202,7 @@ export const wizardStore = {
         // Profile image is optional - allow proceeding without it
         return true;
       case 6: {
+        if ($state.creationPath === 'upload') return true;
         const template = $state.template;
         const requiredQuestions = template ? getRequiredQuestionsByTemplate(template) : REQUIRED_QUESTIONS;
         const requiredCount = Object.keys($state.requiredAnswers).length;
@@ -204,7 +218,7 @@ export const wizardStore = {
         return false;
     }
   },
-  
+
   // Actions
   updateBasics: (data) => {
     state.update(s => ({
@@ -220,6 +234,14 @@ export const wizardStore = {
     }));
   },
 
+  setCreationPath: (path) => {
+    state.update(s => ({ ...s, creationPath: path }));
+  },
+
+  setUploadedFileInfo: (info) => {
+    state.update(s => ({ ...s, uploadedFileInfo: info }));
+  },
+
   // Template actions
   updateTemplate: (template, relationship) => {
     state.update(s => ({
@@ -228,7 +250,7 @@ export const wizardStore = {
       relationship
     }));
   },
-  
+
   updateRequiredAnswer: (questionId, answer) => {
     state.update(s => ({
       ...s,
@@ -238,7 +260,7 @@ export const wizardStore = {
       }
     }));
   },
-  
+
   updateOptionalAnswer: (questionId, answer) => {
     state.update(s => {
       const newAnswers = { ...s.optionalAnswers };
@@ -253,7 +275,7 @@ export const wizardStore = {
       };
     });
   },
-  
+
   updateSelectedSegments: (segments) => {
     state.update(s => {
       // Clear optional answers for unselected segments
@@ -263,14 +285,14 @@ export const wizardStore = {
           .filter(q => segments.includes(q.segment))
           .map(q => q.id)
       );
-      
+
       const newOptionalAnswers = {};
       Object.keys(s.optionalAnswers).forEach(questionId => {
         if (selectedQuestionIds.has(questionId)) {
           newOptionalAnswers[questionId] = s.optionalAnswers[questionId];
         }
       });
-      
+
       return {
         ...s,
         selectedSegments: segments,
@@ -278,56 +300,56 @@ export const wizardStore = {
       };
     });
   },
-  
+
   updateProfileImage: (imageData) => {
     state.update(s => ({
       ...s,
       profileImage: imageData
     }));
   },
-  
+
   setCurrentStep: (step) => {
     state.update(s => ({
       ...s,
       currentStep: Math.max(0, Math.min(step, 6))
     }));
   },
-  
+
   nextStep: () => {
     state.update(s => ({
       ...s,
       currentStep: Math.min(s.currentStep + 1, 6)
     }));
   },
-  
+
   previousStep: () => {
     state.update(s => ({
       ...s,
       currentStep: Math.max(s.currentStep - 1, 1)
     }));
   },
-  
+
   setLoading: (loading) => {
     state.update(s => ({
       ...s,
       loading
     }));
   },
-  
+
   setError: (error) => {
     state.update(s => ({
       ...s,
       error
     }));
   },
-  
+
   setReplicaId: (id) => {
     state.update(s => ({
       ...s,
       replicaId: id
     }));
   },
-  
+
   setTrainingStatus: (status) => {
     state.update(s => ({
       ...s,
@@ -362,7 +384,7 @@ export const wizardStore = {
       submissionProgress: createInitialState().submissionProgress
     }));
   },
-  
+
   // Knowledge Base Actions
   updateKnowledgeBaseEntry: (field, value) => {
     state.update(s => ({
@@ -376,7 +398,7 @@ export const wizardStore = {
       }
     }));
   },
-  
+
   addKnowledgeBaseEntry: (entry) => {
     state.update(s => ({
       ...s,
@@ -394,7 +416,7 @@ export const wizardStore = {
       }
     }));
   },
-  
+
   removeKnowledgeBaseEntry: (id) => {
     state.update(s => ({
       ...s,
@@ -404,7 +426,7 @@ export const wizardStore = {
       }
     }));
   },
-  
+
   clearKnowledgeBaseForm: () => {
     state.update(s => ({
       ...s,
@@ -421,14 +443,14 @@ export const wizardStore = {
       }
     }));
   },
-  
+
   reset: () => {
     state.set(createInitialState());
     if (browser) {
       localStorage.removeItem(STORAGE_KEY);
     }
   },
-  
+
   loadFromStorage: () => {
     if (browser) {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -446,7 +468,7 @@ export const wizardStore = {
       }
     }
   },
-  
+
   clearStorage: () => {
     if (browser) {
       localStorage.removeItem(STORAGE_KEY);
