@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Memory Lane - Welcome Back</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;family=Lora:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0f49bd", // Navy blue for high contrast
+                        "accent-sage": "#6b8e23", // Soft sage accent
+                        "background-light": "#fdfaf1", // Warm ivory background
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"],
+                        "serif": ["Lora", "serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.75rem",
+                        "lg": "1.25rem",
+                        "xl": "2rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .serif-text {
+            font-family: 'Lora', serif;
+        }
+        .tile-shadow {
+            box-shadow: 0 10px 25px -5px rgba(15, 73, 189, 0.1), 0 8px 10px -6px rgba(15, 73, 189, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen text-slate-900 dark:text-slate-100 font-display">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Top Navigation -->
+<header class="flex items-center justify-between px-6 md:px-20 py-6 border-b border-primary/10 bg-background-light/80 backdrop-blur-md sticky top-0 z-50">
+<div class="flex items-center gap-4">
+<div class="bg-primary text-white p-2 rounded-lg">
+<span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1">history_edu</span>
+</div>
+<h2 class="text-primary text-2xl md:text-3xl font-bold tracking-tight serif-text">Memory Lane</h2>
+</div>
+<div class="flex items-center gap-6">
+<button class="flex items-center justify-center rounded-full h-14 w-14 bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-3xl">settings</span>
+</button>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-14 border-4 border-white shadow-md" data-alt="Friendly portrait of a smiling elderly woman" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCLoqEcUYwySz_6hWfBgiErbY7dEy-DKPpHt4Bjpdho39-ce2d7GPxCqVkkGCUeKQ6SZtx-g3bqsfttRI9l7sp2FPxn3O_oba6S0x2Ul7O0DwZcT1ezbHErseIfE85u2eNIad-Gt1kC6Wp-Y_mAvVc3i7pf2NW_mT_UE0xw0hIoLNf8uAatVGrOcxmLlyrPsqoCNEe3ZioH1PcqEpk-unvmMOLyiHm1EFhiW1RKgIx8Ewlk8OWkdFBoanJU2T-meFvhZBgbqRT8Hw");'>
+</div>
+</div>
+</header>
+<main class="max-w-5xl mx-auto w-full px-6 py-10">
+<!-- Greeting -->
+<div class="mb-12">
+<h1 class="text-slate-900 dark:text-slate-100 text-5xl md:text-6xl font-bold serif-text mb-4">Hello, Margaret.</h1>
+<div class="flex items-center gap-3 text-accent-sage font-medium text-xl md:text-2xl">
+<span class="material-symbols-outlined text-3xl">wb_sunny</span>
+<p>It's a beautiful Thursday morning.</p>
+</div>
+</div>
+<!-- Dashboard Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Tile: Write a Journal -->
+<button class="group flex flex-col items-center justify-center p-10 bg-white dark:bg-slate-800 rounded-xl tile-shadow border-2 border-transparent hover:border-primary transition-all text-left">
+<div class="size-24 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-6xl" style="font-variation-settings: 'FILL' 1">edit_note</span>
+</div>
+<div class="text-center">
+<h3 class="text-slate-900 dark:text-slate-100 text-3xl font-bold serif-text mb-2">Write a Journal</h3>
+<p class="text-slate-500 dark:text-slate-400 text-xl font-normal">Record your special day</p>
+</div>
+</button>
+<!-- Tile: Read My Journals -->
+<button class="group flex flex-col items-center justify-center p-10 bg-white dark:bg-slate-800 rounded-xl tile-shadow border-2 border-transparent hover:border-primary transition-all text-left">
+<div class="size-24 bg-accent-sage/10 text-accent-sage rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-6xl" style="font-variation-settings: 'FILL' 1">auto_stories</span>
+</div>
+<div class="text-center">
+<h3 class="text-slate-900 dark:text-slate-100 text-3xl font-bold serif-text mb-2">Read My Journals</h3>
+<p class="text-slate-500 dark:text-slate-400 text-xl font-normal">Revisit your memories</p>
+</div>
+</button>
+<!-- Tile: View Photos -->
+<button class="group flex flex-col items-center justify-center p-10 bg-white dark:bg-slate-800 rounded-xl tile-shadow border-2 border-transparent hover:border-primary transition-all text-left">
+<div class="size-24 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-6xl" style="font-variation-settings: 'FILL' 1">photo_library</span>
+</div>
+<div class="text-center">
+<h3 class="text-slate-900 dark:text-slate-100 text-3xl font-bold serif-text mb-2">View Photos</h3>
+<p class="text-slate-500 dark:text-slate-400 text-xl font-normal">See your favorite pictures</p>
+</div>
+</button>
+<!-- Tile: Chat with My Guide -->
+<button class="group flex flex-col items-center justify-center p-10 bg-white dark:bg-slate-800 rounded-xl tile-shadow border-2 border-transparent hover:border-primary transition-all text-left">
+<div class="size-24 bg-accent-sage/10 text-accent-sage rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-6xl" style="font-variation-settings: 'FILL' 1">forum</span>
+</div>
+<div class="text-center">
+<h3 class="text-slate-900 dark:text-slate-100 text-3xl font-bold serif-text mb-2">Chat with My Guide</h3>
+<p class="text-slate-500 dark:text-slate-400 text-xl font-normal">Talk to your friendly assistant</p>
+</div>
+</button>
+</div>
+<!-- Reminder Section -->
+<div class="mt-16 p-10 bg-primary/5 rounded-xl border-l-8 border-primary">
+<h2 class="text-primary text-3xl font-bold serif-text mb-4">Daily Reminder</h2>
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined text-4xl text-primary mt-1">lightbulb</span>
+<p class="text-slate-700 dark:text-slate-300 text-2xl leading-relaxed">
+                        Today is Thursday, October 24th. You have a lunch date with Sarah at 12:30 PM. 
+                        Don't forget to wear your blue cardigan!
+                    </p>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="mt-auto py-10 px-6 text-center text-slate-400 text-lg">
+<p>Always here to help you remember. © 2024 Memory Lane</p>
+</footer>
+</div>
+</body></html>

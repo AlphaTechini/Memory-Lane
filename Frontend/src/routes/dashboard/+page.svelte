@@ -14,10 +14,14 @@
   import DashboardStats from "$lib/components/dashboard/DashboardStats.svelte";
   import PatientCard from "$lib/components/dashboard/PatientCard.svelte";
 
+  import PatientHeader from "$lib/components/patient/PatientHeader.svelte";
+  import PatientDashboard from "$lib/components/patient/PatientDashboard.svelte";
+
   let isAuth = $state(false);
   let user = $state(null);
   let userRole = $state(null);
   let authChecked = $state(false);
+  let userName = "Margaret";
 
   $effect(() => {
     if (browser && !authChecked) {
@@ -191,47 +195,12 @@
           </article>
         </div>
       {:else}
-        <!-- Patient Simple View -->
+        <!-- Patient View -->
         <div
-          class="bg-surface-light dark:bg-surface-dark p-8 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700"
+          class="-mx-8 -my-8 lg:-mx-12 lg:-my-12 flex flex-col min-h-screen pb-12"
         >
-          <h2
-            class="text-2xl font-serif font-bold text-primary dark:text-white mb-6"
-          >
-            Your Memories
-          </h2>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <button
-              onclick={() => goto("/gallery")}
-              class="p-8 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-primary dark:hover:border-secondary text-left transition-colors"
-            >
-              <span
-                class="material-icons-round text-4xl text-primary mb-4 block"
-                >photo_library</span
-              >
-              <h3 class="text-xl font-bold dark:text-white mb-2">
-                View Gallery
-              </h3>
-              <p class="text-gray-500 dark:text-gray-400">
-                Browse your uploaded photos and memories.
-              </p>
-            </button>
-            <button
-              onclick={() => goto("/chat-replicas")}
-              class="p-8 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-primary dark:hover:border-secondary text-left transition-colors"
-            >
-              <span
-                class="material-icons-round text-4xl text-primary mb-4 block"
-                >chat</span
-              >
-              <h3 class="text-xl font-bold dark:text-white mb-2">
-                Chat with Anna
-              </h3>
-              <p class="text-gray-500 dark:text-gray-400">
-                Start a conversation to remember old times.
-              </p>
-            </button>
-          </div>
+          <PatientHeader {userName} />
+          <PatientDashboard {userName} />
         </div>
       {/if}
     </main>
