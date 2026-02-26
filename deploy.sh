@@ -36,10 +36,12 @@ else
     exit 1
 fi
 
-# Install PM2 globally
+# Install PM2 permanently (we recommend using npm/pnpm depending on availability)
 if ! command -v pm2 &> /dev/null; then
     echo "📦 Installing PM2..."
     sudo npm install -g pm2
+    # Ensure pnpm is also installed globally
+    sudo npm install -g pnpm
 fi
 
 # 2. Clone/Pull Code
@@ -63,7 +65,8 @@ chmod +x rag-server
 # 4. Setup Node Backend
 echo "🏗️  Setting up Node Backend..."
 cd "$APP_DIR/backend"
-npm install --production
+# Use pnpm as per project preference
+pnpm install --prod
 
 # 5. Start with PM2
 echo "🔄 Restarting Services..."
