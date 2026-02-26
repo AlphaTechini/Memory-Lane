@@ -448,14 +448,16 @@
   <title>Train Models - Memory Lane</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+<div class="min-h-screen bg-background-light dark:bg-background-dark py-8">
   <div class="max-w-4xl mx-auto px-4">
     <!-- Header -->
     <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+      <h1
+        class="text-accessible-3xl font-bold text-text-light dark:text-text-dark mb-2"
+      >
         Train Your Replicas
       </h1>
-      <p class="text-gray-600 dark:text-gray-400">
+      <p class="text-text-light/80 dark:text-text-dark/80">
         Train your AI replicas with additional questions, text content,
         websites, or file uploads to make them more knowledgeable and
         personalized.
@@ -465,26 +467,28 @@
     <!-- Error/Success Messages -->
     {#if error}
       <div
-        class="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
+        class="mb-6 bg-red-500/10 border border-red-500/30 rounded-tactile p-4"
       >
-        <p class="text-red-700 dark:text-red-300">{error}</p>
+        <p class="text-red-700 dark:text-red-300 font-medium">{error}</p>
       </div>
     {/if}
 
     {#if successMessage}
       <div
-        class="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4"
+        class="mb-6 bg-green-500/10 border border-green-500/30 rounded-tactile p-4"
       >
-        <p class="text-green-700 dark:text-green-300">{successMessage}</p>
+        <p class="text-green-700 dark:text-green-300 font-medium">
+          {successMessage}
+        </p>
       </div>
     {/if}
 
     <!-- Replica Selection -->
     {#if replicas.length > 0}
-      <div
-        class="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
-      >
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+      <div class="mb-8 card-accessible p-6">
+        <h2
+          class="text-accessible-lg font-semibold text-text-light dark:text-text-dark mb-4"
+        >
           Select Replica to Train
         </h2>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -492,44 +496,46 @@
             <button
               onclick={() =>
                 replica.status !== "REMOVED_REMOTE" && selectReplica(replica)}
-              class="relative text-left p-4 rounded-lg border transition-colors {selectedReplica?.replicaId ===
+              class="relative text-left p-4 rounded-tactile border transition-colors {selectedReplica?.replicaId ===
               replica.replicaId
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'} {replica.status ===
+                ? 'border-primary bg-primary/5 dark:bg-primary/10'
+                : 'border-gray-200 dark:border-gray-800 hover:border-primary/50 dark:hover:border-secondary/50'} {replica.status ===
               'REMOVED_REMOTE'
                 ? 'opacity-60 cursor-not-allowed'
                 : ''}"
             >
               <h3
-                class="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2"
+                class="font-medium text-text-light dark:text-text-dark flex items-center gap-2"
               >
                 {replica.name}
                 {#if replica.status}
                   <span
                     class="text-[10px] px-2 py-0.5 rounded uppercase tracking-wide font-semibold {replica.status ===
                     'CREATED'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                      ? 'bg-green-500/10 text-green-700 dark:text-green-300'
                       : ''} {replica.status === 'PENDING_CREATE'
-                      ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
+                      ? 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-300'
                       : ''} {replica.status === 'REMOVED_REMOTE'
-                      ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                      ? 'bg-red-500/10 text-red-700 dark:text-red-300'
                       : ''} {replica.status === 'ERROR'
-                      ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                      ? 'bg-red-500/10 text-red-700 dark:text-red-300'
                       : ''}"
                   >
                     {replica.status.replace("_", " ")}
                   </span>
                 {/if}
               </h3>
-              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p
+                class="text-accessible-sm text-text-light/80 dark:text-text-dark/80 mt-1"
+              >
                 {replica.description}
               </p>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              <p class="text-xs text-text-light/60 dark:text-text-dark/60 mt-2">
                 {replica.selectedSegments?.length || 0} categories selected
               </p>
               {#if replica.status === "REMOVED_REMOTE"}
                 <div
-                  class="absolute inset-0 bg-white/60 dark:bg-gray-800/60 flex items-center justify-center text-xs font-semibold text-red-600 dark:text-red-400 rounded-lg"
+                  class="absolute inset-0 bg-surface-light/60 dark:bg-surface-dark/60 flex items-center justify-center text-xs font-semibold text-red-600 dark:text-red-400 rounded-tactile"
                 >
                   Removed at remote
                 </div>
@@ -542,16 +548,16 @@
 
     <!-- Knowledge Base Management -->
     {#if selectedReplica}
-      <div
-        class="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
-      >
+      <div class="mb-8 card-accessible p-6">
         <div class="flex justify-between items-center mb-4">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <h2
+            class="text-accessible-lg font-semibold text-text-light dark:text-text-dark"
+          >
             Knowledge Base
           </h2>
           <button
             onclick={() => (showKnowledgeBase = !showKnowledgeBase)}
-            class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 font-medium"
+            class="text-accessible-sm text-primary dark:text-secondary hover:text-primary-hover dark:hover:text-secondary-hover font-medium"
           >
             {showKnowledgeBase ? "Hide" : "Show"} Knowledge Base
           </button>
@@ -560,10 +566,10 @@
         {#if showKnowledgeBase}
           <!-- Add New Knowledge Base Entry -->
           <div
-            class="mb-6 border border-gray-200 dark:border-gray-600 rounded-lg p-4"
+            class="mb-6 border border-gray-200 dark:border-gray-800 rounded-tactile p-4"
           >
             <h3
-              class="text-md font-medium text-gray-900 dark:text-gray-100 mb-4"
+              class="text-accessible-base font-medium text-text-light dark:text-text-dark mb-4"
             >
               Add Knowledge Base Entry
             </h3>
@@ -571,7 +577,7 @@
             <!-- Input Type Selection -->
             <div class="mb-4">
               <label
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                class="block text-accessible-sm font-medium text-text-light dark:text-text-dark mb-2"
                 >Content Type</label
               >
               <div class="flex space-x-4">
@@ -580,9 +586,10 @@
                     type="radio"
                     bind:group={newKnowledgeBase.inputType}
                     value="text"
-                    class="mr-2"
+                    class="mr-2 text-primary focus:ring-primary"
                   />
-                  <span class="text-sm text-gray-700 dark:text-gray-300"
+                  <span
+                    class="text-accessible-sm text-text-light dark:text-text-dark"
                     >Text</span
                   >
                 </label>
@@ -591,9 +598,10 @@
                     type="radio"
                     bind:group={newKnowledgeBase.inputType}
                     value="url"
-                    class="mr-2"
+                    class="mr-2 text-primary focus:ring-primary"
                   />
-                  <span class="text-sm text-gray-700 dark:text-gray-300"
+                  <span
+                    class="text-accessible-sm text-text-light dark:text-text-dark"
                     >URL/Website</span
                   >
                 </label>
@@ -602,9 +610,10 @@
                     type="radio"
                     bind:group={newKnowledgeBase.inputType}
                     value="file"
-                    class="mr-2"
+                    class="mr-2 text-primary focus:ring-primary"
                   />
-                  <span class="text-sm text-gray-700 dark:text-gray-300"
+                  <span
+                    class="text-accessible-sm text-text-light dark:text-text-dark"
                     >File</span
                   >
                 </label>
@@ -615,7 +624,7 @@
             <div class="mb-4">
               <label
                 for="kb-title"
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                class="block text-accessible-sm font-medium text-text-light dark:text-text-dark mb-2"
               >
                 Title (Optional)
               </label>
@@ -623,7 +632,7 @@
                 id="kb-title"
                 type="text"
                 bind:value={newKnowledgeBase.title}
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                class="input-accessible"
                 placeholder="Enter a title for this knowledge base entry..."
               />
             </div>
@@ -633,7 +642,7 @@
               <div class="mb-4">
                 <label
                   for="kb-text"
-                  class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  class="block text-accessible-sm font-medium text-text-light dark:text-text-dark mb-2"
                 >
                   Training Text *
                 </label>
@@ -641,10 +650,12 @@
                   id="kb-text"
                   bind:value={newKnowledgeBase.text}
                   rows="6"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  class="input-accessible"
                   placeholder="Enter the text you want your replica to learn from..."
                 ></textarea>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                <p
+                  class="text-accessible-sm text-text-light/60 dark:text-text-dark/60 mt-2"
+                >
                   Provide detailed information, examples, or knowledge that you
                   want your replica to learn from.
                 </p>
@@ -653,7 +664,7 @@
               <div class="mb-4">
                 <label
                   for="kb-url"
-                  class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  class="block text-accessible-sm font-medium text-text-light dark:text-text-dark mb-2"
                 >
                   Website URL *
                 </label>
@@ -661,10 +672,12 @@
                   id="kb-url"
                   type="url"
                   bind:value={newKnowledgeBase.url}
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  class="input-accessible"
                   placeholder="https://example.com or https://www.youtube.com/watch?v=..."
                 />
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                <p
+                  class="text-accessible-sm text-text-light/60 dark:text-text-dark/60 mt-2"
+                >
                   Supports websites and YouTube videos. The content will be
                   automatically extracted.
                 </p>
@@ -674,9 +687,10 @@
                   <input
                     type="checkbox"
                     bind:checked={newKnowledgeBase.autoRefresh}
-                    class="mr-2"
+                    class="mr-2 text-primary focus:ring-primary rounded"
                   />
-                  <span class="text-sm text-gray-700 dark:text-gray-300"
+                  <span
+                    class="text-accessible-sm text-text-light dark:text-text-dark"
                     >Auto-refresh content from URL</span
                   >
                 </label>
@@ -685,7 +699,7 @@
               <div class="mb-4">
                 <label
                   for="kb-file"
-                  class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  class="block text-accessible-sm font-medium text-text-light dark:text-text-dark mb-2"
                 >
                   Training Document *
                 </label>
@@ -697,16 +711,18 @@
                     newKnowledgeBase.fileObj = e.target.files[0];
                     newKnowledgeBase.filename = e.target.files[0]?.name || "";
                   }}
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary dark:bg-surface-dark dark:text-text-dark file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-accessible-sm file:font-semibold file:bg-primary/10 file:text-primary dark:file:bg-secondary/10 dark:file:text-secondary hover:file:bg-primary/20 dark:hover:file:bg-secondary/20"
                 />
                 {#if newKnowledgeBase.filename}
                   <p
-                    class="text-sm text-green-600 dark:text-green-400 mt-2 font-medium"
+                    class="text-accessible-sm text-green-600 dark:text-green-400 mt-2 font-medium"
                   >
                     Selected: {newKnowledgeBase.filename}
                   </p>
                 {/if}
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                <p
+                  class="text-accessible-sm text-text-light/60 dark:text-text-dark/60 mt-2"
+                >
                   Supported: PDF, DOCX, TXT. Content will be instantly extracted
                   and ingested into the replica.
                 </p>
@@ -716,11 +732,11 @@
             <button
               onclick={createKnowledgeBaseEntry}
               disabled={isLoading}
-              class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200 flex items-center justify-center"
+              class="btn-tactile btn-tactile-primary w-full flex items-center justify-center"
             >
               {#if isLoading}
                 <svg
-                  class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                  class="animate-spin -ml-1 mr-3 h-5 w-5 text-surface-light"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -748,9 +764,9 @@
 
           <!-- Existing Knowledge Base Entries -->
           {#if knowledgeBaseEntries.length > 0}
-            <div>
+            <div class="mt-8">
               <h3
-                class="text-md font-medium text-gray-900 dark:text-gray-100 mb-4"
+                class="text-accessible-base font-medium text-text-light dark:text-text-dark mb-4"
               >
                 Knowledge Base Entries ({knowledgeBaseEntries.length})
               </h3>
@@ -758,53 +774,69 @@
               <div class="space-y-3">
                 {#each knowledgeBaseEntries as entry}
                   <div
-                    class="border border-gray-200 dark:border-gray-600 rounded-lg p-4"
+                    class="border border-gray-200 dark:border-gray-800 rounded-tactile p-4 bg-surface-light dark:bg-surface-dark"
                   >
                     <div class="flex justify-between items-start">
                       <div class="flex-1">
-                        <h4 class="font-medium text-gray-900 dark:text-white">
+                        <h4
+                          class="font-medium text-text-light dark:text-text-dark"
+                        >
                           {entry.title ||
                             entry.generatedTitle ||
                             `Entry ${entry.id}`}
                         </h4>
-                        <div class="flex flex-wrap gap-2 mt-1">
+                        <div class="flex flex-wrap gap-2 mt-2">
                           <span
-                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary dark:bg-secondary/10 dark:text-secondary"
                           >
                             {entry.type || "text"}
                           </span>
                           <span
                             class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {entry.status ===
                             'READY'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'}"
+                              ? 'bg-green-500/10 text-green-700 dark:text-green-300'
+                              : 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-300'}"
                           >
                             {entry.status || "PROCESSING"}
                           </span>
-                          <span class="text-xs text-gray-500 dark:text-gray-400"
+                          <span
+                            class="text-xs text-text-light/60 dark:text-text-dark/60 mt-0.5"
                             >ID: {entry.id}</span
                           >
                         </div>
                         {#if entry.url}
                           <p
-                            class="text-sm text-blue-600 dark:text-blue-400 mt-2 truncate"
+                            class="text-accessible-sm text-primary dark:text-secondary mt-3 truncate"
                           >
-                            <span class="font-medium">URL:</span>
-                            {entry.url}
+                            <span
+                              class="font-medium text-text-light/80 dark:text-text-dark/80"
+                              >URL:</span
+                            >
+                            <a
+                              href={entry.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="hover:underline">{entry.url}</a
+                            >
                           </p>
                         {/if}
                         {#if entry.summary}
-                          <p
-                            class="text-sm text-gray-600 dark:text-gray-300 mt-2"
+                          <div
+                            class="mt-3 bg-background-light dark:bg-background-dark p-3 rounded-md"
                           >
-                            {entry.summary}
-                          </p>
+                            <p
+                              class="text-accessible-sm text-text-light/80 dark:text-text-dark/80"
+                            >
+                              {entry.summary}
+                            </p>
+                          </div>
                         {/if}
                       </div>
                       <button
                         onclick={() => deleteKnowledgeBaseEntry(entry.id)}
-                        class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-1 ml-2"
+                        class="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 p-2 ml-4 rounded-full hover:bg-red-500/10 transition-colors"
                         title="Delete entry"
+                        aria-label="Delete entry"
                       >
                         <svg
                           class="w-5 h-5"
@@ -826,9 +858,11 @@
               </div>
             </div>
           {:else}
-            <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+            <div
+              class="text-center py-8 text-text-light/60 dark:text-text-dark/60"
+            >
               <p>No knowledge base entries found for this replica.</p>
-              <p class="text-sm mt-1">
+              <p class="text-accessible-sm mt-2">
                 Create your first entry above to get started.
               </p>
             </div>
@@ -842,38 +876,48 @@
       {#key selectedReplica?.replicaId}
         <div class="mb-6 grid gap-4 sm:grid-cols-4">
           <div
-            class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4"
+            class="bg-primary/5 dark:bg-primary/10 border border-primary/20 dark:border-primary/30 rounded-tactile p-4"
           >
-            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+            <div class="text-2xl font-bold text-primary dark:text-secondary">
               {getCompletionStats().started}
             </div>
-            <div class="text-sm text-blue-700 dark:text-blue-300">Started</div>
+            <div
+              class="text-accessible-sm text-primary dark:text-secondary font-medium"
+            >
+              Started
+            </div>
           </div>
           <div
-            class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4"
+            class="bg-green-500/10 border border-green-500/20 rounded-tactile p-4"
           >
             <div class="text-2xl font-bold text-green-600 dark:text-green-400">
               {getCompletionStats().completed}
             </div>
-            <div class="text-sm text-green-700 dark:text-green-300">
+            <div
+              class="text-accessible-sm text-green-700 dark:text-green-300 font-medium"
+            >
               Completed (>= min)
             </div>
           </div>
           <div
-            class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4"
+            class="bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-800 rounded-tactile p-4"
           >
-            <div class="text-2xl font-bold text-gray-600 dark:text-gray-400">
+            <div
+              class="text-2xl font-bold text-text-light/80 dark:text-text-dark/80"
+            >
               {filteredQuestions.length}
             </div>
-            <div class="text-sm text-gray-700 dark:text-gray-300">
+            <div
+              class="text-accessible-sm text-text-light/80 dark:text-text-dark/80 font-medium"
+            >
               Total Shown
             </div>
           </div>
           <div
-            class="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4"
+            class="bg-purple-500/10 border border-purple-500/20 rounded-tactile p-4"
           >
             <div
-              class="text-2xl font-bold text-indigo-600 dark:text-indigo-400"
+              class="text-2xl font-bold text-purple-600 dark:text-purple-400"
             >
               {filteredQuestions.length > 0
                 ? Math.round(
@@ -883,7 +927,9 @@
                   )
                 : 0}%
             </div>
-            <div class="text-sm text-indigo-700 dark:text-indigo-300">
+            <div
+              class="text-accessible-sm text-purple-700 dark:text-purple-300 font-medium"
+            >
               Completion %
             </div>
           </div>
@@ -894,13 +940,13 @@
       <div class="mb-6">
         <label
           for="categoryFilter"
-          class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          class="block text-accessible-sm font-medium text-text-light dark:text-text-dark mb-2"
           >Filter by category:</label
         >
         <select
           id="categoryFilter"
           bind:value={selectedFilter}
-          class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          class="input-accessible bg-surface-light dark:bg-surface-dark"
         >
           <option value="all"
             >All Categories ({filteredQuestions.length})</option
@@ -917,34 +963,36 @@
 
       {#if currentQuestion}
         <!-- Current Question -->
-        <div
-          class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6"
-        >
+        <div class="card-accessible mb-6">
           <div class="p-6">
             <div class="mb-4">
-              <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center justify-between mb-3">
                 <span
-                  class="text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded"
+                  class="text-accessible-sm font-medium text-primary dark:text-secondary bg-primary/10 dark:bg-secondary/10 px-3 py-1 rounded-full"
                 >
                   {OPTIONAL_SEGMENTS[currentQuestion.segment]?.name ||
                     currentQuestion.segment}
                 </span>
-                <span class="text-sm text-gray-500 dark:text-gray-400">
+                <span
+                  class="text-accessible-sm font-medium text-text-light/60 dark:text-text-dark/60 bg-surface-light dark:bg-surface-dark px-3 py-1 rounded-full border border-gray-200 dark:border-gray-800"
+                >
                   Question {currentQuestionIndex + 1} of {filteredQuestions.length}
                 </span>
               </div>
-              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+              <h3
+                class="text-accessible-lg font-medium text-text-light dark:text-text-dark leading-relaxed"
+              >
                 {currentQuestion.text}
               </h3>
             </div>
 
-            <div class="mb-4">
+            <div class="mb-6">
               <textarea
                 value={answers[currentQuestion.id] || ""}
                 oninput={(e) =>
                   updateAnswer(currentQuestion.id, e.target.value)}
                 rows="6"
-                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors
+                class="w-full px-4 py-3 border rounded-tactile focus:outline-none focus:ring-2 bg-surface-light dark:bg-surface-dark text-text-light dark:text-text-dark transition-colors resize-y
                   {answers[currentQuestion.id]?.length > 0 &&
                 !isQuestionAnswered(currentQuestion.id)
                   ? 'border-orange-400 dark:border-orange-500 focus:ring-orange-500'
@@ -954,19 +1002,19 @@
                   : ''}
                   {!answers[currentQuestion.id] ||
                 answers[currentQuestion.id].length === 0
-                  ? 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+                  ? 'border-gray-300 dark:border-gray-600 focus:ring-primary dark:focus:ring-secondary focus:border-primary dark:focus:border-secondary'
                   : ''}"
                 placeholder="Share your thoughts... (minimum {currentQuestion.minLength} characters)"
               ></textarea>
 
-              <div class="mt-3 flex justify-between items-center">
-                <div class="text-sm">
-                  <span class="text-gray-500 dark:text-gray-400"
+              <div class="mt-3 flex justify-between items-center px-1">
+                <div class="text-accessible-sm">
+                  <span class="text-text-light/60 dark:text-text-dark/60"
                     >{getAnswerLength(currentQuestion.id)} chars</span
                   >
                   {#if answers[currentQuestion.id]?.length > 0 && !isQuestionAnswered(currentQuestion.id)}
                     <span
-                      class="ml-2 text-orange-600 dark:text-orange-400 font-medium"
+                      class="ml-3 text-orange-600 dark:text-orange-400 font-medium bg-orange-500/10 px-2 py-0.5 rounded"
                       >Need {Math.max(
                         0,
                         currentQuestion.minLength -
@@ -976,41 +1024,77 @@
                   {/if}
                   {#if isQuestionAnswered(currentQuestion.id)}
                     <span
-                      class="ml-2 text-green-600 dark:text-green-400 font-medium"
+                      class="ml-3 text-green-600 dark:text-green-400 font-medium bg-green-500/10 px-2 py-0.5 rounded"
                       >Meets minimum</span
                     >
                   {/if}
                 </div>
-                <div class="flex items-center gap-2 text-xs">
+                <div
+                  class="flex items-center gap-2 text-accessible-sm font-medium"
+                >
                   {#if answers[currentQuestion.id]?.length > 0 && !isQuestionAnswered(currentQuestion.id)}
-                    <span class="text-orange-500 dark:text-orange-400"
-                      >Incomplete</span
+                    <span
+                      class="text-orange-600 dark:text-orange-400 flex items-center gap-1"
                     >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><circle cx="12" cy="12" r="10"></circle><polyline
+                          points="12 6 12 12 16 14"
+                        ></polyline></svg
+                      >
+                      Incomplete
+                    </span>
                   {/if}
                   {#if isQuestionAnswered(currentQuestion.id)}
-                    <span class="text-green-600 dark:text-green-400"
-                      >✓ Complete</span
+                    <span
+                      class="text-green-600 dark:text-green-400 flex items-center gap-1"
                     >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"
+                        ></path><polyline points="22 4 12 14.01 9 11.01"
+                        ></polyline></svg
+                      >
+                      Complete
+                    </span>
                   {/if}
                 </div>
               </div>
             </div>
 
             <!-- Navigation -->
-            <div class="flex justify-between items-center">
+            <div
+              class="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-800"
+            >
               <button
                 onclick={previousQuestion}
                 disabled={currentQuestionIndex === 0}
-                class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                class="btn-tactile btn-tactile-secondary"
               >
                 Previous
               </button>
 
               <button
                 onclick={skipQuestion}
-                class="px-4 py-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
+                class="text-accessible-base font-medium text-text-light/60 hover:text-text-light dark:text-text-dark/60 dark:hover:text-text-dark transition-colors px-4 py-2"
               >
-                Skip
+                Skip Question
               </button>
 
               <div class="flex flex-col items-end gap-1">
@@ -1019,13 +1103,15 @@
                   disabled={currentQuestionIndex ===
                     filteredQuestions.length - 1 ||
                     !isQuestionAnswered(currentQuestion.id)}
-                  class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="btn-tactile btn-tactile-primary"
                   aria-disabled={currentQuestionIndex ===
                     filteredQuestions.length - 1 ||
-                    !isQuestionAnswered(currentQuestion.id)}>Next</button
+                    !isQuestionAnswered(currentQuestion.id)}
+                  >Next Question</button
                 >
                 {#if answers[currentQuestion.id]?.length && !isQuestionAnswered(currentQuestion.id)}
-                  <span class="text-[11px] text-orange-500 dark:text-orange-400"
+                  <span
+                    class="text-xs text-orange-600 dark:text-orange-400 font-medium"
                     >Need {Math.max(
                       0,
                       currentQuestion.minLength -
@@ -1040,25 +1126,30 @@
       {/if}
 
       <!-- Submit Training -->
-      <div
-        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6"
-      >
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+      <div class="card-accessible p-6">
+        <h3
+          class="text-accessible-lg font-semibold text-text-light dark:text-text-dark mb-4"
+        >
           Submit Training Data
         </h3>
-        <p class="text-gray-600 dark:text-gray-400 mb-4">
-          Started: <span class="font-semibold"
+        <p
+          class="text-text-light/80 dark:text-text-dark/80 mb-6 bg-surface-light dark:bg-surface-dark p-3 rounded-md inline-block"
+        >
+          Started: <span class="font-bold text-primary dark:text-secondary"
             >{getCompletionStats().started}</span
           >
-          • Completed:
-          <span class="font-semibold">{getCompletionStats().completed}</span>
+          <span class="mx-2">|</span>
+          Completed:
+          <span class="font-bold text-green-600 dark:text-green-400"
+            >{getCompletionStats().completed}</span
+          >
           / {filteredQuestions.length}
         </p>
         <div
-          class="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded mb-6 overflow-hidden"
+          class="h-2 w-full bg-gray-200 dark:bg-gray-800 rounded-full mb-8 overflow-hidden border border-gray-300 dark:border-gray-700"
         >
           <div
-            class="h-full bg-green-500 transition-all"
+            class="h-full bg-green-500 transition-all duration-500 ease-out"
             style="width: {filteredQuestions.length
               ? (getCompletionStats().completed / filteredQuestions.length) *
                 100
@@ -1066,15 +1157,15 @@
           ></div>
         </div>
 
-        <div class="flex gap-4">
+        <div class="flex flex-wrap gap-4">
           <button
             onclick={submitTraining}
             disabled={isLoading || getCompletionStats().completed === 0}
-            class="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            class="btn-tactile bg-green-600 hover:bg-green-700 text-white border-b-4 border-green-800 disabled:bg-gray-400 disabled:border-gray-500 disabled:text-gray-200 flex items-center gap-2 px-6 py-3 shadow-[0_4px_0_0_rgba(21,128,61,1)] active:shadow-[0_0px_0_0_rgba(21,128,61,1)] disabled:shadow-[0_4px_0_0_rgba(107,114,128,1)] text-lg border-2 border-t-green-500 border-l-green-500"
           >
             {#if isLoading}
               <svg
-                class="animate-spin w-4 h-4"
+                class="animate-spin w-5 h-5 opacity-80"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1088,13 +1179,28 @@
               </svg>
               Training...
             {:else}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="opacity-80"
+                ><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline
+                  points="22 4 12 14.01 9 11.01"
+                ></polyline></svg
+              >
               Submit Training Data
             {/if}
           </button>
 
           <a
             href="/dashboard"
-            class="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            class="btn-tactile btn-tactile-secondary px-6 py-3"
           >
             Back to Dashboard
           </a>
@@ -1103,18 +1209,43 @@
     {:else if selectedReplica}
       <!-- No questions available -->
       <div
-        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center"
+        class="card-accessible bg-surface-light dark:bg-surface-dark p-8 text-center"
       >
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="mx-auto mb-4 text-text-light/40 dark:text-text-dark/40"
+          ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+          ></path><polyline points="14 2 14 8 20 8"></polyline><line
+            x1="16"
+            y1="13"
+            x2="8"
+            y2="13"
+          ></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline
+            points="10 9 9 9 8 9"
+          ></polyline></svg
+        >
+        <h3
+          class="text-accessible-lg font-semibold text-text-light dark:text-text-dark mb-2"
+        >
           No Training Questions Available
         </h3>
-        <p class="text-gray-600 dark:text-gray-400 mb-4">
+        <p
+          class="text-text-light/80 dark:text-text-dark/80 max-w-md mx-auto mb-6"
+        >
           This replica doesn't have any optional question categories selected
           for training.
         </p>
         <a
           href="/dashboard"
-          class="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          class="btn-tactile btn-tactile-primary inline-flex"
         >
           Back to Dashboard
         </a>
@@ -1122,17 +1253,38 @@
     {:else}
       <!-- No replicas -->
       <div
-        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center"
+        class="card-accessible bg-surface-light dark:bg-surface-dark p-8 text-center"
       >
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="mx-auto mb-4 text-primary/50 dark:text-secondary/50"
+          ><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle
+            cx="12"
+            cy="7"
+            r="4"
+          ></circle></svg
+        >
+        <h3
+          class="text-accessible-lg font-semibold text-text-light dark:text-text-dark mb-2"
+        >
           No Replicas Found
         </h3>
-        <p class="text-gray-600 dark:text-gray-400 mb-4">
+        <p
+          class="text-text-light/80 dark:text-text-dark/80 max-w-md mx-auto mb-6"
+        >
           You need to create a replica first before you can train it.
         </p>
         <a
           href="/create-replicas"
-          class="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          class="btn-tactile btn-tactile-primary inline-flex"
         >
           Create Your First Replica
         </a>
