@@ -7,34 +7,36 @@ import { authenticateToken, requireCaretaker } from '../middleware/auth.js';
  * @param {object} options - Plugin options
  */
 async function authRoutes(fastify, options) {
-  
-		// Google OAuth Login/Signup
-		const { loginWithGoogle } = await import('../services/authService.js');
-		fastify.post('/auth/google', async (request, reply) => {
-			try {
-				const { idToken } = request.body;
-				if (!idToken) {
-					return reply.code(400).send({
-						success: false,
-						message: 'ID token is required',
-						errors: ['No ID token provided']
-					});
-				}
-				const result = await authService.loginWithGoogle(idToken);
-				if (result.success) {
-					return reply.code(200).send(result);
-				} else {
-					return reply.code(400).send(result);
-				}
-			} catch (error) {
-				fastify.log.error('Google auth error:', error);
-				return reply.code(500).send({
+
+	// Google OAuth Login/Signup
+	const { loginWithGoogle } = await import('../services/authService.js');
+	fastify.post('/auth/google', async (request, reply) => {
+		try {
+			const { idToken } = request.body;
+			console.log('[DEBUG] Received idToken typeof:', typeof idToken, 'length:', idToken?.length, 'value prefix:', idToken ? idToken.substring(0, 15) : 'none');
+
+			if (!idToken) {
+				return reply.code(400).send({
 					success: false,
-					message: 'Internal server error during Google authentication',
-					errors: [error.message]
+					message: 'ID token is required',
+					errors: ['No ID token provided']
 				});
 			}
-		});
+			const result = await authService.loginWithGoogle(idToken);
+			if (result.success) {
+				return reply.code(200).send(result);
+			} else {
+				return reply.code(400).send(result);
+			}
+		} catch (error) {
+			fastify.log.error('Google auth error:', error);
+			return reply.code(500).send({
+				success: false,
+				message: 'Internal server error during Google authentication',
+				errors: [error.message]
+			});
+		}
+	});
 
 	// Get current authenticated user
 	fastify.get('/auth/me', {
@@ -60,23 +62,23 @@ async function authRoutes(fastify, options) {
 		body: {
 			type: 'object',
 			properties: {
-				email: { 
+				email: {
 					type: 'string',
 					format: 'email',
 					description: 'User email address'
 				},
-				password: { 
+				password: {
 					type: 'string',
 					minLength: 6,
 					maxLength: 128,
 					description: 'User password (minimum 6 characters)'
 				},
-				firstName: { 
+				firstName: {
 					type: 'string',
 					maxLength: 50,
 					description: 'User first name (optional)'
 				},
-				lastName: { 
+				lastName: {
 					type: 'string',
 					maxLength: 50,
 					description: 'User last name (optional)'
@@ -109,7 +111,7 @@ async function authRoutes(fastify, options) {
 				properties: {
 					success: { type: 'boolean' },
 					message: { type: 'string' },
-					errors: { 
+					errors: {
 						type: 'array',
 						items: { type: 'string' }
 					}
@@ -123,12 +125,12 @@ async function authRoutes(fastify, options) {
 		body: {
 			type: 'object',
 			properties: {
-				email: { 
+				email: {
 					type: 'string',
 					format: 'email',
 					description: 'User email address'
 				},
-				password: { 
+				password: {
 					type: 'string',
 					description: 'User password'
 				}
@@ -160,7 +162,7 @@ async function authRoutes(fastify, options) {
 				properties: {
 					success: { type: 'boolean' },
 					message: { type: 'string' },
-					errors: { 
+					errors: {
 						type: 'array',
 						items: { type: 'string' }
 					}
@@ -171,7 +173,7 @@ async function authRoutes(fastify, options) {
 				properties: {
 					success: { type: 'boolean' },
 					message: { type: 'string' },
-					errors: { 
+					errors: {
 						type: 'array',
 						items: { type: 'string' }
 					}
@@ -185,12 +187,12 @@ async function authRoutes(fastify, options) {
 		body: {
 			type: 'object',
 			properties: {
-				email: { 
+				email: {
 					type: 'string',
 					format: 'email',
 					description: 'User email address'
 				},
-				otpCode: { 
+				otpCode: {
 					type: 'string',
 					pattern: '^[0-9]{6}$',
 					description: '6-digit OTP code'
@@ -213,7 +215,7 @@ async function authRoutes(fastify, options) {
 				properties: {
 					success: { type: 'boolean' },
 					message: { type: 'string' },
-					errors: { 
+					errors: {
 						type: 'array',
 						items: { type: 'string' }
 					}
@@ -227,7 +229,7 @@ async function authRoutes(fastify, options) {
 		body: {
 			type: 'object',
 			properties: {
-				email: { 
+				email: {
 					type: 'string',
 					format: 'email',
 					description: 'User email address'
@@ -273,7 +275,7 @@ async function authRoutes(fastify, options) {
 		body: {
 			type: 'object',
 			properties: {
-				email: { 
+				email: {
 					type: 'string',
 					format: 'email',
 					description: 'Patient email address'
@@ -299,7 +301,7 @@ async function authRoutes(fastify, options) {
 		body: {
 			type: 'object',
 			properties: {
-				email: { 
+				email: {
 					type: 'string',
 					format: 'email',
 					description: 'Patient email address'
@@ -324,7 +326,7 @@ async function authRoutes(fastify, options) {
 	 * POST /auth/signup
 	 * Register a new user
 	 */
-	fastify.post('/auth/signup', { 
+	fastify.post('/auth/signup', {
 		schema: signupSchema,
 		config: { rateLimit: { max: 20, timeWindow: '10 minutes' } }
 	}, async (request, reply) => {
@@ -344,7 +346,7 @@ async function authRoutes(fastify, options) {
 				success: result.success,
 				status: result.statusCode || (result.success ? 201 : 400)
 			}, 'Signup result');
-			
+
 			if (result.success) {
 				const status = result.statusCode || 201;
 				reply.code(status).send(result);
@@ -393,7 +395,7 @@ async function authRoutes(fastify, options) {
 	 * POST /auth/login
 	 * Login user
 	 */
-	fastify.post('/auth/login', { 
+	fastify.post('/auth/login', {
 		schema: loginSchema,
 		config: { rateLimit: { max: 40, timeWindow: '5 minutes' } }
 	}, async (request, reply) => {
@@ -404,7 +406,7 @@ async function authRoutes(fastify, options) {
 			fastify.log.info({ reqId: request.id, route: 'auth/login', payload: loginSummary }, 'Login request received');
 			const result = await authService.login(request.body);
 			fastify.log.info({ reqId: request.id, route: 'auth/login', success: result.success }, 'Login result');
-			
+
 			if (result.success) {
 				reply.code(200).send(result);
 			} else {
@@ -429,14 +431,14 @@ async function authRoutes(fastify, options) {
 	 * POST /auth/patient-signup
 	 * Patient signup - sends OTP to email for access
 	 */
-	fastify.post('/auth/patient-signup', { 
+	fastify.post('/auth/patient-signup', {
 		schema: patientSignupSchema,
 		config: { rateLimit: { max: 30, timeWindow: '10 minutes' } }
 	}, async (request, reply) => {
 		try {
 			const { email } = request.body;
 			const result = await authService.patientSignup(email);
-			
+
 			if (result.success) {
 				reply.code(200).send(result);
 			} else {
@@ -456,7 +458,7 @@ async function authRoutes(fastify, options) {
 	 * POST /auth/patient-login
 	 * Patient login - sends OTP to email for access
 	 */
-	fastify.post('/auth/patient-login', { 
+	fastify.post('/auth/patient-login', {
 		schema: patientLoginSchema,
 		config: { rateLimit: { max: 60, timeWindow: '5 minutes' } }
 	}, async (request, reply) => {
@@ -488,14 +490,14 @@ async function authRoutes(fastify, options) {
 	 * POST /auth/verify-otp
 	 * Verify OTP code and activate account
 	 */
-	fastify.post('/auth/verify-otp', { 
+	fastify.post('/auth/verify-otp', {
 		schema: verifyOTPSchema,
 		config: { rateLimit: { max: 25, timeWindow: '10 minutes' } }
 	}, async (request, reply) => {
 		try {
 			const { email, otpCode } = request.body;
 			const result = await authService.verifyOTP(email, otpCode);
-			
+
 			if (result.success) {
 				reply.code(200).send(result);
 			} else {
@@ -515,14 +517,14 @@ async function authRoutes(fastify, options) {
 	 * POST /auth/resend-otp
 	 * Resend OTP code to user's email
 	 */
-	fastify.post('/auth/resend-otp', { 
+	fastify.post('/auth/resend-otp', {
 		schema: resendOTPSchema,
 		config: { rateLimit: { max: 5, timeWindow: '10 minutes' } }
 	}, async (request, reply) => {
 		try {
 			const { email } = request.body;
 			const result = await authService.resendOTP(email);
-			
+
 			if (result.success) {
 				reply.code(200).send(result);
 			} else {
@@ -546,7 +548,7 @@ async function authRoutes(fastify, options) {
 		try {
 			const { userId } = request.params;
 			const result = await authService.verifyUser(userId);
-			
+
 			if (result.success) {
 				reply.code(200).send(result);
 			} else {
@@ -566,19 +568,19 @@ async function authRoutes(fastify, options) {
 	 * GET /api/auth/me
 	 * Get current user info (protected route)
 	 */
-	fastify.get('/api/auth/me', { 
-		preHandler: authenticateToken 
+	fastify.get('/api/auth/me', {
+		preHandler: authenticateToken
 	}, async (request, reply) => {
 		try {
 			let user;
-			
+
 			// For patients, user data is already in request.user (from Patient collection)
 			if (request.isPatient) {
 				user = request.user;
 			} else {
 				// For caretakers, fetch from User collection
 				user = await authService.getUserById(request.user.id);
-				
+
 				if (!user) {
 					reply.code(404).send({
 						success: false,
@@ -667,8 +669,8 @@ async function authRoutes(fastify, options) {
 	 * GET /auth/dashboard
 	 * Protected dashboard route - requires authentication
 	 */
-	fastify.get('/auth/dashboard', { 
-		preHandler: authenticateToken 
+	fastify.get('/auth/dashboard', {
+		preHandler: authenticateToken
 	}, async (request, reply) => {
 		try {
 			return {
@@ -696,12 +698,12 @@ async function authRoutes(fastify, options) {
 	 * GET /auth/profile
 	 * Get detailed user profile (protected route)
 	 */
-	fastify.get('/auth/profile', { 
-		preHandler: authenticateToken 
+	fastify.get('/auth/profile', {
+		preHandler: authenticateToken
 	}, async (request, reply) => {
 		try {
 			const user = await authService.getUserById(request.user.id);
-			
+
 			if (!user) {
 				reply.code(404).send({
 					success: false,
@@ -737,7 +739,7 @@ async function authRoutes(fastify, options) {
 	 * PUT /auth/profile
 	 * Update user profile (protected route)
 	 */
-	fastify.put('/auth/profile', { 
+	fastify.put('/auth/profile', {
 		preHandler: authenticateToken,
 		schema: {
 			body: {
@@ -802,7 +804,7 @@ async function authRoutes(fastify, options) {
 
 			// Import Firebase admin
 			const firebase = await import('../firebase.js');
-			
+
 			if (!firebase.default._admin) {
 				return reply.code(503).send({
 					success: false,

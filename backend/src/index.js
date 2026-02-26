@@ -203,7 +203,7 @@ try {
 }
 
 // Register routes
-await server.register(authRoutes);
+await server.register(authRoutes, { prefix: '/api' });
 await server.register(replicaRoutes);
 await server.register(galleryRoutes);
 await server.register(replicaImageRoutes);

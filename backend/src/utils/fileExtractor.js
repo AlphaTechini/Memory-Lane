@@ -1,4 +1,4 @@
-import pdfParse from 'pdf-parse/lib/pdf-parse.js';
+import { PDFParse as pdfParse } from 'pdf-parse';
 import mammoth from 'mammoth';
 
 /**
