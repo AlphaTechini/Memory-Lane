@@ -128,313 +128,393 @@
   />
 </svelte:head>
 
-<div class="min-h-screen bg-background-light dark:bg-background-dark">
-  <!-- Simple Navigation -->
-  <nav
-    class="bg-surface-light dark:bg-surface-dark border-b-2 border-gray-200 dark:border-gray-800"
+<div
+  class="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100"
+>
+  <!-- Shared Header -->
+  <header
+    class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800 px-6 md:px-10 py-4 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md sticky top-0 z-50"
   >
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="/dashboard" class="flex items-center gap-3">
-        <img src="/logo.png" alt="" class="h-10 w-auto" aria-hidden="true" />
-        <span
-          class="text-accessible-xl font-bold text-text-light dark:text-text-dark"
-          >Memory Lane</span
-        >
-      </a>
+    <a href="/dashboard" class="flex items-center gap-3 group">
+      <div
+        class="flex items-center justify-center size-10 bg-primary rounded-lg text-white group-hover:bg-blue-700 transition-colors"
+      >
+        <span class="material-symbols-outlined">neurology</span>
+      </div>
+      <h2
+        class="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-tight"
+      >
+        Memory Lane
+      </h2>
+    </a>
+    <div class="flex gap-4 items-center">
       <ThemeToggle />
+      <button
+        onclick={() => goto("/dashboard")}
+        class="hidden md:flex min-w-[84px] cursor-pointer items-center justify-center rounded-xl h-10 px-4 bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/20 transition-colors"
+      >
+        <span class="truncate">Explore Dashboard</span>
+      </button>
     </div>
-  </nav>
+  </header>
 
-  <!-- Main Content -->
-  <main
-    class="flex items-center justify-center min-h-[calc(100vh-80px)] px-4 py-12"
-  >
-    <div class="w-full max-w-lg">
-      <!-- Header -->
-      <div class="text-center mb-8">
-        <img
-          src="/logo.png"
-          alt="Memory Lane logo"
-          class="mx-auto mb-6 h-16 w-auto"
-        />
-        <h1
-          class="text-accessible-3xl font-bold text-text-light dark:text-text-dark mb-4"
+  {#if userType === "caretaker"}
+    <!-- Caretaker Main -->
+    <main class="flex-1 flex items-center justify-center p-4 md:p-8">
+      <div
+        class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-0 overflow-hidden rounded-xl shadow-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
+      >
+        <!-- Left Side: Branding/Visual -->
+        <div
+          class="relative hidden lg:flex flex-col justify-between p-12 bg-primary overflow-hidden"
         >
-          Welcome Back
-        </h1>
-        <p
-          class="text-accessible-base text-text-light/80 dark:text-text-dark/80"
-        >
-          {#if userType === "caretaker"}
-            Sign in to your Memory Lane account
-          {:else}
-            Enter the email your caretaker used to add you
-          {/if}
-        </p>
-      </div>
-
-      <!-- User Type Selector - Large, tactile buttons -->
-      <div class="mb-8">
-        <fieldset>
-          <legend class="sr-only">Select your account type</legend>
-          <div class="flex gap-3">
-            <button
-              type="button"
-              onclick={() => (userType = "caretaker")}
-              class="flex-1 btn-tactile {userType === 'caretaker'
-                ? 'btn-tactile-primary'
-                : 'btn-tactile-secondary'}"
-              aria-pressed={userType === "caretaker"}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                aria-hidden="true"
-              >
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-              <span>Caretaker</span>
-            </button>
-            <button
-              type="button"
-              onclick={() => (userType = "patient")}
-              class="flex-1 btn-tactile {userType === 'patient'
-                ? 'btn-tactile-primary'
-                : 'btn-tactile-secondary'}"
-              aria-pressed={userType === "patient"}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                aria-hidden="true"
-              >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-              <span>Patient</span>
-            </button>
+          <div class="absolute inset-0 opacity-20" aria-hidden="true">
+            <div
+              class="absolute inset-0 bg-gradient-to-br from-primary via-blue-600 to-indigo-900"
+            ></div>
+            <div
+              class="absolute inset-0"
+              style="background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.15) 1px, transparent 0); background-size: 32px 32px;"
+            ></div>
           </div>
-        </fieldset>
-      </div>
-
-      <!-- Login Form Card -->
-      <div class="card-accessible">
-        {#if userType === "caretaker"}
-          <!-- Google Sign-In -->
-          <div class="mb-6">
-            <GoogleSignInButton mode="signin" />
+          <div class="relative z-10">
+            <div
+              class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-bold uppercase tracking-widest mb-6"
+            >
+              <span class="material-symbols-outlined text-sm">verified</span>
+              Medical Grade Platform
+            </div>
+            <h1
+              class="text-4xl xl:text-5xl font-extrabold text-white leading-tight mb-6"
+            >
+              Empowering Caretakers with Cognitive Insights.
+            </h1>
+            <p class="text-blue-100 text-lg max-w-md font-light">
+              Access the comprehensive dashboard for patient monitoring, memory
+              exercises, and therapeutic tracking.
+            </p>
           </div>
-
-          <!-- Divider -->
-          <div class="relative mb-6">
-            <div class="absolute inset-0 flex items-center">
+          <div
+            class="relative z-10 p-6 rounded-xl border border-white/20 bg-white/10 backdrop-blur-md"
+          >
+            <div class="flex items-center gap-4 mb-4">
               <div
-                class="w-full border-t border-gray-200 dark:border-gray-800"
-              ></div>
-            </div>
-            <div class="relative flex justify-center">
-              <span
-                class="px-4 bg-surface-light dark:bg-surface-dark text-accessible-base text-text-light/80 dark:text-text-dark/80"
+                class="size-12 rounded-full bg-white/30 flex items-center justify-center"
               >
-                Or sign in with email
-              </span>
+                <span class="material-symbols-outlined text-white"
+                  >clinical_notes</span
+                >
+              </div>
+              <div>
+                <p class="text-white font-bold">New Analytics Available</p>
+                <p class="text-blue-100 text-sm">
+                  Weekly cognitive trend reports are ready.
+                </p>
+              </div>
+            </div>
+            <div class="w-full bg-white/20 h-2 rounded-full overflow-hidden">
+              <div class="bg-white h-full w-3/4 rounded-full"></div>
             </div>
           </div>
-        {/if}
+        </div>
 
-        <form onsubmit={handleLogin} class="space-y-6">
-          <!-- Email Field -->
-          <div>
-            <label
-              for="email"
-              class="block text-accessible-base font-semibold text-text-light dark:text-text-dark mb-2"
-            >
-              Email Address
-            </label>
-            {#if userType === "patient"}
-              <p
-                class="text-accessible-sm text-text-light/80 dark:text-text-dark/80 mb-2"
+        <!-- Right Side: Login Form -->
+        <div class="flex flex-col p-8 md:p-12 lg:p-16 justify-center">
+          <div class="mb-10">
+            <h2 class="text-3xl font-black text-slate-900 dark:text-white mb-2">
+              Welcome Back
+            </h2>
+            <p class="text-slate-500 dark:text-slate-400">
+              Please enter your caretaker credentials to continue
+            </p>
+          </div>
+
+          <form class="space-y-5" onsubmit={handleLogin}>
+            {#if error}
+              <div
+                class="bg-red-500/10 border border-red-500/30 rounded-xl p-4"
               >
-                Enter the email your caretaker used to add you
-              </p>
+                <p class="text-sm text-red-600 dark:text-red-400 font-medium">
+                  {error}
+                </p>
+              </div>
             {/if}
-            <input
-              type="email"
-              id="email"
-              bind:value={email}
-              required
-              autocomplete="email"
-              class="input-accessible"
-              placeholder="Enter your email"
-            />
-          </div>
 
-          {#if userType === "caretaker"}
-            <!-- Password Field -->
             <div>
               <label
-                for="password"
-                class="block text-accessible-base font-semibold text-text-light dark:text-text-dark mb-2"
+                for="email"
+                class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2"
+                >Work Email</label
               >
-                Password
-              </label>
               <div class="relative">
+                <span
+                  class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  >mail</span
+                >
                 <input
-                  type={showPassword ? "text" : "password"}
+                  id="email"
+                  bind:value={email}
+                  required
+                  class="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                  placeholder="name@medical-center.com"
+                  type="email"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between mb-2">
+                <label
+                  for="password"
+                  class="text-sm font-semibold text-slate-700 dark:text-slate-300"
+                  >Password</label
+                >
+              </div>
+              <div class="relative">
+                <span
+                  class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  >lock</span
+                >
+                <input
                   id="password"
                   bind:value={password}
                   required
-                  autocomplete="current-password"
-                  class="input-accessible pr-14"
-                  placeholder="Enter your password"
+                  class="w-full pl-12 pr-12 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                  placeholder="••••••••"
+                  type={showPassword ? "text" : "password"}
                 />
                 <button
-                  type="button"
                   onclick={togglePasswordVisibility}
-                  class="absolute inset-y-0 right-0 pr-4 flex items-center min-w-[48px] justify-center text-text-light/60 dark:text-text-dark/60 hover:text-text-light dark:hover:text-text-dark"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+                  type="button"
                 >
-                  {#if showPassword}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-                      />
-                      <line x1="1" y1="1" x2="23" y2="23" />
-                    </svg>
-                  {:else}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      aria-hidden="true"
-                    >
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  {/if}
+                  <span class="material-symbols-outlined"
+                    >{showPassword ? "visibility_off" : "visibility"}</span
+                  >
                 </button>
               </div>
             </div>
-          {/if}
 
-          <!-- Error Message -->
-          {#if error}
-            <div
-              class="bg-red-500/10 border border-red-500/30 rounded-tactile p-4"
-              role="alert"
+            <button
+              type="submit"
+              disabled={loading}
+              class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/25 transition-all flex items-center justify-center gap-2 disabled:opacity-75"
             >
-              <p
-                class="text-accessible-base text-red-600 dark:text-red-400 font-medium"
-              >
-                {error}
-              </p>
-            </div>
-          {/if}
-
-          <!-- Submit Button -->
-          <button
-            type="submit"
-            disabled={loading}
-            class="btn-tactile btn-tactile-primary w-full"
-          >
-            {#if loading}
-              <svg
-                class="animate-spin w-6 h-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              <span>Signing in...</span>
-            {:else}
-              <span>Sign In</span>
-            {/if}
-          </button>
-        </form>
-
-        <!-- Footer Links -->
-        <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800">
-          <div class="text-center space-y-4">
-            <p
-              class="text-accessible-base text-text-light/80 dark:text-text-dark/80"
-            >
-              Don't have an account?
-              <a
-                href="/signup"
-                class="font-semibold text-primary dark:text-secondary hover:underline focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded"
-              >
-                Sign up
-              </a>
-            </p>
-
-            <div class="pt-4">
-              <p
-                class="text-accessible-sm text-text-light/60 dark:text-text-dark/60 mb-3"
-              >
-                Want to explore first?
-              </p>
-              <button
-                onclick={() => goto("/dashboard")}
-                class="btn-tactile btn-tactile-secondary"
-              >
+              {#if loading}
                 <svg
+                  class="animate-spin h-5 w-5 text-white"
                   xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
                   fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  ><circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                  ></circle><path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path></svg
                 >
-                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                </svg>
-                <span>Explore without signup</span>
-              </button>
+                <span>Signing In...</span>
+              {:else}
+                <span>Sign In to Dashboard</span>
+                <span class="material-symbols-outlined text-lg"
+                  >arrow_forward</span
+                >
+              {/if}
+            </button>
+          </form>
+
+          <div class="relative my-8">
+            <div class="absolute inset-0 flex items-center">
+              <div
+                class="w-full border-t border-slate-200 dark:border-slate-700"
+              ></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+              <span class="px-4 bg-white dark:bg-slate-900 text-slate-500"
+                >Or continue with</span
+              >
+            </div>
+          </div>
+
+          <GoogleSignInButton mode="signin" />
+
+          <div class="mt-10 text-center space-y-4">
+            <p class="text-slate-600 dark:text-slate-400">
+              Don't have a caretaker account?
+              <a class="text-primary font-bold hover:underline" href="/signup"
+                >Sign up now</a
+              >
+            </p>
+            <div class="flex items-center justify-center gap-2">
+              <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"
+              ></span>
+              <button
+                onclick={() => (userType = "patient")}
+                class="text-sm font-medium text-slate-500 hover:text-primary transition-colors"
+                >I am a Patient</button
+              >
+              <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"
+              ></span>
             </div>
           </div>
         </div>
       </div>
+    </main>
+  {:else}
+    <!-- Patient Main -->
+    <main
+      class="flex-1 flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden"
+    >
+      <!-- decorative background nodes -->
+      <div class="absolute inset-0 z-0 pointer-events-none">
+        <div
+          class="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl"
+        ></div>
+        <div
+          class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl"
+        ></div>
+      </div>
+
+      <div
+        class="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-xl shadow-xl p-8 md:p-16 border-2 border-slate-200 dark:border-slate-700 relative z-10"
+      >
+        <header class="text-center mb-12">
+          <div class="flex justify-center mb-6">
+            <div class="bg-primary/10 p-4 rounded-full">
+              <span
+                class="material-symbols-outlined text-primary"
+                style="font-size: 64px;">psychology</span
+              >
+            </div>
+          </div>
+          <h1
+            class="text-5xl md:text-6xl font-black text-primary mb-4 tracking-tight"
+          >
+            Memory Lane
+          </h1>
+          <p
+            class="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-100"
+          >
+            Welcome Back
+          </p>
+        </header>
+
+        <form onsubmit={handleLogin} class="space-y-10">
+          {#if error}
+            <div
+              class="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-center"
+            >
+              <p class="text-lg text-red-600 dark:text-red-400 font-medium">
+                {error}
+              </p>
+            </div>
+          {/if}
+          <div class="space-y-4">
+            <p
+              class="text-xl md:text-2xl text-slate-600 dark:text-slate-300 text-center leading-relaxed"
+            >
+              Enter the email your caretaker used to add you
+            </p>
+          </div>
+          <div class="space-y-8">
+            <div class="flex flex-col gap-3">
+              <label
+                class="text-xl font-bold text-slate-900 dark:text-slate-100 px-2"
+                for="patient-email"
+              >
+                Email Address
+              </label>
+              <input
+                id="patient-email"
+                bind:value={email}
+                required
+                class="w-full h-24 text-2xl md:text-3xl rounded-xl border-4 border-slate-300 dark:border-slate-600 focus:border-primary dark:focus:border-primary focus:ring-4 focus:ring-primary/20 bg-white dark:bg-slate-900 px-6 font-medium transition-all"
+                placeholder="name@email.com"
+                type="email"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              class="w-full h-24 bg-primary hover:bg-primary/90 text-white rounded-xl text-3xl md:text-4xl font-black shadow-lg shadow-primary/30 flex items-center justify-center gap-4 transition-transform active:scale-95 disabled:opacity-70"
+            >
+              {#if loading}
+                <svg
+                  class="animate-spin h-8 w-8 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  ><circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                  ></circle><path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path></svg
+                >
+                <span>Signing In...</span>
+              {:else}
+                <span>Sign In</span>
+                <span class="material-symbols-outlined" style="font-size: 40px;"
+                  >login</span
+                >
+              {/if}
+            </button>
+          </div>
+          <div
+            class="pt-8 border-t border-slate-200 dark:border-slate-700 text-center"
+          >
+            <p
+              class="text-lg md:text-xl text-slate-500 dark:text-slate-400 mb-4"
+            >
+              Are you a caretaker instead?
+            </p>
+            <button
+              type="button"
+              onclick={() => (userType = "caretaker")}
+              class="inline-flex items-center gap-2 text-primary text-xl md:text-2xl font-bold hover:underline decoration-2 underline-offset-8 transition-all"
+            >
+              <span class="material-symbols-outlined">shield_person</span>
+              Sign in as Caretaker
+            </button>
+          </div>
+        </form>
+      </div>
+    </main>
+  {/if}
+
+  <footer
+    class="px-6 md:px-10 py-6 border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md relative z-20"
+  >
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+      <p class="text-sm text-slate-500 dark:text-slate-400">
+        © 2024 Memory Lane Systems. HIPAA Compliant & Secure.
+      </p>
+      <div class="flex gap-6">
+        <a
+          class="text-sm text-slate-500 hover:text-primary transition-colors"
+          href="#">Privacy Policy</a
+        >
+        <a
+          class="text-sm text-slate-500 hover:text-primary transition-colors"
+          href="#">Terms of Service</a
+        >
+        <a
+          class="text-sm text-slate-500 hover:text-primary transition-colors"
+          href="#">Security Standards</a
+        >
+      </div>
     </div>
-  </main>
+  </footer>
 </div>

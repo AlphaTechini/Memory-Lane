@@ -133,463 +133,420 @@
   />
 </svelte:head>
 
-<div class="min-h-screen bg-background-light dark:bg-background-dark">
-  <!-- Navigation -->
-  <nav
-    class="bg-surface-light dark:bg-surface-dark border-b-2 border-gray-200 dark:border-gray-800"
+<div
+  class="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased"
+>
+  <!-- Shared Header -->
+  <header
+    class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-6 md:px-10 py-4 sticky top-0 z-50"
   >
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="/dashboard" class="flex items-center gap-3">
-        <img src="/logo.png" alt="" class="h-10 w-auto" aria-hidden="true" />
-        <span
-          class="text-accessible-xl font-bold text-text-light dark:text-text-dark"
-          >Memory Lane</span
-        >
-      </a>
+    <a href="/dashboard" class="flex items-center gap-3 group">
+      <div
+        class="text-primary flex items-center justify-center size-10 rounded-lg group-hover:bg-primary/10 transition-colors"
+      >
+        <span class="material-symbols-outlined text-3xl">psychology</span>
+      </div>
+      <h2 class="text-xl font-bold leading-tight tracking-tight">
+        Memory Lane
+      </h2>
+    </a>
+    <div class="flex items-center gap-4">
       <ThemeToggle />
+      <span class="hidden sm:inline text-sm text-slate-500"
+        >Already have an account?</span
+      >
+      <button
+        onclick={() => goto("/login")}
+        class="flex min-w-[84px] cursor-pointer items-center justify-center rounded-xl h-10 px-5 border border-primary text-primary hover:bg-primary/5 transition-all text-sm font-bold"
+      >
+        Log In
+      </button>
     </div>
-  </nav>
+  </header>
 
-  <!-- Main Content -->
-  <main
-    class="flex items-center justify-center min-h-[calc(100vh-80px)] px-4 py-12"
-  >
-    <div class="w-full max-w-lg">
-      <!-- Header -->
-      <div class="text-center mb-8">
-        <img
-          src="/logo.png"
-          alt="Memory Lane logo"
-          class="mx-auto mb-6 h-16 w-auto"
-        />
-        <h1
-          class="text-accessible-3xl font-bold text-text-light dark:text-text-dark mb-4"
+  {#if userType === "caretaker"}
+    <!-- Caretaker Main -->
+    <main class="flex-1 flex items-center justify-center p-4 md:p-8">
+      <div
+        class="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-2 gap-0 overflow-hidden bg-white dark:bg-slate-900 rounded-xl shadow-2xl shadow-primary/10 border border-slate-200 dark:border-slate-800"
+      >
+        <!-- Left Side: Visual/Branding -->
+        <div
+          class="hidden lg:flex flex-col justify-between p-12 bg-primary text-white relative overflow-hidden"
         >
-          Create Account
-        </h1>
-        <p
-          class="text-accessible-base text-text-light/80 dark:text-text-dark/80"
-        >
-          Join Memory Lane and start building your digital replica
-        </p>
-      </div>
-
-      <!-- User Type Selector -->
-      <div class="mb-8">
-        <fieldset>
-          <legend class="sr-only">Select your account type</legend>
-          <div class="flex gap-3">
-            <button
-              type="button"
-              onclick={() => (userType = "caretaker")}
-              class="flex-1 btn-tactile {userType === 'caretaker'
-                ? 'btn-tactile-primary'
-                : 'btn-tactile-secondary'}"
-              aria-pressed={userType === "caretaker"}
+          <div class="relative z-10">
+            <h1 class="text-4xl font-extrabold mb-6">
+              Empower through premium care.
+            </h1>
+            <p
+              class="text-lg text-primary-100/90 font-light leading-relaxed mb-8"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                aria-hidden="true"
-              >
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-              <span>Caretaker</span>
-            </button>
-            <button
-              type="button"
-              onclick={() => (userType = "patient")}
-              class="flex-1 btn-tactile {userType === 'patient'
-                ? 'btn-tactile-primary'
-                : 'btn-tactile-secondary'}"
-              aria-pressed={userType === "patient"}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                aria-hidden="true"
-              >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-              <span>Patient</span>
-            </button>
-          </div>
-        </fieldset>
-      </div>
-
-      <!-- Signup Form Card -->
-      <div class="card-accessible">
-        {#if isCaretaker}
-          <!-- Google Sign-In -->
-          <div class="mb-6">
-            <GoogleSignInButton mode="signup" />
-          </div>
-
-          <!-- Divider -->
-          <div class="relative mb-6">
-            <div class="absolute inset-0 flex items-center">
-              <div
-                class="w-full border-t border-gray-200 dark:border-gray-800"
-              ></div>
-            </div>
-            <div class="relative flex justify-center">
-              <span
-                class="px-4 bg-surface-light dark:bg-surface-dark text-accessible-base text-text-light/80 dark:text-text-dark/80"
-              >
-                Or sign up with email
-              </span>
-            </div>
-          </div>
-
-          <form onsubmit={handleSignup} class="space-y-5">
-            <!-- Name Fields -->
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label
-                  for="firstName"
-                  class="block text-accessible-base font-semibold text-text-light dark:text-text-dark mb-2"
+              Join a network of professional caretakers dedicated to providing
+              dignity and specialized support for memory care patients.
+            </p>
+            <ul class="space-y-4">
+              <li class="flex items-center gap-3">
+                <span
+                  class="material-symbols-outlined text-white bg-white/20 p-1 rounded-full text-sm"
+                  >check</span
                 >
-                  First Name *
-                </label>
-                <input
-                  type="text"
-                  id="firstName"
-                  bind:value={firstName}
-                  required
-                  autocomplete="given-name"
-                  class="input-accessible"
-                  placeholder="First name"
-                />
+                <span>Access specialized training resources</span>
+              </li>
+              <li class="flex items-center gap-3">
+                <span
+                  class="material-symbols-outlined text-white bg-white/20 p-1 rounded-full text-sm"
+                  >check</span
+                >
+                <span>Connect with families in need</span>
+              </li>
+              <li class="flex items-center gap-3">
+                <span
+                  class="material-symbols-outlined text-white bg-white/20 p-1 rounded-full text-sm"
+                  >check</span
+                >
+                <span>Manage your schedule and bookings</span>
+              </li>
+            </ul>
+          </div>
+          <div class="relative z-10 mt-auto">
+            <div
+              class="flex items-center gap-4 p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20"
+            >
+              <img
+                alt="Professional caregiver"
+                class="w-12 h-12 rounded-full object-cover"
+                data-alt="Portrait of a smiling professional healthcare provider"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIXLh6SB3ixU3ucg4TfJUtBz3e5lzyh1tjv7-FatmMOrz4YdeUcAjIrvEULGmUW3IydQd4hucss4mzIebH9S6Wr2YQ_-gI-ihax_UqKuFlJhRlLpdAa-dRazc2Mj71-SBQVEDaZucwz8V1Qi7LGOXZDvBW5R5HoW_vT8NXN96o_8GB2mr8qNWiEXwKNhXxyRxpzAZFaoRC2YcAj8QaLDqmB0vUHDqwl5ttYM8wUT_c-rEydK-eAnd1a7rcWNmBzyoXofn3Zu_2cw"
+              />
+              <div>
+                <p class="text-sm font-medium italic">
+                  "The best platform for memory care professionals."
+                </p>
+                <p class="text-xs text-white/70">
+                  — Sarah J., Senior Caretaker
+                </p>
               </div>
-              <div>
-                <label
-                  for="lastName"
-                  class="block text-accessible-base font-semibold text-text-light dark:text-text-dark mb-2"
+            </div>
+          </div>
+          <div
+            class="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-white/5 rounded-full blur-3xl"
+          ></div>
+          <div
+            class="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-white/5 rounded-full blur-3xl"
+          ></div>
+        </div>
+
+        <!-- Right Side: Form -->
+        <div class="p-8 md:p-12">
+          <div class="max-w-md mx-auto">
+            <div class="mb-10">
+              <h2
+                class="text-2xl font-bold text-slate-900 dark:text-white mb-2"
+              >
+                Create Caretaker Account
+              </h2>
+              <p class="text-slate-500 dark:text-slate-400">
+                Start your journey with Memory Lane today.
+              </p>
+            </div>
+
+            <form onsubmit={handleSignup} class="space-y-5">
+              {#if error}
+                <div
+                  class="bg-red-500/10 border border-red-500/30 rounded-xl p-4"
                 >
-                  Last Name
-                </label>
-                <input
-                  type="text"
-                  id="lastName"
-                  bind:value={lastName}
-                  autocomplete="family-name"
-                  class="input-accessible"
-                  placeholder="Last name"
-                />
-                {#if lastName && !lastNameValid}
-                  <p
-                    class="mt-1 text-accessible-sm text-red-600 dark:text-red-400"
+                  <p class="text-sm text-red-600 dark:text-red-400 font-medium">
+                    {error}
+                  </p>
+                  {#if showLoginSuggestion}
+                    <div class="mt-3">
+                      <button
+                        type="button"
+                        onclick={() => goto("/login")}
+                        class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg transition-colors"
+                      >
+                        Go to Login Page
+                      </button>
+                    </div>
+                  {/if}
+                </div>
+              {/if}
+
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <label
+                    for="firstName"
+                    class="text-sm font-semibold text-slate-700 dark:text-slate-300"
+                    >First Name</label
                   >
-                    Only letters allowed
+                  <input
+                    id="firstName"
+                    bind:value={firstName}
+                    required
+                    autocomplete="given-name"
+                    class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
+                    placeholder="Jane"
+                    type="text"
+                  />
+                </div>
+                <div class="space-y-2">
+                  <label
+                    for="lastName"
+                    class="text-sm font-semibold text-slate-700 dark:text-slate-300"
+                    >Last Name</label
+                  >
+                  <input
+                    id="lastName"
+                    bind:value={lastName}
+                    autocomplete="family-name"
+                    class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
+                    placeholder="Doe"
+                    type="text"
+                  />
+                  {#if lastName && !lastNameValid}
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">
+                      Only letters allowed
+                    </p>
+                  {/if}
+                </div>
+              </div>
+
+              <div class="space-y-2">
+                <label
+                  for="email"
+                  class="text-sm font-semibold text-slate-700 dark:text-slate-300"
+                  >Email Address</label
+                >
+                <input
+                  id="email"
+                  bind:value={email}
+                  required
+                  autocomplete="email"
+                  class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
+                  placeholder="jane.doe@example.com"
+                  type="email"
+                />
+                {#if email && !emailValid}
+                  <p class="mt-1 text-xs text-red-600 dark:text-red-400">
+                    Invalid email format
                   </p>
                 {/if}
               </div>
-            </div>
 
-            <!-- Email Field -->
-            <div>
-              <label
-                for="email"
-                class="block text-accessible-base font-semibold text-text-light dark:text-text-dark mb-2"
-              >
-                Email Address *
-              </label>
-              <input
-                type="email"
-                id="email"
-                bind:value={email}
-                required
-                autocomplete="email"
-                class="input-accessible"
-                placeholder="Enter your email"
-              />
-              {#if email && !emailValid}
-                <p
-                  class="mt-1 text-accessible-sm text-red-600 dark:text-red-400"
+              <div class="space-y-2">
+                <label
+                  for="password"
+                  class="text-sm font-semibold text-slate-700 dark:text-slate-300"
+                  >Password</label
                 >
-                  Invalid email format
-                </p>
-              {/if}
-            </div>
-
-            <!-- Password Field -->
-            <div>
-              <label
-                for="password"
-                class="block text-accessible-base font-semibold text-text-light dark:text-text-dark mb-2"
-              >
-                Password *
-              </label>
-              <div class="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  id="password"
-                  bind:value={password}
-                  required
-                  autocomplete="new-password"
-                  class="input-accessible pr-14"
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  onclick={togglePasswordVisibility}
-                  class="absolute inset-y-0 right-0 pr-4 flex items-center min-w-[48px] justify-center text-text-light/60 dark:text-text-dark/60 hover:text-text-light dark:hover:text-text-dark"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {#if showPassword}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      aria-hidden="true"
+                <div class="relative group">
+                  <input
+                    id="password"
+                    bind:value={password}
+                    required
+                    autocomplete="new-password"
+                    class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none pr-12"
+                    placeholder="••••••••"
+                    type={showPassword ? "text" : "password"}
+                  />
+                  <button
+                    type="button"
+                    onclick={togglePasswordVisibility}
+                    class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+                  >
+                    <span class="material-symbols-outlined text-[20px]"
+                      >{showPassword ? "visibility_off" : "visibility"}</span
                     >
-                      <path
-                        d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-                      />
-                      <line x1="1" y1="1" x2="23" y2="23" />
-                    </svg>
-                  {:else}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      aria-hidden="true"
-                    >
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  {/if}
-                </button>
-              </div>
-              {#if password && !passwordValid}
-                <p
-                  class="mt-1 text-accessible-sm text-red-600 dark:text-red-400"
-                >
-                  Password must be at least 6 characters
-                </p>
-              {/if}
-            </div>
-
-            <!-- Confirm Password Field -->
-            <div>
-              <label
-                for="confirmPassword"
-                class="block text-accessible-base font-semibold text-text-light dark:text-text-dark mb-2"
-              >
-                Confirm Password *
-              </label>
-              <div class="relative">
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  id="confirmPassword"
-                  bind:value={confirmPassword}
-                  required
-                  autocomplete="new-password"
-                  class="input-accessible pr-14"
-                  placeholder="Confirm your password"
-                />
-                <button
-                  type="button"
-                  onclick={toggleConfirmPasswordVisibility}
-                  class="absolute inset-y-0 right-0 pr-4 flex items-center min-w-[48px] justify-center text-text-light/60 dark:text-text-dark/60 hover:text-text-light dark:hover:text-text-dark"
-                  aria-label={showConfirmPassword
-                    ? "Hide password"
-                    : "Show password"}
-                >
-                  {#if showConfirmPassword}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-                      />
-                      <line x1="1" y1="1" x2="23" y2="23" />
-                    </svg>
-                  {:else}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      aria-hidden="true"
-                    >
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  {/if}
-                </button>
-              </div>
-              {#if confirmPassword && !passwordsMatch}
-                <p
-                  class="mt-1 text-accessible-sm text-red-600 dark:text-red-400"
-                >
-                  Passwords do not match
-                </p>
-              {/if}
-            </div>
-
-            <!-- Error Message -->
-            {#if error}
-              <div
-                class="bg-red-500/10 border border-red-500/30 rounded-tactile p-4"
-                role="alert"
-              >
-                <p
-                  class="text-accessible-base text-red-600 dark:text-red-400 font-medium"
-                >
-                  {error}
-                </p>
-                {#if showLoginSuggestion}
-                  <div class="mt-3">
-                    <button
-                      type="button"
-                      onclick={() => goto("/login")}
-                      class="btn-tactile btn-tactile-primary"
-                    >
-                      Go to Login Page
-                    </button>
-                  </div>
+                  </button>
+                </div>
+                {#if password && !passwordValid}
+                  <p class="mt-1 text-xs text-red-600 dark:text-red-400">
+                    Password must be at least 6 characters
+                  </p>
                 {/if}
               </div>
-            {/if}
 
-            <!-- Submit Button -->
-            <button
-              type="submit"
-              disabled={loading || !formValid}
-              class="btn-tactile btn-tactile-primary w-full"
-            >
-              {#if loading}
-                <svg
-                  class="animate-spin w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
+              <div class="space-y-2">
+                <label
+                  for="confirmPassword"
+                  class="text-sm font-semibold text-slate-700 dark:text-slate-300"
+                  >Confirm Password</label
                 >
-                  <circle
-                    class="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    stroke-width="4"
-                  ></circle>
-                  <path
-                    class="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                <span>Creating account...</span>
-              {:else}
-                <span>Create Account</span>
-              {/if}
-            </button>
-          </form>
-        {:else}
-          <!-- Patient info -->
-          <div class="space-y-4">
-            <div
-              class="bg-primary/10 border border-primary/30 rounded-tactile p-4"
-            >
-              <p
-                class="text-accessible-base font-semibold text-primary dark:text-secondary"
-              >
-                Are you a patient?
-              </p>
-              <p
-                class="mt-2 text-accessible-base text-text-light/80 dark:text-text-dark/80"
-              >
-                Use the sign in flow instead. We'll verify that your caretaker
-                has already added you to Memory Lane.
-              </p>
-            </div>
-            <button
-              type="button"
-              onclick={goToPatientLogin}
-              class="btn-tactile btn-tactile-primary w-full"
-            >
-              Go to Patient Sign In
-            </button>
-          </div>
-        {/if}
+                <div class="relative group">
+                  <input
+                    id="confirmPassword"
+                    bind:value={confirmPassword}
+                    required
+                    autocomplete="new-password"
+                    class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none pr-12"
+                    placeholder="••••••••"
+                    type={showConfirmPassword ? "text" : "password"}
+                  />
+                  <button
+                    type="button"
+                    onclick={toggleConfirmPasswordVisibility}
+                    class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+                  >
+                    <span class="material-symbols-outlined text-[20px]"
+                      >{showConfirmPassword
+                        ? "visibility_off"
+                        : "visibility"}</span
+                    >
+                  </button>
+                </div>
+                {#if confirmPassword && !passwordsMatch}
+                  <p class="mt-1 text-xs text-red-600 dark:text-red-400">
+                    Passwords do not match
+                  </p>
+                {/if}
+              </div>
 
-        <!-- Footer Links -->
-        <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800">
-          <div class="text-center space-y-4">
-            <p
-              class="text-accessible-base text-text-light/80 dark:text-text-dark/80"
-            >
-              Already have an account?
-              <a
-                href="/login"
-                class="font-semibold text-primary dark:text-secondary hover:underline focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded"
-              >
-                Sign in
-              </a>
-            </p>
+              <div class="flex items-center gap-2 pt-2">
+                <input
+                  id="terms"
+                  required
+                  type="checkbox"
+                  class="rounded text-primary focus:ring-primary h-4 w-4 border-slate-300"
+                />
+                <label
+                  class="text-xs text-slate-500 dark:text-slate-400"
+                  for="terms"
+                >
+                  I agree to the <a
+                    class="text-primary hover:underline"
+                    href="#">Terms of Service</a
+                  >
+                  and
+                  <a class="text-primary hover:underline" href="#"
+                    >Privacy Policy</a
+                  >
+                </label>
+              </div>
 
-            <div class="pt-4">
-              <p
-                class="text-accessible-sm text-text-light/60 dark:text-text-dark/60 mb-3"
-              >
-                Want to explore first?
-              </p>
               <button
-                onclick={() => goto("/dashboard")}
-                class="btn-tactile btn-tactile-secondary"
+                type="submit"
+                disabled={loading || !formValid}
+                class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 transition-all transform active:scale-[0.98] disabled:opacity-75 disabled:active:scale-100 flex items-center justify-center gap-2"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  aria-hidden="true"
-                >
-                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                </svg>
-                <span>Explore without signup</span>
+                {#if loading}
+                  <svg
+                    class="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    ><circle
+                      class="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      stroke-width="4"
+                    ></circle><path
+                      class="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path></svg
+                  >
+                  <span>Creating account...</span>
+                {:else}
+                  <span>Create Account</span>
+                {/if}
               </button>
-            </div>
+
+              <div class="relative py-4">
+                <div class="absolute inset-0 flex items-center">
+                  <div
+                    class="w-full border-t border-slate-200 dark:border-slate-700"
+                  ></div>
+                </div>
+                <div class="relative flex justify-center text-xs uppercase">
+                  <span class="bg-white dark:bg-slate-900 px-2 text-slate-400"
+                    >Or continue with</span
+                  >
+                </div>
+              </div>
+
+              <GoogleSignInButton mode="signup" />
+
+              <div class="mt-8 text-center">
+                <button
+                  type="button"
+                  onclick={() => (userType = "patient")}
+                  class="text-sm font-medium text-slate-500 hover:text-primary transition-colors"
+                  >Signing up a Patient? Click here</button
+                >
+              </div>
+            </form>
           </div>
         </div>
       </div>
-    </div>
-  </main>
+    </main>
+  {:else}
+    <!-- Patient Role Redirection Main -->
+    <main
+      class="flex flex-1 items-center justify-center px-6 py-12 md:px-20 lg:px-40"
+    >
+      <div
+        class="layout-content-container flex flex-col max-w-[560px] w-full gap-8"
+      >
+        <div
+          class="relative w-full aspect-video rounded-xl overflow-hidden shadow-sm"
+        >
+          <div
+            class="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent"
+          ></div>
+          <img
+            alt="Caring hands holding each other gently"
+            class="w-full h-full object-cover"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0FdE7beJKTJK823Fo40ZsotLaQKVV90EE2ZH6JLSU9Dg12UHVSjWL9gzg9Lsy6figCCclse7Uk68bHfuyHSJmb7s_O9IVc8KakMYVbkFOuzet7WmHp-DC06tVZ76sMMpnxW73rU9iD6TbSIeEg5TinBclLQFijDh7zERg_-gjbZc7CnAFPTkdxr6WpqkxVmqLDaMmtG1ksR8AePSjdRd6qadoJonKcOIy_MjlX99ZbNafwxy3CuKYpJgtla2D0CR5EgovCGzGWg"
+          />
+        </div>
+        <div class="flex flex-col gap-4 text-center">
+          <h1
+            class="text-slate-900 dark:text-slate-100 text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl"
+          >
+            Are you a patient?
+          </h1>
+          <p
+            class="text-slate-600 dark:text-slate-400 text-lg leading-relaxed max-w-md mx-auto"
+          >
+            Use the sign in flow instead. We'll verify that your caretaker has
+            already added you to Memory Lane.
+          </p>
+        </div>
+        <div class="flex flex-col gap-4 w-full">
+          <button
+            type="button"
+            onclick={goToPatientLogin}
+            class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-16 px-8 bg-primary text-white text-lg font-bold shadow-lg shadow-primary/25 transition-transform active:scale-[0.98]"
+          >
+            <span class="truncate">Go to Patient Sign In</span>
+            <span class="material-symbols-outlined ml-2">login</span>
+          </button>
+          <button
+            type="button"
+            onclick={() => (userType = "caretaker")}
+            class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-12 px-6 bg-transparent text-slate-600 dark:text-slate-400 text-base font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            <span class="truncate">Not a patient? Go back</span>
+          </button>
+        </div>
+        <div class="flex flex-col items-center gap-6 mt-8">
+          <div class="h-px w-full bg-slate-200 dark:bg-slate-800"></div>
+          <div
+            class="flex items-center gap-2 text-slate-500 dark:text-slate-500 text-sm"
+          >
+            <span class="material-symbols-outlined text-sm">shield_person</span>
+            <p>Secure verification for your peace of mind</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  {/if}
+
+  <footer
+    class="px-6 py-8 text-center text-slate-400 dark:text-slate-600 text-sm border-t border-slate-200 dark:border-slate-800"
+  >
+    <p>© 2024 Memory Lane Memory Care. All rights reserved.</p>
+  </footer>
 </div>

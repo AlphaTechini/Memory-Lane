@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Memory Lane - Patient Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0f49bd",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen flex flex-col text-slate-900 dark:text-slate-100">
+<div class="flex-1 flex flex-col items-center justify-center px-6 py-12">
+<div class="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-xl shadow-xl p-8 md:p-16 border-2 border-slate-200 dark:border-slate-700">
+<header class="text-center mb-12">
+<div class="flex justify-center mb-6">
+<div class="bg-primary/10 p-4 rounded-full">
+<span class="material-symbols-outlined text-primary text-6xl" style="font-size: 64px;">
+                            psychology
+                        </span>
+</div>
+</div>
+<h1 class="text-5xl md:text-6xl font-black text-primary mb-4 tracking-tight">Memory Lane</h1>
+<p class="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-100">Welcome Back</p>
+</header>
+<main class="space-y-10">
+<div class="space-y-4">
+<p class="text-xl md:text-2xl text-slate-600 dark:text-slate-300 text-center leading-relaxed">
+                        Enter the email your caretaker used to add you
+                    </p>
+</div>
+<div class="space-y-8">
+<div class="flex flex-col gap-3">
+<label class="text-xl font-bold text-slate-900 dark:text-slate-100 px-2" for="email">
+                            Email Address
+                        </label>
+<input class="w-full h-24 text-2xl md:text-3xl rounded-xl border-4 border-slate-300 dark:border-slate-600 focus:border-primary dark:focus:border-primary focus:ring-4 focus:ring-primary/20 bg-white dark:bg-slate-900 px-6 font-medium transition-all" id="email" placeholder="name@email.com" type="email"/>
+</div>
+<button class="w-full h-24 bg-primary hover:bg-primary/90 text-white rounded-xl text-3xl md:text-4xl font-black shadow-lg shadow-primary/30 flex items-center justify-center gap-4 transition-transform active:scale-95">
+<span>Sign In</span>
+<span class="material-symbols-outlined text-4xl" style="font-size: 40px;">login</span>
+</button>
+</div>
+<div class="pt-8 border-t border-slate-200 dark:border-slate-700 text-center">
+<p class="text-lg md:text-xl text-slate-500 dark:text-slate-400 mb-4">Having trouble signing in?</p>
+<button class="inline-flex items-center gap-2 text-primary text-xl md:text-2xl font-bold hover:underline decoration-2 underline-offset-8">
+<span class="material-symbols-outlined">call</span>
+                        Call your caretaker for help
+                    </button>
+</div>
+</main>
+</div>
+<div class="mt-12 text-center max-w-md">
+<div class="flex items-center justify-center gap-3 text-slate-400 dark:text-slate-500">
+<span class="material-symbols-outlined">verified_user</span>
+<span class="text-sm font-medium">Secure &amp; Private Connection</span>
+</div>
+<p class="mt-4 text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                Memory Lane © 2024
+            </p>
+</div>
+</div>
+<div class="fixed bottom-0 left-0 w-full p-6 pointer-events-none opacity-10 flex justify-between items-end">
+<div class="w-48 h-48 rounded-full bg-primary/20 blur-3xl"></div>
+<div class="w-64 h-64 rounded-full bg-primary/10 blur-3xl"></div>
+</div>
+</body></html>
