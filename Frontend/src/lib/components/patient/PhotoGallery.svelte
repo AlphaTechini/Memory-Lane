@@ -30,11 +30,11 @@
 <div class="flex flex-col h-full bg-transparent">
     <div class="flex items-center gap-4 mb-6 px-2">
         <span
-            class="material-symbols-outlined text-4xl text-primary dark:text-blue-400"
+            class="material-symbols-outlined text-4xl text-primary dark:text-secondary"
             >photo_library</span
         >
         <h3
-            class="text-3xl sm:text-4xl font-serif font-bold text-slate-800 dark:text-white"
+            class="text-3xl sm:text-4xl font-serif font-bold text-text-light dark:text-text-dark"
         >
             Your Family Album
         </h3>
@@ -43,7 +43,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-1 auto-rows-max">
         {#each photos as photo}
             <article
-                class="group relative bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-lg border border-slate-100 dark:border-slate-700 transition-transform hover:-translate-y-1 hover:shadow-xl cursor-pointer"
+                class="group relative bg-surface-light dark:bg-surface-dark rounded-[24px] overflow-hidden shadow-lg border border-cream-200 dark:border-charcoal-700 transition-transform hover:-translate-y-1 hover:shadow-xl cursor-pointer"
             >
                 <div class="aspect-square w-full overflow-hidden">
                     <img
@@ -53,15 +53,15 @@
                     />
                 </div>
                 <div
-                    class="p-6 text-center bg-white/95 dark:bg-slate-900/95 absolute bottom-0 w-full backdrop-blur-sm border-t border-slate-100 dark:border-slate-700"
+                    class="p-6 text-center bg-surface-light/95 dark:bg-surface-dark/95 absolute bottom-0 w-full backdrop-blur-sm border-t border-cream-200 dark:border-charcoal-700"
                 >
                     <p
-                        class="font-serif text-xl sm:text-2xl font-bold text-slate-900 dark:text-white"
+                        class="text-accessible-lg sm:text-2xl font-bold text-text-light dark:text-text-dark"
                     >
                         {photo.captionMain}
                     </p>
                     <p
-                        class="text-base sm:text-lg text-slate-500 dark:text-slate-400 mt-1"
+                        class="text-base sm:text-lg text-charcoal-600 dark:text-cream-400 mt-1"
                     >
                         {photo.captionSub}
                     </p>

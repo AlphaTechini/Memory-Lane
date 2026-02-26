@@ -544,7 +544,7 @@
   />
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+<div class="min-h-screen bg-background-light dark:bg-background-dark">
   <BackNavigation
     title="Create Your Digital Replica"
     subtitle="Build an AI that thinks and responds like you"
@@ -553,12 +553,12 @@
   <div class="max-w-4xl mx-auto px-4 py-8">
     {#if !isAuthenticated}
       <div
-        class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+        class="mt-4 p-3 bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 rounded-lg"
       >
-        <p class="text-sm text-blue-700 dark:text-blue-300">
+        <p class="text-sm text-primary dark:text-secondary">
           🔍 You're in preview mode. <a
             href="/login"
-            class="underline hover:text-blue-800 dark:hover:text-blue-200"
+            class="underline hover:text-primary-hover dark:hover:text-primary"
             >Log in</a
           > to create your personal AI replica.
         </p>
@@ -577,12 +577,12 @@
                 canProceedToStep(step.number) && goToStep(step.number)}
               class="w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-colors mb-2 relative
                 {getStepStatus(step.number) === 'completed'
-                ? 'bg-green-600 border-green-600 text-white'
+                ? 'bg-secondary border-secondary text-white'
                 : getStepStatus(step.number) === 'current'
-                  ? 'bg-blue-600 border-blue-600 text-white'
+                  ? 'bg-primary border-primary text-white'
                   : getStepStatus(step.number) === 'available'
-                    ? 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-blue-500 hover:text-blue-600'
-                    : 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'}"
+                    ? 'border-cream-300 dark:border-charcoal-600 text-charcoal-600 dark:text-cream-400 hover:border-primary hover:text-primary'
+                    : 'border-cream-200 dark:border-charcoal-700 text-charcoal-400 dark:text-cream-500 cursor-not-allowed'}"
               disabled={!canProceedToStep(step.number)}
             >
               {#if !isAuthenticated}
@@ -623,10 +623,10 @@
               {/if}
             </button>
             <span
-              class="text-xs text-center
+              class="text-xs text-center mt-1
               {getStepStatus(step.number) === 'current'
-                ? 'text-blue-600 dark:text-blue-400 font-medium'
-                : 'text-gray-500 dark:text-gray-400'}"
+                ? 'text-primary dark:text-secondary font-medium'
+                : 'text-charcoal-500 dark:text-cream-400'}"
             >
               {step.title}
             </span>
@@ -635,8 +635,8 @@
             <div
               class="flex-1 h-0.5 mx-2
               {step.number < state.currentStep
-                ? 'bg-green-600'
-                : 'bg-gray-200 dark:bg-gray-700'}"
+                ? 'bg-secondary'
+                : 'bg-cream-200 dark:bg-charcoal-700'}"
             ></div>
           {/if}
         {/each}
@@ -646,27 +646,27 @@
 
   <!-- Template Selection / Dynamic Form / Existing Steps -->
   <div
-    class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 min-h-96 p-6"
+    class="bg-surface-light dark:bg-surface-dark rounded-[24px] shadow-sm border border-cream-200 dark:border-charcoal-700 min-h-96 p-6 mb-8"
   >
     {#if !state.template && state.currentStep === 0}
-      <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">
+      <h2 class="text-2xl font-semibold mb-4 text-text-light dark:text-text-dark font-serif">
         Choose a Template
       </h2>
-      <p class="text-gray-600 dark:text-gray-400 mb-6">
+      <p class="text-charcoal-600 dark:text-cream-400 mb-6">
         Start with a pre-made template to speed up your replica creation
         process.
       </p>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {#each ["dad", "mom", "brother", "sister", "lover", "best_friend", "close_relation", "self"] as key (key)}
           <button
-            class="border border-gray-200 dark:border-gray-600 rounded-lg p-6 text-left hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 dark:bg-gray-700/40 hover:bg-white dark:hover:bg-gray-700/60"
+            class="border border-cream-200 dark:border-charcoal-600 rounded-xl p-6 text-left hover:shadow-lg hover:border-primary border-transparent focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-background-light dark:bg-charcoal-700/40 hover:bg-white dark:hover:bg-charcoal-700/60"
             onclick={() => selectTemplate(key)}
           >
             <div class="text-3xl mb-3">{templateIcons[key]}</div>
-            <div class="font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            <div class="font-semibold text-text-light dark:text-text-dark mb-2">
               {displayNames[key] || key}
             </div>
-            <div class="text-sm text-gray-500 dark:text-gray-400">
+            <div class="text-sm text-charcoal-500 dark:text-cream-500">
               {templates[key].length}
               {templates[key].length === 1 ? "question" : "questions"} to customize
               your {displayNames[key]?.toLowerCase() || key} replica
@@ -674,21 +674,21 @@
           </button>
         {/each}
       </div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">
+      <p class="text-sm text-charcoal-500 dark:text-cream-500 mt-4 border-t border-cream-200 dark:border-charcoal-700 pt-4">
         You can still customize everything in later steps.
       </p>
     {:else if state.template && state.currentStep === 0}
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">
+        <h2 class="text-2xl font-semibold text-text-light dark:text-text-dark font-serif">
           {displayNames[state.template] || "Template"} Questions
         </h2>
         <div class="flex gap-2">
           <button
-            class="text-sm px-3 py-1 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700"
+            class="text-sm px-4 py-2 border border-cream-300 dark:border-charcoal-600 rounded-md hover:bg-cream-100 dark:hover:bg-charcoal-700 transition-colors text-charcoal-700 dark:text-cream-200"
             onclick={backToTemplates}>Back to Templates</button
           >
           <button
-            class="text-sm px-3 py-1 bg-blue-600 text-white rounded disabled:opacity-50"
+            class="btn-tactile btn-tactile-primary text-sm px-4 py-2 text-white rounded-md disabled:opacity-50 transition-colors"
             disabled={!allRequiredAnswered()}
             onclick={submitTemplateForm}>Save & Continue</button
           >
@@ -698,12 +698,12 @@
         <div class="mb-4">
           <label
             for="customRelation"
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            class="block text-sm font-medium text-text-light dark:text-text-dark mb-1"
             >Relationship Label</label
           >
           <input
             id="customRelation"
-            class="w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 text-sm"
+            class="w-full rounded-md border-cream-300 dark:border-charcoal-600 bg-white dark:bg-surface-dark text-text-light dark:text-text-dark text-sm px-3 py-2 focus:ring-primary focus:border-primary"
             bind:value={customRelationship}
             placeholder="e.g., Aunt, Uncle, Cousin"
           />
@@ -712,11 +712,11 @@
       <div class="space-y-4 overflow-y-auto max-h-[55vh] pr-1">
         {#each templates[state.template] as q (q.id)}
           <div
-            class="border border-gray-200 dark:border-gray-600 rounded p-4 bg-gray-50 dark:bg-gray-700/40"
+            class="border border-cream-200 dark:border-charcoal-600 rounded-xl p-4 bg-background-light dark:bg-charcoal-700/40"
           >
             <label
               for={`q_${q.id}`}
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              class="block text-sm font-medium text-text-light dark:text-text-dark mb-2"
               >{q.text}
               {#if q.required}<span class="text-red-500">*</span>{/if}</label
             >
@@ -724,7 +724,7 @@
               <textarea
                 id={`q_${q.id}`}
                 rows="5"
-                class="w-full min-h-[120px] rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm p-3 resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                class="w-full min-h-[120px] rounded-lg border-cream-300 dark:border-charcoal-600 bg-white dark:bg-surface-dark text-text-light dark:text-text-dark text-sm p-3 resize-y focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                 bind:value={templateAnswers[q.id]}
                 oninput={(e) => (templateAnswers[q.id] = e.target.value)}
                 placeholder="Share your thoughts in detail..."
@@ -732,7 +732,7 @@
             {:else if q.type === "select"}
               <select
                 id={`q_${q.id}`}
-                class="w-full h-[44px] rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                class="w-full h-[44px] rounded-lg border-cream-300 dark:border-charcoal-600 bg-white dark:bg-surface-dark text-text-light dark:text-text-dark text-sm p-2 focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                 bind:value={templateAnswers[q.id]}
                 onchange={(e) => (templateAnswers[q.id] = e.target.value)}
               >
@@ -744,7 +744,7 @@
               <input
                 id={`q_${q.id}`}
                 type="date"
-                class="w-full h-[44px] rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                class="w-full h-[44px] rounded-lg border-cream-300 dark:border-charcoal-600 bg-white dark:bg-surface-dark text-text-light dark:text-text-dark text-sm p-2 focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                 bind:value={templateAnswers[q.id]}
                 oninput={(e) => (templateAnswers[q.id] = e.target.value)}
               />
@@ -752,7 +752,7 @@
               <input
                 id={`q_${q.id}`}
                 type="text"
-                class="w-full h-[44px] rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                class="w-full h-[44px] rounded-lg border-cream-300 dark:border-charcoal-600 bg-white dark:bg-surface-dark text-text-light dark:text-text-dark text-sm p-2 focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                 bind:value={templateAnswers[q.id]}
                 oninput={(e) => (templateAnswers[q.id] = e.target.value)}
                 placeholder="Enter your answer..."
@@ -781,16 +781,16 @@
   </div>
 
   <!-- Navigation -->
-  <div class="flex justify-between items-center mt-6">
+  <div class="flex justify-between items-center mt-6 pb-12 max-w-4xl mx-auto px-4">
     <button
       onclick={previousStep}
       disabled={state.currentStep <= 0}
-      class="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      class="btn-tactile px-6 py-2 border border-cream-300 dark:border-charcoal-600 rounded-md text-charcoal-700 dark:text-cream-300 hover:bg-cream-100 dark:hover:bg-charcoal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium bg-surface-light dark:bg-surface-dark"
     >
       Previous
     </button>
 
-    <div class="text-sm text-gray-500 dark:text-gray-400">
+    <div class="text-sm text-charcoal-500 dark:text-cream-400 font-medium font-serif">
       {#if state.currentStep === 0}Template Selection{/if}
       {#if state.currentStep > 0}Step {state?.currentStep} of {steps.length}{/if}
     </div>
@@ -798,13 +798,14 @@
     {#if state.currentStep === 0}
       <div></div>
     {:else if state.currentStep < 6}
+      <!-- Proceed/Skip block dynamically managed by child steps except validation -->
       <button
         onclick={nextStep}
         disabled={!nextEnabled}
-        aria-disabled={!nextEnabled}
-        class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        class="btn-tactile btn-tactile-primary px-6 py-2 rounded-md text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
       >
-        Next
+        Next Step
+        <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
       </button>
     {:else}
       <div></div>

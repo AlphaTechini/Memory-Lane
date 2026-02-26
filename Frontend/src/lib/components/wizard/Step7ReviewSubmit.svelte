@@ -584,11 +584,13 @@
 </script>
 
 <div class="p-6">
-  <div class="mb-6">
-    <h2 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+  <div class="mb-8 border-b border-cream-200 dark:border-charcoal-700 pb-6">
+    <h2
+      class="text-3xl font-bold text-text-light dark:text-text-dark mb-2 font-serif"
+    >
       Review & Submit
     </h2>
-    <p class="text-gray-600 dark:text-gray-400">
+    <p class="text-charcoal-600 dark:text-cream-400 leading-relaxed max-w-2xl">
       Review your replica information before submitting. You can edit any
       section by clicking the "Edit" button.
     </p>
@@ -598,60 +600,76 @@
   <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
     {#if state?.creationPath === "upload"}
       <div
-        class="col-span-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6 flex items-center justify-between"
+        class="col-span-full bg-success/10 border border-success/30 rounded-xl p-6 flex items-center justify-between shadow-sm"
       >
         <div>
-          <h3 class="text-xl font-bold text-green-800 dark:text-green-300">
+          <h3
+            class="text-xl font-bold text-success/90 dark:text-success flex items-center gap-2"
+          >
+            <span
+              class="material-symbols-outlined rounded-full p-1 bg-success/20"
+              >check</span
+            >
             Document Upload Mode
           </h3>
-          <p class="text-green-700 dark:text-green-400 mt-1">
+          <p class="text-success/80 dark:text-success/90 mt-1">
             Your replica will be generated dynamically from: <strong
               >{state?.uploadedFileInfo?.name || "Uploaded Document"}</strong
             >
           </p>
         </div>
-        <span class="material-symbols-outlined text-4xl text-green-500"
+        <span class="material-symbols-outlined text-5xl text-success/50"
           >upload_file</span
         >
       </div>
     {:else}
       <div
-        class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4"
+        class="bg-primary/5 dark:bg-primary/10 border border-primary/20 dark:border-primary/30 rounded-xl p-5 shadow-sm"
       >
-        <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+        <div class="text-3xl font-bold text-primary dark:text-secondary mb-1">
           {submissionStats.totalAnswers}
         </div>
-        <div class="text-sm text-blue-700 dark:text-blue-300">
+        <div
+          class="text-[14px] font-medium text-charcoal-600 dark:text-cream-400 uppercase tracking-wide"
+        >
           Total Answers
         </div>
       </div>
       <div
-        class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4"
+        class="bg-success/5 border border-success/20 rounded-xl p-5 shadow-sm"
       >
-        <div class="text-2xl font-bold text-green-600 dark:text-green-400">
+        <div class="text-3xl font-bold text-success dark:text-success/90 mb-1">
           {submissionStats.requiredAnswers}
         </div>
-        <div class="text-sm text-green-700 dark:text-green-300">
+        <div
+          class="text-[14px] font-medium text-charcoal-600 dark:text-cream-400 uppercase tracking-wide"
+        >
           Required Answered
         </div>
       </div>
       <div
-        class="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4"
+        class="bg-primary/5 dark:bg-primary/10 border border-primary/20 dark:border-primary/30 rounded-xl p-5 shadow-sm"
       >
-        <div class="text-2xl font-bold text-purple-600 dark:text-purple-400">
+        <div class="text-3xl font-bold text-primary dark:text-secondary mb-1">
           {submissionStats.optionalAnswers}
         </div>
-        <div class="text-sm text-purple-700 dark:text-purple-300">
+        <div
+          class="text-[14px] font-medium text-charcoal-600 dark:text-cream-400 uppercase tracking-wide"
+        >
           Optional Answered
         </div>
       </div>
       <div
-        class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4"
+        class="bg-warning/10 border border-warning/20 rounded-xl p-5 shadow-sm"
       >
-        <div class="text-2xl font-bold text-orange-600 dark:text-orange-400">
-          {submissionStats.coverageScore}%
+        <div
+          class="text-3xl font-bold text-warning/90 dark:text-warning mb-1 flex items-baseline"
+        >
+          {submissionStats.coverageScore}<span class="text-xl ml-0.5">%</span>
         </div>
-        <div class="text-sm text-orange-700 dark:text-orange-300">
+        <div
+          class="text-[14px] font-medium text-charcoal-600 dark:text-cream-400 uppercase tracking-wide"
+        >
           Coverage Score
         </div>
       </div>
@@ -660,90 +678,112 @@
 
   <div class="space-y-6">
     <!-- Basic Information -->
-    <div class="border border-gray-200 dark:border-gray-600 rounded-lg">
+    <div
+      class="border border-cream-200 dark:border-charcoal-700 rounded-xl overflow-hidden shadow-sm bg-surface-light dark:bg-surface-dark"
+    >
       <div
-        class="p-4 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center"
+        class="p-5 border-b border-cream-200 dark:border-charcoal-700 flex justify-between items-center bg-cream-50/50 dark:bg-charcoal-800/50"
       >
-        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-          Basic Information
+        <h3
+          class="text-lg font-semibold text-text-light dark:text-text-dark font-serif flex items-center gap-2"
+        >
+          <span class="material-symbols-outlined text-primary">info</span> Basic
+          Information
         </h3>
         <button
           onclick={() => editSection(1)}
-          class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 text-sm font-medium"
+          class="text-primary hover:text-primary-hover dark:text-secondary dark:hover:text-cream-200 text-sm font-medium flex items-center gap-1 transition-colors"
         >
-          Edit
+          <span class="material-symbols-outlined text-[16px]">edit</span> Edit
         </button>
       </div>
-      <div class="p-4 space-y-4">
+      <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <span
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            class="block text-xs font-semibold text-charcoal-400 dark:text-gray-400 uppercase tracking-wider mb-1"
             >Name</span
           >
-          <p class="text-gray-900 dark:text-gray-100">
+          <p
+            class="text-text-light dark:text-text-dark font-medium text-[15px]"
+          >
             {state?.basics?.name || "Not provided"}
           </p>
         </div>
         <div>
           <span
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            class="block text-xs font-semibold text-charcoal-400 dark:text-gray-400 uppercase tracking-wider mb-1"
             >Description</span
           >
-          <p class="text-gray-900 dark:text-gray-100">
+          <p class="text-text-light dark:text-text-dark text-[15px]">
             {state?.basics?.description || "Not provided"}
           </p>
         </div>
         <div>
           <span
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            class="block text-xs font-semibold text-charcoal-400 dark:text-gray-400 uppercase tracking-wider mb-1"
             >Custom Greeting</span
           >
-          <p class="text-gray-900 dark:text-gray-100">
+          <p class="text-charcoal-700 dark:text-cream-300 text-[15px]">
             {state?.basics?.greeting || "Not provided (will use default)"}
           </p>
         </div>
         <div>
           <span
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            class="block text-xs font-semibold text-charcoal-400 dark:text-gray-400 uppercase tracking-wider mb-1"
             >Preferred Question</span
           >
-          <p class="text-gray-900 dark:text-gray-100">
+          <p class="text-charcoal-700 dark:text-cream-300 text-[15px]">
             {state?.basics?.preferredQuestion ||
               "Not provided (will use default)"}
           </p>
         </div>
         <div>
           <span
-            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            class="block text-xs font-semibold text-charcoal-400 dark:text-gray-400 uppercase tracking-wider mb-1"
             >Consent</span
           >
-          <p class="text-gray-900 dark:text-gray-100">
-            {state?.basics?.consent ? "✓ Provided" : "✗ Not provided"}
+          <p
+            class="text-text-light dark:text-text-dark font-medium flex items-center gap-1.5 text-[15px]"
+          >
+            {#if state?.basics?.consent}
+              <span class="material-symbols-outlined text-success text-[18px]"
+                >check_circle</span
+              > Provided
+            {:else}
+              <span class="material-symbols-outlined text-error text-[18px]"
+                >cancel</span
+              > Not provided
+            {/if}
           </p>
         </div>
       </div>
     </div>
 
     <!-- Profile Image -->
-    <div class="border border-gray-200 dark:border-gray-600 rounded-lg">
+    <div
+      class="border border-cream-200 dark:border-charcoal-700 rounded-xl overflow-hidden shadow-sm bg-surface-light dark:bg-surface-dark"
+    >
       <div
-        class="p-4 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center"
+        class="p-5 border-b border-cream-200 dark:border-charcoal-700 flex justify-between items-center bg-cream-50/50 dark:bg-charcoal-800/50"
       >
-        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-          Profile Image
+        <h3
+          class="text-lg font-semibold text-text-light dark:text-text-dark font-serif flex items-center gap-2"
+        >
+          <span class="material-symbols-outlined text-primary">image</span> Profile
+          Image
         </h3>
         <button
           onclick={() => editSection(5)}
-          class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 text-sm font-medium"
+          class="text-primary hover:text-primary-hover dark:text-secondary dark:hover:text-cream-200 text-sm font-medium flex items-center gap-1 transition-colors"
         >
-          Edit
+          <span class="material-symbols-outlined text-[16px]">edit</span> Edit
         </button>
       </div>
-      <div class="p-4">
+      <div class="p-6">
         {#if state?.profileImage?.previewUrl}
-          <div class="flex items-center gap-4">
+          <div class="flex items-center gap-5">
             <div
-              class="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-600"
+              class="w-20 h-20 rounded-full overflow-hidden border-2 border-cream-300 dark:border-charcoal-600 shadow-sm"
             >
               <img
                 src={state.profileImage.previewUrl}
@@ -752,18 +792,30 @@
               />
             </div>
             <div>
-              <p class="text-gray-900 dark:text-gray-100 font-medium">
+              <p
+                class="text-text-light dark:text-text-dark font-semibold mb-1 text-[15px]"
+              >
                 Profile image uploaded
               </p>
-              <p class="text-sm text-gray-600 dark:text-gray-400">
-                {state.profileImage.isUploaded
-                  ? "Successfully uploaded"
-                  : "Upload in progress..."}
+              <p
+                class="text-[14px] text-charcoal-600 dark:text-cream-400 flex items-center gap-1.5"
+              >
+                {#if state.profileImage.isUploaded}
+                  <span
+                    class="material-symbols-outlined text-success text-[16px]"
+                    >check_circle</span
+                  > Successfully uploaded
+                {:else}
+                  <span
+                    class="material-symbols-outlined text-warning animate-spin text-[16px]"
+                    >sync</span
+                  > Upload in progress...
+                {/if}
               </p>
             </div>
           </div>
         {:else}
-          <p class="text-gray-600 dark:text-gray-400">
+          <p class="text-charcoal-600 dark:text-cream-400 text-[15px] italic">
             No profile image uploaded (optional)
           </p>
         {/if}
@@ -771,49 +823,63 @@
     </div>
 
     <!-- Required Questions -->
-    <div class="border border-gray-200 dark:border-gray-600 rounded-lg">
+    <div
+      class="border border-cream-200 dark:border-charcoal-700 rounded-xl overflow-hidden shadow-sm bg-surface-light dark:bg-surface-dark"
+    >
       <div
-        class="p-4 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center"
+        class="p-5 border-b border-cream-200 dark:border-charcoal-700 flex justify-between items-center bg-cream-50/50 dark:bg-charcoal-800/50"
       >
-        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+        <h3
+          class="text-lg font-semibold text-text-light dark:text-text-dark font-serif flex items-center gap-2"
+        >
+          <span class="material-symbols-outlined text-primary">history_edu</span
+          >
           Required Questions ({submissionStats.requiredAnswers}/{submissionStats.requiredTotal})
         </h3>
         <button
           onclick={() => editSection(2)}
-          class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 text-sm font-medium"
+          class="text-primary hover:text-primary-hover dark:text-secondary dark:hover:text-cream-200 text-sm font-medium flex items-center gap-1 transition-colors"
         >
-          Edit
+          <span class="material-symbols-outlined text-[16px]">edit</span> Edit
         </button>
       </div>
-      <div class="p-4">
+      <div class="p-6">
         {#if Object.keys(state?.requiredAnswers || {}).length > 0}
-          <div class="space-y-3">
+          <div class="space-y-4">
             {#each Object.entries(state.requiredAnswers) as [questionId, answer] (questionId)}
               <div
-                class="border border-gray-100 dark:border-gray-700 rounded-lg p-3"
+                class="border border-cream-200 dark:border-charcoal-600 rounded-xl p-4 bg-background-light dark:bg-charcoal-700/40"
               >
                 <div
-                  class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  class="text-[14px] font-semibold text-charcoal-700 dark:text-cream-300 mb-2"
                 >
                   {getRequiredQuestionText(questionId)}
                 </div>
-                <div class="text-gray-900 dark:text-gray-100">
+                <div
+                  class="text-text-light dark:text-text-dark text-[15px] leading-relaxed"
+                >
                   {#if expandedAnswers.includes(questionId)}
                     <p>{answer}</p>
                     <button
                       onclick={() => toggleAnswerExpansion(questionId)}
-                      class="text-blue-600 dark:text-blue-400 text-sm mt-1"
+                      class="text-primary dark:text-secondary hover:underline text-[13px] font-medium mt-2 flex items-center gap-1"
                     >
-                      Show less
+                      Show less <span
+                        class="material-symbols-outlined text-[14px]"
+                        >expand_less</span
+                      >
                     </button>
                   {:else}
                     <p>{truncateText(answer)}</p>
                     {#if answer.length > 150}
                       <button
                         onclick={() => toggleAnswerExpansion(questionId)}
-                        class="text-blue-600 dark:text-blue-400 text-sm mt-1"
+                        class="text-primary dark:text-secondary hover:underline text-[13px] font-medium mt-2 flex items-center gap-1"
                       >
-                        Show more
+                        Show more <span
+                          class="material-symbols-outlined text-[14px]"
+                          >expand_more</span
+                        >
                       </button>
                     {/if}
                   {/if}
@@ -822,7 +888,7 @@
             {/each}
           </div>
         {:else}
-          <p class="text-gray-600 dark:text-gray-400">
+          <p class="text-charcoal-600 dark:text-cream-400 text-[15px] italic">
             No required questions answered yet
           </p>
         {/if}
@@ -830,67 +896,86 @@
     </div>
 
     <!-- Selected Categories -->
-    <div class="border border-gray-200 dark:border-gray-600 rounded-lg">
+    <div
+      class="border border-cream-200 dark:border-charcoal-700 rounded-xl overflow-hidden shadow-sm bg-surface-light dark:bg-surface-dark"
+    >
       <div
-        class="p-4 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center"
+        class="p-5 border-b border-cream-200 dark:border-charcoal-700 flex justify-between items-center bg-cream-50/50 dark:bg-charcoal-800/50"
       >
-        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+        <h3
+          class="text-lg font-semibold text-text-light dark:text-text-dark font-serif flex items-center gap-2"
+        >
+          <span class="material-symbols-outlined text-primary">category</span>
           Selected Categories ({(state?.selectedSegments || []).length})
         </h3>
         <button
           onclick={() => editSection(3)}
-          class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 text-sm font-medium"
+          class="text-primary hover:text-primary-hover dark:text-secondary dark:hover:text-cream-200 text-sm font-medium flex items-center gap-1 transition-colors"
         >
-          Edit
+          <span class="material-symbols-outlined text-[16px]">edit</span> Edit
         </button>
       </div>
-      <div class="p-4">
+      <div class="p-6">
         {#if (state?.selectedSegments || []).length > 0}
-          <div class="flex flex-wrap gap-2">
+          <div class="flex flex-wrap gap-2.5">
             {#each state.selectedSegments as segmentKey (segmentKey)}
               <span
-                class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm"
+                class="px-4 py-1.5 bg-primary/10 border border-primary/20 text-primary dark:text-secondary rounded-full text-[14px] font-medium shadow-sm"
               >
                 {getSegmentName(segmentKey)}
               </span>
             {/each}
           </div>
         {:else}
-          <p class="text-gray-600 dark:text-gray-400">No categories selected</p>
+          <p class="text-charcoal-600 dark:text-cream-400 text-[15px] italic">
+            No categories selected
+          </p>
         {/if}
       </div>
     </div>
 
     <!-- Optional Questions Summary -->
-    <div class="border border-gray-200 dark:border-gray-600 rounded-lg">
+    <div
+      class="border border-cream-200 dark:border-charcoal-700 rounded-xl overflow-hidden shadow-sm bg-surface-light dark:bg-surface-dark"
+    >
       <div
-        class="p-4 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center"
+        class="p-5 border-b border-cream-200 dark:border-charcoal-700 flex justify-between items-center bg-cream-50/50 dark:bg-charcoal-800/50"
       >
-        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+        <h3
+          class="text-lg font-semibold text-text-light dark:text-text-dark font-serif flex items-center gap-2"
+        >
+          <span class="material-symbols-outlined text-primary"
+            >auto_stories</span
+          >
           Optional Questions ({submissionStats.optionalAnswers} answered)
         </h3>
         <button
           onclick={() => editSection(4)}
-          class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 text-sm font-medium"
+          class="text-primary hover:text-primary-hover dark:text-secondary dark:hover:text-cream-200 text-sm font-medium flex items-center gap-1 transition-colors"
         >
-          Edit
+          <span class="material-symbols-outlined text-[16px]">edit</span> Edit
         </button>
       </div>
-      <div class="p-4">
+      <div class="p-6">
         {#if Object.keys(state?.optionalAnswers || {}).length > 0}
-          <div class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-            You've answered {submissionStats.optionalAnswers} optional questions
-            across your selected categories.
+          <div
+            class="text-[15px] text-charcoal-600 dark:text-cream-400 mb-5 leading-relaxed"
+          >
+            You've answered <strong class="text-primary dark:text-secondary"
+              >{submissionStats.optionalAnswers}</strong
+            > optional questions across your selected categories.
           </div>
 
           <!-- Category breakdown -->
-          <div class="space-y-2">
+          <div class="space-y-3">
             {#each state?.selectedSegments || [] as segmentKey (segmentKey)}
-              <div class="flex justify-between items-center text-sm">
-                <span class="text-gray-700 dark:text-gray-300"
+              <div
+                class="flex justify-between items-center text-[15px] border-b border-cream-100 dark:border-charcoal-700 pb-2 last:border-0 last:pb-0"
+              >
+                <span class="font-medium text-charcoal-700 dark:text-cream-300"
                   >{getSegmentName(segmentKey)}</span
                 >
-                <span class="text-gray-600 dark:text-gray-400"
+                <span class="text-primary dark:text-secondary font-semibold"
                   >{Object.entries(state?.optionalAnswers || {}).filter(
                     ([qId]) => qId.startsWith(segmentKey),
                   ).length} answers</span
@@ -899,7 +984,7 @@
             {/each}
           </div>
         {:else}
-          <p class="text-gray-600 dark:text-gray-400">
+          <p class="text-charcoal-600 dark:text-cream-400 text-[15px] italic">
             No optional questions answered yet
           </p>
         {/if}
@@ -908,32 +993,24 @@
   </div>
 
   <!-- Submit Section -->
-  <div class="mt-8 border-t border-gray-200 dark:border-gray-600 pt-6">
+  <div
+    class="mt-8 border-t border-cream-200 dark:border-charcoal-700 pt-8 pb-10"
+  >
     {#if !canSubmit}
       <div
-        class="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg"
+        class="mb-6 p-5 bg-warning/10 border border-warning/20 rounded-xl shadow-sm"
       >
-        <div class="flex items-start gap-3">
-          <svg
-            class="flex-shrink-0 w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div class="flex items-start gap-4">
+          <span class="material-symbols-outlined text-warning mt-0.5 text-2xl"
+            >warning</span
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z"
-            ></path>
-          </svg>
           <div>
-            <h3 class="font-medium text-yellow-800 dark:text-yellow-200">
+            <h3 class="font-semibold text-warning text-lg">
               Requirements not met
             </h3>
-            <div class="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+            <div class="text-[15px] text-warning/90 mt-1.5 space-y-2">
               <p>Please complete the following to submit your replica:</p>
-              <ul class="list-disc list-inside mt-2 space-y-1">
+              <ul class="list-disc list-inside space-y-1">
                 {#if !state?.basics?.name?.trim() || !state?.basics?.description?.trim() || !state?.basics?.consent}
                   <li>Complete basic information with consent</li>
                 {/if}
@@ -958,27 +1035,15 @@
 
     {#if submitError}
       <div
-        class="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+        class="mb-6 p-5 bg-error/10 border border-error/20 rounded-xl shadow-sm"
       >
-        <div class="flex items-start gap-3">
-          <svg
-            class="flex-shrink-0 w-5 h-5 text-red-600 dark:text-red-400 mt-0.5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div class="flex items-start gap-4">
+          <span class="material-symbols-outlined text-error mt-0.5 text-2xl"
+            >error</span
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            ></path>
-          </svg>
           <div>
-            <h3 class="font-medium text-red-800 dark:text-red-200">
-              Submission Failed
-            </h3>
-            <p class="text-sm text-red-700 dark:text-red-300 mt-1">
+            <h3 class="font-semibold text-error text-lg">Submission Failed</h3>
+            <p class="text-[15px] text-error/90 mt-1">
               {submitError}
             </p>
           </div>
@@ -986,15 +1051,15 @@
       </div>
     {/if}
 
-    <div class="flex justify-center">
+    <div class="flex justify-center mt-6">
       <button
         onclick={() => submitReplica()}
         disabled={!canSubmit || isSubmitting}
-        class="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+        class="btn-tactile btn-tactile-primary px-10 py-3.5 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 shadow-sm text-lg w-full md:w-auto justify-center"
       >
         {#if isSubmitting}
           <svg
-            class="animate-spin w-4 h-4"
+            class="animate-spin w-5 h-5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -1008,21 +1073,26 @@
           </svg>
           Creating Replica...
         {:else}
-          Create My Replica
+          <span class="material-symbols-outlined text-[24px]">psychology</span> Create
+          My Replica
         {/if}
       </button>
     </div>
 
-    <div class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
+    <div
+      class="mt-6 text-center text-[14px] text-charcoal-500 dark:text-cream-400 max-w-lg mx-auto leading-relaxed"
+    >
       <p>
         By submitting, you agree to our terms of service and privacy policy.
       </p>
       <p>
         Your replica will be processed and available in your dashboard shortly.
       </p>
-      <p class="mt-2 text-blue-600 dark:text-blue-400">
-        💡 After creation, you can continue training your replica with
-        additional questions from the "Train Models" page.
+      <p
+        class="mt-3 text-primary dark:text-secondary font-medium flex items-center justify-center gap-1.5 bg-primary/5 dark:bg-primary/10 rounded-lg py-2 px-3 border border-primary/10 dark:border-primary/20"
+      >
+        <span class="material-symbols-outlined text-[20px]">lightbulb</span>
+        After creation, you can train your replica with additional files.
       </p>
     </div>
   </div>
@@ -1030,63 +1100,69 @@
 
 {#if showProgress}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-background-dark/80 backdrop-blur-sm px-4"
   >
     <div
-      class="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 relative"
+      class="w-full max-w-md bg-surface-light dark:bg-surface-dark rounded-2xl shadow-xl border border-cream-200 dark:border-charcoal-700 p-8 relative"
     >
       <h3
-        class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2"
+        class="text-xl font-bold text-text-light dark:text-text-dark mb-6 flex items-center justify-between font-serif"
       >
         <span>Replica Creation Progress</span>
         {#if progressSteps.every((s) => s.status === "done")}
-          <span class="text-green-600 text-xl">🎉</span>
+          <span class="text-success text-3xl animate-bounce">🎉</span>
         {/if}
       </h3>
-      <div class="space-y-3">
+      <div class="space-y-4">
         {#each progressSteps as step (step.key)}
-          <div class="flex items-start gap-3">
+          <div class="flex items-start gap-4">
             <div class="mt-0.5">
               {#if step.status === "done"}
                 <span
-                  class="w-5 h-5 inline-flex items-center justify-center rounded-full bg-green-100 text-green-600 text-xs"
-                  >✓</span
+                  class="w-6 h-6 inline-flex items-center justify-center rounded-full bg-success/20 text-success shadow-sm"
+                  ><span class="material-symbols-outlined text-[16px]"
+                    >check</span
+                  ></span
                 >
               {:else if step.status === "working"}
-                <svg
-                  class="w-5 h-5 animate-spin text-blue-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  ><path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  /></svg
+                <span
+                  class="w-6 h-6 inline-flex items-center justify-center rounded-full bg-primary/20 text-primary shadow-sm"
+                  ><span
+                    class="material-symbols-outlined text-[16px] animate-spin"
+                    >sync</span
+                  ></span
                 >
               {:else if step.status === "error"}
                 <span
-                  class="w-5 h-5 inline-flex items-center justify-center rounded-full bg-red-100 text-red-600 text-xs"
-                  >!</span
+                  class="w-6 h-6 inline-flex items-center justify-center rounded-full bg-error/20 text-error shadow-sm"
+                  ><span class="material-symbols-outlined text-[16px]"
+                    >close</span
+                  ></span
                 >
               {:else}
                 <span
-                  class="w-5 h-5 inline-flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 text-xs"
-                  >•</span
+                  class="w-6 h-6 inline-flex items-center justify-center rounded-full bg-cream-200 dark:bg-charcoal-700 text-charcoal-500 dark:text-cream-500 shadow-sm"
+                  ><span class="w-2 h-2 rounded-full bg-current opacity-50"
+                  ></span></span
                 >
               {/if}
             </div>
             <div class="flex-1">
-              <p class="text-sm font-medium text-gray-800 dark:text-gray-200">
+              <p
+                class="text-[15px] font-medium text-text-light dark:text-text-dark leading-tight mt-0.5"
+              >
                 {step.label}
               </p>
               {#if step.key === "train"}
-                <p class="text-xs text-gray-500 dark:text-gray-400">
+                <p
+                  class="text-[13px] text-charcoal-500 dark:text-cream-400 mt-1"
+                >
                   Training your replica with the answers you've provided...
                 </p>
               {:else if step.key === "fetch"}
-                <p class="text-xs text-gray-500 dark:text-gray-400">
+                <p
+                  class="text-[13px] text-charcoal-500 dark:text-cream-400 mt-1"
+                >
                   Ensuring replica is ready for chat...
                 </p>
               {/if}
@@ -1094,26 +1170,28 @@
           </div>
         {/each}
       </div>
-      <div class="mt-4 text-sm text-gray-600 dark:text-gray-400 min-h-[20px]">
+      <div
+        class="mt-6 text-[14px] text-charcoal-600 dark:text-cream-400 min-h-[20px] bg-cream-50/50 dark:bg-charcoal-700/50 p-4 rounded-lg font-medium border border-cream-100 dark:border-charcoal-600"
+      >
         {progressMessage}
       </div>
       {#if submitError}
         <div
-          class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded text-sm text-red-700 dark:text-red-300"
+          class="mt-4 p-4 bg-error/10 border border-error/20 rounded-lg text-[14px] text-error font-medium"
         >
           {submitError}
         </div>
       {/if}
-      <div class="mt-6 flex justify-end gap-2">
+      <div class="mt-8 flex justify-end gap-3">
         {#if submitError}
           <button
-            class="px-4 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
+            class="btn-tactile btn-tactile-primary px-5 py-2 text-white rounded-lg font-medium"
             onclick={resumeSubmission}
           >
             Retry
           </button>
           <button
-            class="px-4 py-2 text-sm rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+            class="btn-tactile px-5 py-2 border border-cream-300 dark:border-charcoal-600 text-charcoal-700 dark:text-cream-300 rounded-lg font-medium hover:bg-cream-100 dark:hover:bg-charcoal-700"
             onclick={dismissProgress}
           >
             Close

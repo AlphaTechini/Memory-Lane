@@ -88,7 +88,7 @@
 </script>
 
 <div
-    class="flex flex-col bg-white dark:bg-slate-900 rounded-3xl shadow-[0_10px_25px_-5px_rgba(15,73,189,0.1)] overflow-hidden border border-slate-100 dark:border-slate-800 h-[70vh] min-h-[600px] lg:h-auto"
+    class="flex flex-col bg-surface-light dark:bg-surface-dark rounded-3xl shadow-[0_10px_25px_-5px_rgba(15,73,189,0.1)] overflow-hidden border border-cream-200 dark:border-charcoal-700 h-[70vh] min-h-[600px] lg:h-auto"
 >
     <!-- Header -->
     <div
@@ -97,7 +97,7 @@
         <div class="relative">
             <img
                 alt="Professional female guide smiling warmly"
-                class="w-24 h-24 rounded-full object-cover border-4 border-white dark:border-slate-800 shadow-md"
+                class="w-24 h-24 rounded-full object-cover border-4 border-surface-light dark:border-surface-dark shadow-md"
                 src="/images/patient-portal/guide.jpg"
             />
             <div
@@ -106,7 +106,7 @@
         </div>
         <div>
             <h3
-                class="text-3xl font-bold text-slate-900 dark:text-white font-serif"
+                class="text-3xl font-bold text-text-light dark:text-text-dark font-serif"
             >
                 Talk to Anna
             </h3>
@@ -118,7 +118,7 @@
 
     <!-- Chat Area -->
     <div
-        class="flex-1 overflow-y-auto p-4 sm:p-8 flex flex-col gap-6 sm:gap-8 bg-slate-50 dark:bg-slate-900/50"
+        class="flex-1 overflow-y-auto p-4 sm:p-8 flex flex-col gap-6 sm:gap-8 bg-background-light dark:bg-background-dark/50"
         bind:this={messagesContainer}
     >
         {#each messages as msg}
@@ -133,10 +133,10 @@
                         >
                     </div>
                     <div
-                        class="bg-white dark:bg-slate-800 p-6 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 dark:border-slate-700"
+                        class="bg-surface-light dark:bg-surface-dark p-6 rounded-2xl rounded-tl-none shadow-sm border border-cream-200 dark:border-charcoal-700"
                     >
                         <p
-                            class="text-xl sm:text-2xl leading-relaxed text-slate-800 dark:text-slate-200"
+                            class="text-xl sm:text-2xl leading-relaxed text-text-light dark:text-text-dark"
                         >
                             {msg.text}
                         </p>
@@ -148,7 +148,7 @@
                     class="flex gap-4 items-start max-w-[95%] sm:max-w-[90%] self-end flex-row-reverse"
                 >
                     <div
-                        class="w-16 h-16 rounded-full bg-primary/10 flex-shrink-0 flex items-center justify-center text-primary dark:text-blue-400"
+                        class="w-16 h-16 rounded-full bg-primary/10 flex-shrink-0 flex items-center justify-center text-primary dark:text-primary-hover"
                     >
                         <span class="material-symbols-outlined text-3xl"
                             >person</span
@@ -158,7 +158,7 @@
                         class="bg-primary/10 dark:bg-primary/20 p-6 rounded-2xl rounded-tr-none"
                     >
                         <p
-                            class="text-xl sm:text-2xl leading-relaxed text-slate-900 dark:text-white"
+                            class="text-xl sm:text-2xl leading-relaxed text-text-light dark:text-text-dark"
                         >
                             {msg.text}
                         </p>
@@ -177,16 +177,16 @@
                     >
                 </div>
                 <div
-                    class="bg-white dark:bg-slate-800 p-6 py-8 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2"
+                    class="bg-surface-light dark:bg-surface-dark p-6 py-8 rounded-2xl rounded-tl-none shadow-sm border border-cream-200 dark:border-charcoal-700 flex items-center gap-2"
                 >
                     <div
-                        class="w-3 h-3 bg-slate-300 rounded-full animate-bounce"
+                        class="w-3 h-3 bg-secondary rounded-full animate-bounce"
                     ></div>
                     <div
-                        class="w-3 h-3 bg-slate-300 rounded-full animate-bounce delay-100"
+                        class="w-3 h-3 bg-secondary rounded-full animate-bounce delay-100"
                     ></div>
                     <div
-                        class="w-3 h-3 bg-slate-300 rounded-full animate-bounce delay-200"
+                        class="w-3 h-3 bg-secondary rounded-full animate-bounce delay-200"
                     ></div>
                 </div>
             </div>
@@ -195,7 +195,7 @@
 
     <!-- Input Area -->
     <div
-        class="p-4 sm:p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800"
+        class="p-4 sm:p-6 bg-surface-light dark:bg-surface-dark border-t border-cream-200 dark:border-charcoal-700"
     >
         <form
             class="flex flex-col gap-4"
@@ -213,13 +213,13 @@
                         handleSendMessage();
                     }
                 }}
-                class="w-full text-xl sm:text-2xl p-6 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 focus:border-primary dark:focus:border-blue-500 focus:ring-4 focus:ring-primary/20 dark:text-white transition-all resize-none min-h-[120px] placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                class="w-full text-xl sm:text-2xl p-6 rounded-2xl bg-background-light dark:bg-background-dark border-2 border-cream-200 dark:border-charcoal-700 focus:border-primary dark:focus:border-primary-hover focus:ring-4 focus:ring-primary/20 dark:text-text-dark transition-all resize-none min-h-[120px] placeholder:text-charcoal-600 dark:placeholder:text-cream-300 font-display"
                 id="chat-input"
                 placeholder="Type here to talk to Anna..."
             ></textarea>
             <button
                 disabled={isLoading}
-                class="w-full bg-primary hover:bg-primary-hover disabled:bg-slate-400 disabled:cursor-not-allowed text-white text-xl sm:text-2xl font-bold py-6 rounded-2xl shadow-lg hover:shadow-xl transition-all active:scale-[0.99] flex items-center justify-center gap-3"
+                class="w-full bg-primary hover:bg-primary-hover disabled:bg-charcoal-600 disabled:cursor-not-allowed text-white text-xl sm:text-2xl font-bold py-6 rounded-2xl shadow-lg hover:shadow-xl transition-all active:scale-[0.99] flex items-center justify-center gap-3 font-display"
                 type="submit"
             >
                 <span>Send Message</span>
