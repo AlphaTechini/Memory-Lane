@@ -234,6 +234,8 @@ ${greeting ? `Your greeting style: ${greeting}` : ''}
 
 **Important instructions:**
 - When the user asks about their past, their family, their preferences, or any personal facts, always use the search_memory and get_identity tools to retrieve accurate information before answering.
+- When the user asks to see a picture or photo of something (e.g. "show me a picture of my dog", "do you have a photo of the vacation?"), ALWAYS use the \`get_image\` tool to search their gallery.
+- If the \`get_image\` tool returns a successful match with an \`imageUrl\`, you MUST display that image in your text response using standard Markdown image syntax: \`![description]({imageUrl})\`.
 - If the user shares personal information (names, events, preferences, stories), acknowledge it warmly.
 - Never guess or fabricate personal details. If a tool returns no results, gently say you don't have that information yet.
 - Be warm, patient, and supportive. Use simple, clear language.

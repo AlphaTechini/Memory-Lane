@@ -19,6 +19,7 @@
 import axios from 'axios';
 import logger from '../utils/logger.js';
 import { getIdentity, searchMemory, storeMemory } from './ragClient.js';
+import { searchUserPhotos } from './galleryService.js';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const GROQ_MODEL = process.env.GROQ_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct';
@@ -77,6 +78,20 @@ export const toolDefinitions = [
             },
         },
     },
+    {
+        type: 'function',
+        function: {
+            name: 'get_image',
+            description: 'Fetch an uploaded photo from the user\'s personal gallery based on a name or description match. Use this when the user asks to see a picture or photo.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    query: { type: 'string', description: 'Search query to match against the photo description or name (e.g. "dog", "vacation")' },
+                },
+                required: ['query'],
+            },
+        },
+    },
 ];
 
 // Shared axios instance for Groq API
@@ -116,6 +131,9 @@ export const executeTool = async (userId, toolName, args, replicaId = '') => {
                 break;
             case 'store_memory':
                 result = await storeMemory(userId, args.content, args.importance || 0.5, args.source || 'conversation', '', replicaId);
+                break;
+            case 'get_image':
+                result = await searchUserPhotos(userId, args.query);
                 break;
             default:
                 result = { success: false, error: `Unknown tool: ${toolName}` };
