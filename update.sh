@@ -29,7 +29,7 @@ pnpm install --prod
 
 # 5. Restart Services
 echo "🔄 Restarting all PM2 services..."
-pm2 restart all
+pm2 start ecosystem.config.js --env production --update-env
 
 echo "✅ Update Complete!"
 pm2 status
