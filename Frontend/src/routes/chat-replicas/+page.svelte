@@ -869,31 +869,52 @@
 <svelte:head>
   <title>Memory Lane Patient Portal</title>
   <!-- Material Symbols -->
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet"
+  />
 </svelte:head>
 
-<div class="relative flex min-h-screen flex-col bg-background-light dark:bg-background-dark font-sans text-text-main dark:text-cream-50 overflow-hidden">
-  
+<div
+  class="relative flex min-h-screen flex-col bg-background-light dark:bg-background-dark font-sans text-text-main dark:text-cream-50 overflow-hidden"
+>
   <BackNavigation
     title="Your Replicas"
     subtitle="Chat with AI replicas or the Memory Lane assistant"
   />
 
-  <div class="flex flex-1 overflow-hidden max-w-7xl mx-auto w-full p-4 lg:p-6 gap-6 relative z-10">
+  <div
+    class="flex flex-1 overflow-hidden max-w-7xl mx-auto w-full p-4 lg:p-6 gap-6 relative z-10"
+  >
     <!-- Main Chat Workspace -->
-    <main class="flex-1 flex flex-col bg-white dark:bg-charcoal-800 rounded-3xl shadow-sm border border-slate-200 dark:border-charcoal-700 overflow-hidden">
+    <main
+      class="flex-1 flex flex-col bg-white dark:bg-charcoal-800 rounded-3xl shadow-sm border border-slate-200 dark:border-charcoal-700 overflow-hidden"
+    >
       <!-- Chat Workspace Header -->
-      <header class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-charcoal-700 bg-white/50 dark:bg-charcoal-800/50 backdrop-blur-sm z-10">
+      <header
+        class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-charcoal-700 bg-white/50 dark:bg-charcoal-800/50 backdrop-blur-sm z-10"
+      >
         <div class="flex items-center gap-4">
-          <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-primary/20 shrink-0">
+          <div
+            class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-primary/20 shrink-0"
+          >
             {#if selectedReplica?.profileImageUrl}
-               <img src={selectedReplica.profileImageUrl} alt="Avatar" class="w-full h-full object-cover" />
+              <img
+                src={selectedReplica.profileImageUrl}
+                alt="Avatar"
+                class="w-full h-full object-cover"
+              />
             {:else}
-               <span class="material-symbols-outlined text-primary" style="font-size: 28px;">psychology</span>
+              <span
+                class="material-symbols-outlined text-primary"
+                style="font-size: 28px;">psychology</span
+              >
             {/if}
           </div>
           <div>
-            <h2 class="text-xl font-bold text-slate-800 dark:text-cream-100 leading-tight">
+            <h2
+              class="text-xl font-bold text-slate-800 dark:text-cream-100 leading-tight"
+            >
               {selectedReplica ? selectedReplica.name : "Select a Replica"}
             </h2>
             <p class="text-sm text-text-sub dark:text-cream-300 font-medium">
@@ -907,344 +928,22 @@
         </div>
       </header>
 
-          {#if (isAuthenticated && userReplicas.length > 0) || (!isAuthenticated && demoReplicas.length > 0)}
-            <div
-              class="mt-6 pt-4 border-t border-cream-200 dark:border-charcoal-700"
-            >
-              <button
-                onclick={startGenericChat}
-                class="w-full p-3 border border-cream-300 dark:border-charcoal-600 rounded-xl hover:bg-cream-100 dark:hover:bg-charcoal-600 transition-colors text-left bg-surface-light dark:bg-surface-dark
-                {!selectedReplica
-                  ? 'bg-primary/5 dark:bg-primary/10 border-primary dark:border-primary/50'
-                  : ''}"
-              >
-                <div class="flex items-center gap-3">
-                  <div
-                    class="w-10 h-10 rounded-full bg-cream-200 dark:bg-charcoal-600 flex items-center justify-center text-primary dark:text-secondary"
-                  >
-                    <svg
-                      class="w-5 h-5 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                      ></path>
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 class="font-medium text-text-light dark:text-text-dark">
-                      Generic Chatbot
-                    </h4>
-                    <p class="text-sm text-charcoal-600 dark:text-cream-400">
-                      Ask about Memory Lane, reminiscence therapy, or how our
-                      replicas support people with memory loss.
-                    </p>
-                  </div>
-                </div>
-              </button>
-            </div>
-          {/if}
-        {:else if sidebarView === "conversations"}
-          <!-- Conversations View for Selected Replica -->
-          <div class="space-y-4">
-            <!-- Back Button -->
-            <button
-              onclick={backToReplicasList}
-              class="flex items-center gap-2 text-charcoal-600 dark:text-cream-400 hover:text-text-light dark:hover:text-text-dark transition-colors mb-4"
-            >
-              <svg
-                class="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M15 19l-7-7 7-7"
-                ></path>
-              </svg>
-              Back to Replicas
-            </button>
-
-            <!-- Replica Header -->
-            {#if selectedReplicaForSidebar}
-              <div
-                class="p-4 bg-surface-light dark:bg-surface-dark border border-cream-200 dark:border-charcoal-700 rounded-xl"
-              >
-                <div class="flex items-center gap-3">
-                  <div
-                    class="w-10 h-10 rounded-full overflow-hidden bg-cream-200 dark:bg-charcoal-600"
-                  >
-                    {#if selectedReplicaForSidebar.profileImageUrl}
-                      <img
-                        src={selectedReplicaForSidebar.profileImageUrl}
-                        alt={selectedReplicaForSidebar.name}
-                        class="w-full h-full object-cover"
-                      />
-                    {:else}
-                      <div
-                        class="w-full h-full flex items-center justify-center text-charcoal-400 dark:text-cream-500"
-                      >
-                        <svg
-                          class="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                          ></path>
-                        </svg>
-                      </div>
-                    {/if}
-                  </div>
-                  <div>
-                    <h3 class="font-medium text-text-light dark:text-text-dark">
-                      {selectedReplicaForSidebar.name}
-                    </h3>
-                    <p class="text-sm text-charcoal-600 dark:text-cream-400">
-                      Conversations
-                    </p>
-                  </div>
-                </div>
-              </div>
-            {/if}
-
-            <!-- New Conversation Button -->
-            <button
-              onclick={startNewConversation}
-              class="w-full p-3 border-2 border-dashed border-cream-300 dark:border-charcoal-600 rounded-xl hover:border-primary dark:hover:border-secondary hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors text-left
-                {!selectedConversation
-                ? 'border-primary dark:border-secondary bg-primary/5 dark:bg-primary/10'
-                : ''}"
-            >
-              <div class="flex items-center gap-3">
-                <div
-                  class="w-8 h-8 rounded-full bg-primary/10 dark:bg-secondary/20 flex items-center justify-center"
-                >
-                  <svg
-                    class="w-4 h-4 text-primary dark:text-secondary"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M12 4v16m8-8H4"
-                    ></path>
-                  </svg>
-                </div>
-                <div>
-                  <h4 class="font-medium text-text-light dark:text-text-dark">
-                    New Conversation
-                  </h4>
-                  <p class="text-sm text-charcoal-600 dark:text-cream-400">
-                    Start a fresh chat
-                  </p>
-                </div>
-              </div>
-            </button>
-
-            <!-- Conversations List -->
-            {#if isLoadingConversations}
-              <div class="flex items-center justify-center py-8">
-                <svg
-                  class="animate-spin w-6 h-6 text-primary dark:text-secondary"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  ></path>
-                </svg>
-              </div>
-            {:else if conversations.length === 0}
-              <div class="text-center py-8">
-                <div
-                  class="w-12 h-12 mx-auto mb-4 text-charcoal-400 dark:text-cream-500"
-                >
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="1"
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    ></path>
-                  </svg>
-                </div>
-                <h3
-                  class="text-accessible-lg font-medium text-text-light dark:text-text-dark mb-2"
-                >
-                  No Conversations Yet
-                </h3>
-                <p class="text-charcoal-600 dark:text-cream-400">
-                  Start your first conversation with {selectedReplicaForSidebar?.name}
-                </p>
-              </div>
-            {:else}
-              <div class="space-y-2">
-                {#each conversations as conversation (conversation.id)}
-                  <button
-                    onclick={() => loadConversation(conversation.id)}
-                    class="w-full p-3 border border-cream-200 dark:border-charcoal-700 rounded-xl hover:bg-cream-100 dark:hover:bg-charcoal-600 transition-colors text-left bg-surface-light dark:bg-surface-dark"
-                  >
-                    <div class="flex items-center justify-between">
-                      <div class="flex-1 min-w-0">
-                        <h4
-                          class="font-medium text-text-light dark:text-text-dark truncate"
-                        >
-                          {conversation.title ||
-                            `Conversation ${conversation.id.slice(-6)}`}
-                        </h4>
-                        <p
-                          class="text-sm text-charcoal-600 dark:text-cream-400 truncate"
-                        >
-                          {conversation.lastMessage || "No messages yet"}
-                        </p>
-                        <div class="flex items-center gap-2 mt-1">
-                          <span
-                            class="text-xs text-charcoal-500 dark:text-cream-500"
-                          >
-                            {conversation.messageCount || 0} messages
-                          </span>
-                          <span
-                            class="text-xs text-charcoal-500 dark:text-cream-500"
-                          >
-                            {formatTimestamp(
-                              conversation.updatedAt || conversation.createdAt,
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                {/each}
-              </div>
-            {/if}
-          </div>
-        {/if}
-      </div>
-    </div>
-
-    <!-- Chat Area -->
-    <div class="flex-1 flex flex-col">
-      {#if selectedReplica}
-        <!-- Replica Chat Header -->
-        <div
-          class="p-4 bg-surface-light dark:bg-surface-dark border-b border-cream-200 dark:border-charcoal-700"
-        >
-          <div class="flex items-center gap-3">
-            <div
-              class="w-10 h-10 rounded-full overflow-hidden bg-cream-200 dark:bg-charcoal-600"
-            >
-              {#if selectedReplica.profileImageUrl}
-                <img
-                  src={selectedReplica.profileImageUrl}
-                  alt={selectedReplica.name}
-                  class="w-full h-full object-cover"
-                />
-              {:else}
-                <div
-                  class="w-full h-full flex items-center justify-center text-charcoal-400 dark:text-cream-500"
-                >
-                  <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    ></path>
-                  </svg>
-                </div>
-              {/if}
-            </div>
-            <div>
-              <h3 class="font-medium text-text-light dark:text-text-dark">
-                {selectedReplica.name}
-              </h3>
-              <p class="text-sm text-charcoal-600 dark:text-cream-400">
-                Your AI replica
-              </p>
-            </div>
-          </div>
-        </div>
-      {:else if userReplicas.length > 0}
-        <!-- Generic Chat Header -->
-        <div
-          class="p-4 bg-surface-light dark:bg-surface-dark border-b border-cream-200 dark:border-charcoal-700"
-        >
-          <div class="flex items-center gap-3">
-            <div
-              class="w-10 h-10 rounded-full bg-cream-100 dark:bg-charcoal-600 flex items-center justify-center"
-            >
-              <svg
-                class="w-5 h-5 text-charcoal-600 dark:text-cream-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                ></path>
-              </svg>
-            </div>
-            <div>
-              <h3 class="font-medium text-text-light dark:text-text-dark">
-                Generic AI Assistant
-              </h3>
-              <p class="text-sm text-charcoal-600 dark:text-cream-400">
-                General purpose chatbot
-              </p>
-            </div>
-          </div>
-        </div>
-      {:else}
-        <!-- Welcome Header -->
-        <div
-          class="p-4 bg-surface-light dark:bg-surface-dark border-b border-cream-200 dark:border-charcoal-700"
-        >
-          <h3 class="font-medium text-text-light dark:text-text-dark">
-            Welcome to Memory Lane
-          </h3>
-          <p class="text-sm text-charcoal-600 dark:text-cream-400">
-            Create your first replica to get started
-          </p>
-        </div>
-      {/if}
-
       <!-- Chat Messages -->
-      <div class="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6" bind:this={chatContainer}>
+      <div
+        class="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6"
+        bind:this={chatContainer}
+      >
         {#if chatMessages.length === 0}
           <div class="flex items-center justify-center h-full">
-            <div class="text-center max-w-md mx-auto p-8 rounded-2xl bg-slate-50 dark:bg-charcoal-700/30 border border-slate-100 dark:border-charcoal-600">
+            <div
+              class="text-center max-w-md mx-auto p-8 rounded-2xl bg-slate-50 dark:bg-charcoal-700/30 border border-slate-100 dark:border-charcoal-600"
+            >
               <div
                 class="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center text-primary"
               >
-                <span class="material-symbols-outlined text-3xl">waving_hand</span>
+                <span class="material-symbols-outlined text-3xl"
+                  >waving_hand</span
+                >
               </div>
               <h3
                 class="text-xl font-bold text-slate-800 dark:text-cream-50 mb-3"
@@ -1268,28 +967,54 @@
                   ? 'justify-end'
                   : 'justify-start'}"
               >
-                <div class="flex max-w-[85%] lg:max-w-[75%] gap-3 {message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}">
+                <div
+                  class="flex max-w-[85%] lg:max-w-[75%] gap-3 {message.sender ===
+                  'user'
+                    ? 'flex-row-reverse'
+                    : 'flex-row'}"
+                >
                   <!-- Avatar -->
-                  <div class="w-8 h-8 rounded-full overflow-hidden shrink-0 mt-1 flex items-center justify-center {message.sender === 'user' ? 'bg-primary border border-primary/20 text-white' : 'bg-slate-200 dark:bg-charcoal-600 border border-slate-300 dark:border-charcoal-500'}">
-                    {#if message.sender === 'user'}
-                      <span class="material-symbols-outlined text-sm">person</span>
+                  <div
+                    class="w-8 h-8 rounded-full overflow-hidden shrink-0 mt-1 flex items-center justify-center {message.sender ===
+                    'user'
+                      ? 'bg-primary border border-primary/20 text-white'
+                      : 'bg-slate-200 dark:bg-charcoal-600 border border-slate-300 dark:border-charcoal-500'}"
+                  >
+                    {#if message.sender === "user"}
+                      <span class="material-symbols-outlined text-sm"
+                        >person</span
+                      >
                     {:else if selectedReplica?.profileImageUrl}
-                      <img src={selectedReplica.profileImageUrl} alt="Avatar" class="w-full h-full object-cover" />
+                      <img
+                        src={selectedReplica.profileImageUrl}
+                        alt="Avatar"
+                        class="w-full h-full object-cover"
+                      />
                     {:else}
-                      <span class="material-symbols-outlined text-sm text-primary">psychology</span>
+                      <span
+                        class="material-symbols-outlined text-sm text-primary"
+                        >psychology</span
+                      >
                     {/if}
                   </div>
                   <!-- Bubble -->
-                  <div class="flex flex-col gap-1 {message.sender === 'user' ? 'items-end' : 'items-start'}">
+                  <div
+                    class="flex flex-col gap-1 {message.sender === 'user'
+                      ? 'items-end'
+                      : 'items-start'}"
+                  >
                     <div
-                      class="px-5 py-3.5 shadow-sm {message.sender ===
-                      'user'
+                      class="px-5 py-3.5 shadow-sm {message.sender === 'user'
                         ? 'bg-primary text-white rounded-2xl rounded-tr-sm'
                         : 'bg-white dark:bg-charcoal-700 text-slate-800 dark:text-cream-100 border border-slate-200 dark:border-charcoal-600 rounded-2xl rounded-tl-sm'}"
                     >
-                      <p class="leading-relaxed whitespace-pre-wrap">{message.text}</p>
+                      <p class="leading-relaxed whitespace-pre-wrap">
+                        {message.text}
+                      </p>
                     </div>
-                    <span class="text-xs text-text-light dark:text-charcoal-400 font-medium px-1">
+                    <span
+                      class="text-xs text-text-light dark:text-charcoal-400 font-medium px-1"
+                    >
                       {formatTimestamp(message.timestamp)}
                     </span>
                   </div>
@@ -1321,18 +1046,38 @@
               <!-- Typing Indicator -->
               <div class="flex w-full justify-start">
                 <div class="flex max-w-[85%] lg:max-w-[75%] gap-3 flex-row">
-                  <div class="w-8 h-8 rounded-full overflow-hidden shrink-0 mt-1 flex items-center justify-center bg-slate-200 dark:bg-charcoal-600 border border-slate-300 dark:border-charcoal-500">
+                  <div
+                    class="w-8 h-8 rounded-full overflow-hidden shrink-0 mt-1 flex items-center justify-center bg-slate-200 dark:bg-charcoal-600 border border-slate-300 dark:border-charcoal-500"
+                  >
                     {#if selectedReplica?.profileImageUrl}
-                      <img src={selectedReplica.profileImageUrl} alt="Avatar" class="w-full h-full object-cover" />
+                      <img
+                        src={selectedReplica.profileImageUrl}
+                        alt="Avatar"
+                        class="w-full h-full object-cover"
+                      />
                     {:else}
-                      <span class="material-symbols-outlined text-sm text-primary">psychology</span>
+                      <span
+                        class="material-symbols-outlined text-sm text-primary"
+                        >psychology</span
+                      >
                     {/if}
                   </div>
                   <div class="flex flex-col gap-1 items-start">
-                    <div class="px-5 py-3.5 bg-white dark:bg-charcoal-700 border border-slate-200 dark:border-charcoal-600 rounded-2xl rounded-tl-sm flex items-center gap-1.5 min-h-[48px]">
-                      <div class="w-2 h-2 rounded-full bg-slate-400 dark:bg-charcoal-400 animate-bounce" style="animation-delay: 0ms"></div>
-                      <div class="w-2 h-2 rounded-full bg-slate-400 dark:bg-charcoal-400 animate-bounce" style="animation-delay: 150ms"></div>
-                      <div class="w-2 h-2 rounded-full bg-slate-400 dark:bg-charcoal-400 animate-bounce" style="animation-delay: 300ms"></div>
+                    <div
+                      class="px-5 py-3.5 bg-white dark:bg-charcoal-700 border border-slate-200 dark:border-charcoal-600 rounded-2xl rounded-tl-sm flex items-center gap-1.5 min-h-[48px]"
+                    >
+                      <div
+                        class="w-2 h-2 rounded-full bg-slate-400 dark:bg-charcoal-400 animate-bounce"
+                        style="animation-delay: 0ms"
+                      ></div>
+                      <div
+                        class="w-2 h-2 rounded-full bg-slate-400 dark:bg-charcoal-400 animate-bounce"
+                        style="animation-delay: 150ms"
+                      ></div>
+                      <div
+                        class="w-2 h-2 rounded-full bg-slate-400 dark:bg-charcoal-400 animate-bounce"
+                        style="animation-delay: 300ms"
+                      ></div>
                     </div>
                   </div>
                 </div>
@@ -1346,8 +1091,13 @@
       <div
         class="border-t border-slate-100 dark:border-charcoal-700 bg-white dark:bg-charcoal-800 p-4 lg:p-6"
       >
-        <div class="max-w-4xl mx-auto flex items-end gap-3 bg-slate-50 dark:bg-charcoal-700/50 p-2 rounded-2xl border border-slate-200 dark:border-charcoal-600 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-          <MessageInput on:send={handleSendMessage} disabled={isSendingMessage} />
+        <div
+          class="max-w-4xl mx-auto flex items-end gap-3 bg-slate-50 dark:bg-charcoal-700/50 p-2 rounded-2xl border border-slate-200 dark:border-charcoal-600 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all"
+        >
+          <MessageInput
+            on:send={handleSendMessage}
+            disabled={isSendingMessage}
+          />
         </div>
       </div>
     </main>
