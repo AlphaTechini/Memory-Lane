@@ -45,23 +45,29 @@
         <button
             onclick={handleLogout}
             title="Log Out"
-            class="flex items-center justify-center rounded-full h-12 w-12 md:h-14 md:w-14 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 transition-colors"
+            class="flex items-center justify-center rounded-full h-12 w-12 md:h-14 md:w-14 bg-red-200 dark:bg-red-800 text-red-900 dark:text-red-100 hover:bg-red-300 transition-colors"
         >
-            <span class="material-symbols-outlined text-2xl md:text-3xl"
+            <span
+                class="material-symbols-outlined text-2xl md:text-3xl font-bold"
                 >logout</span
             >
         </button>
         <button
-            class="flex items-center justify-center rounded-full h-12 w-12 md:h-14 md:w-14 bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+            class="flex items-center justify-center rounded-full h-12 w-12 md:h-14 md:w-14 bg-primary/20 text-primary dark:text-white hover:bg-primary/30 transition-colors"
         >
-            <span class="material-symbols-outlined text-2xl md:text-3xl"
+            <span
+                class="material-symbols-outlined text-2xl md:text-3xl font-bold"
                 >settings</span
             >
         </button>
         <div
-            class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-12 w-12 md:h-14 md:w-14 border-4 border-white dark:border-gray-700 shadow-md"
-            style="background-image: url('/images/patient-portal/margaret.jpg');"
+            class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-12 w-12 md:h-14 md:w-14 border-4 border-white dark:border-gray-600 shadow-md bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden"
             aria-label="{userName}'s Profile Picture"
-        ></div>
+        >
+            <span
+                class="material-symbols-outlined text-gray-500 dark:text-gray-400 text-3xl"
+                >person</span
+            >
+        </div>
     </div>
 </header>

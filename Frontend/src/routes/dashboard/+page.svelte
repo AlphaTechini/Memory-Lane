@@ -102,7 +102,7 @@
           >
             Welcome back
           </h1>
-          <p class="text-gray-500 dark:text-gray-400 text-lg">
+          <p class="text-gray-800 dark:text-gray-200 text-lg font-medium">
             {#if userRole === "caretaker"}
               Here's what's happening with your patients today.
             {:else}
@@ -126,7 +126,12 @@
 
       {#if userRole === "caretaker"}
         <!-- Stats Row -->
-        <DashboardStats />
+        <DashboardStats
+          conversations={0}
+          newMemories={0}
+          activeReplicas={0}
+          lastSync="Just now"
+        />
 
         <div class="flex items-center justify-between mb-8">
           <h2
@@ -135,7 +140,7 @@
             Recent Patients
           </h2>
           <a
-            class="text-primary dark:text-gray-300 hover:text-secondary font-medium flex items-center transition-colors"
+            class="text-primary dark:text-secondary hover:text-secondary-hover font-bold flex items-center transition-colors"
             href="/manage-patients"
           >
             View All <span class="material-icons-round ml-1 text-lg"
@@ -146,50 +151,40 @@
 
         <!-- Patients Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 pb-12">
-          <PatientCard
-            name="Margaret Evans"
-            id="#8821-MA"
-            status="Active"
-            lastInteraction="2 hours ago"
-            memoryBank="84% Complete"
-            imageSrc="/images/dashboard/patient-1.jpg"
-          />
-          <PatientCard
-            name="Arthur Clarke"
-            id="#9932-AC"
-            status="Syncing"
-            lastInteraction="1 day ago"
-            memoryBank="Processing..."
-            imageSrc="/images/dashboard/patient-2.jpg"
-          />
-          <PatientCard
-            name="Eleanor Rigby"
-            id="#4412-ER"
-            status="Active"
-            lastInteraction="15 mins ago"
-            memoryBank="98% Complete"
-            imageSrc="/images/dashboard/patient-3.jpg"
-          />
+          <!-- Placeholder for dynamic patients - removing dummy Hardcoded data -->
+
+          {#each [] as patient}
+            <PatientCard
+              name={patient.name}
+              id={patient.id}
+              status={patient.status}
+              lastInteraction={patient.lastInteraction}
+              memoryBank={patient.memoryBank}
+              imageSrc={patient.imageSrc}
+            />
+          {/each}
 
           <!-- Onboard Patient Card / Quick Action -->
           <article
             onclick={() => goto("/manage-patients")}
-            class="bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 p-6 flex flex-col items-center justify-center transition-all hover:border-primary dark:hover:border-secondary cursor-pointer group h-full min-h-[250px]"
+            class="bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed border-gray-400 dark:border-gray-500 p-6 flex flex-col items-center justify-center transition-all hover:border-primary dark:hover:border-secondary cursor-pointer group h-full min-h-[250px]"
           >
             <div
-              class="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-4 group-hover:bg-primary/10 transition-colors"
+              class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-4 group-hover:bg-primary/10 transition-colors"
             >
               <span
-                class="material-icons-round text-3xl text-gray-400 dark:text-gray-500 group-hover:text-primary dark:group-hover:text-secondary"
+                class="material-icons-round text-3xl text-gray-700 dark:text-gray-300 group-hover:text-primary dark:group-hover:text-secondary"
                 >add</span
               >
             </div>
             <h3
-              class="text-lg font-serif font-bold text-gray-500 dark:text-gray-400 group-hover:text-primary dark:group-hover:text-white text-center"
+              class="text-lg font-serif font-bold text-gray-800 dark:text-gray-100 group-hover:text-primary dark:group-hover:text-white text-center"
             >
               Onboard New Patient
             </h3>
-            <p class="text-sm text-gray-400 text-center mt-2 max-w-[200px]">
+            <p
+              class="text-sm text-gray-700 dark:text-gray-300 font-medium text-center mt-2 max-w-[200px]"
+            >
               Begin the memory preservation process for a new client.
             </p>
           </article>

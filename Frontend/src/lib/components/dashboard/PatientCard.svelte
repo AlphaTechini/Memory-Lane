@@ -48,7 +48,9 @@
                 >
                     {name}
                 </h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400">ID: {id}</p>
+                <p class="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                    ID: {id}
+                </p>
             </div>
         </div>
         <span
@@ -60,7 +62,7 @@
 
     <div class="mb-6 flex-1">
         <div
-            class="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-2"
+            class="flex items-center text-sm text-gray-800 dark:text-gray-200 mb-2 font-medium"
         >
             <span
                 class="material-symbols-outlined text-base mr-2 text-secondary"
@@ -68,7 +70,9 @@
             >
             Last interaction: {lastInteraction}
         </div>
-        <div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+        <div
+            class="flex items-center text-sm text-gray-800 dark:text-gray-200 font-medium"
+        >
             <span
                 class="material-symbols-outlined text-base mr-2 text-secondary"
                 >photo_library</span
