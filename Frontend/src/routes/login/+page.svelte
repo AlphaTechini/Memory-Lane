@@ -298,11 +298,11 @@
             <button
               type="submit"
               disabled={loading}
-              class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/25 transition-all flex items-center justify-center gap-2 disabled:opacity-75"
+              class="w-full bg-primary hover:bg-blue-700 text-slate-900 dark:text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/25 transition-all flex items-center justify-center gap-2 disabled:opacity-75"
             >
               {#if loading}
                 <svg
-                  class="animate-spin h-5 w-5 text-white"
+                  class="animate-spin h-5 w-5 text-slate-900 dark:text-white"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -442,11 +442,11 @@
             <button
               type="submit"
               disabled={loading}
-              class="w-full h-24 bg-primary hover:bg-primary/90 text-white rounded-xl text-3xl md:text-4xl font-black shadow-lg shadow-primary/30 flex items-center justify-center gap-4 transition-transform active:scale-95 disabled:opacity-70"
+              class="w-full h-24 bg-primary hover:bg-primary/90 text-slate-900 dark:text-white rounded-xl text-3xl md:text-4xl font-black shadow-lg shadow-primary/30 flex items-center justify-center gap-4 transition-transform active:scale-95 disabled:opacity-70"
             >
               {#if loading}
                 <svg
-                  class="animate-spin h-8 w-8 text-white"
+                  class="animate-spin h-8 w-8 text-slate-900 dark:text-white"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"

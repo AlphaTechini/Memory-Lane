@@ -867,547 +867,45 @@
 </script>
 
 <svelte:head>
-  <title>Chat with Your Replicas - Memory Lane</title>
-  <meta
-    name="description"
-    content="Engage in real-time conversations with AI replicas that assist patients in memory recall, support dementia and amnesia care, and help caretakers provide personalized interaction and therapy."
-  />
-  <meta
-    name="keywords"
-    content="chat with AI replicas, memory recall assistant, dementia support chat, amnesia therapy AI, caregiver AI assistant, replica conversations, memory illness chat tool"
-  />
+  <title>Memory Lane Patient Portal</title>
+  <!-- Material Symbols -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
 </svelte:head>
 
-<div class="bg-background-light dark:bg-background-dark">
+<div class="relative flex min-h-screen flex-col bg-background-light dark:bg-background-dark font-sans text-text-main dark:text-cream-50 overflow-hidden">
+  
   <BackNavigation
-    title="Chat with Your Replicas"
-    subtitle="Start conversations with AI replicas or chat with the generic Memory Lane AI"
+    title="Your Replicas"
+    subtitle="Chat with AI replicas or the Memory Lane assistant"
   />
 
-  <div class="h-[calc(100vh-8rem)] flex flex-col lg:flex-row">
-    <!-- Replica Selection Sidebar -->
-    <div
-      class="w-full lg:w-80 bg-surface-light dark:bg-surface-dark border-b lg:border-b-0 lg:border-r border-cream-200 dark:border-charcoal-700 flex flex-col max-h-64 lg:max-h-none overflow-y-auto lg:overflow-y-visible"
-    >
-      <!-- Header -->
-      <div class="p-4 border-b border-cream-200 dark:border-charcoal-700">
-        <h2
-          class="text-accessible-lg font-semibold text-text-light dark:text-text-dark mb-4"
-        >
-          Your Replicas
-        </h2>
-        {#if selectedReplica && isAuthenticated}
-          <div class="mb-3 space-y-2">
-            {#if !trainingSession}
-              <button
-                onclick={startTrainingSession}
-                class="btn-tactile w-full text-xs px-3 py-2 bg-primary hover:bg-primary-hover text-white rounded-md"
-                >Start Training Session</button
-              >
+  <div class="flex flex-1 overflow-hidden max-w-7xl mx-auto w-full p-4 lg:p-6 gap-6 relative z-10">
+    <!-- Main Chat Workspace -->
+    <main class="flex-1 flex flex-col bg-white dark:bg-charcoal-800 rounded-3xl shadow-sm border border-slate-200 dark:border-charcoal-700 overflow-hidden">
+      <!-- Chat Workspace Header -->
+      <header class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-charcoal-700 bg-white/50 dark:bg-charcoal-800/50 backdrop-blur-sm z-10">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden border border-primary/20 shrink-0">
+            {#if selectedReplica?.profileImageUrl}
+               <img src={selectedReplica.profileImageUrl} alt="Avatar" class="w-full h-full object-cover" />
             {:else}
-              <div
-                class="p-2 bg-secondary/10 dark:bg-secondary/20 rounded text-xs text-primary dark:text-secondary flex flex-col gap-1"
-              >
-                <div class="flex justify-between items-center">
-                  <span>
-                    {#if trainingSession.status === "PROCESSING"}
-                      Processing...
-                    {:else if trainingSession.status === "READY"}
-                      Trained ✓
-                    {:else}
-                      Collecting messages ({trainingBuffer.length})
-                    {/if}
-                  </span>
-                  <div class="flex items-center gap-2">
-                    {#if !trainingSession.status && trainingTimer}
-                      <span
-                        class="text-[10px] font-mono bg-cream-50 dark:bg-charcoal-700 px-1.5 py-0.5 rounded"
-                      >
-                        {formatElapsedTime(trainingElapsed)}
-                      </span>
-                    {/if}
-                    {#if trainingSession.status === "PROCESSING"}
-                      <svg
-                        class="w-4 h-4 animate-spin text-primary dark:text-secondary"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        ><circle
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke-width="4"
-                          class="opacity-25"
-                        ></circle><path
-                          d="M4 12a8 8 0 018-8"
-                          stroke-width="4"
-                          class="opacity-75"
-                        ></path></svg
-                      >
-                    {/if}
-                    {#if ["PROCESSING", "READY"].includes(trainingSession.status)}
-                      <button
-                        onclick={pollStatusOnce}
-                        class="text-[10px] px-1.5 py-0.5 border border-primary/30 dark:border-secondary/30 rounded text-primary dark:text-secondary hover:bg-primary/10 dark:hover:bg-secondary/10 transition"
-                        >Refresh</button
-                      >
-                    {/if}
-                  </div>
-                </div>
-                {#if !trainingSession.status}
-                  <div
-                    class="h-1.5 bg-cream-200 dark:bg-charcoal-700 rounded overflow-hidden"
-                  >
-                    <div
-                      class="h-full bg-primary dark:bg-secondary"
-                      style="width:{Math.min(
-                        100,
-                        (trainingBuffer.join('\n\n').length / 20000) * 100,
-                      )}%"
-                    ></div>
-                  </div>
-                  <div
-                    class="flex justify-between text-[10px] text-primary dark:text-secondary"
-                  >
-                    <span>{trainingBuffer.join("\n\n").length} chars</span>
-                    <span
-                      >{Math.round(
-                        Math.min(
-                          100,
-                          (trainingBuffer.join("\n\n").length / 20000) * 100,
-                        ),
-                      )}%</span
-                    >
-                  </div>
-                  {#if trainingBuffer.join("\n\n").length > 18000}
-                    <div
-                      class="text-[10px] text-orange-600 dark:text-orange-400"
-                    >
-                      Approaching size limit. Consider submitting.
-                    </div>
-                  {/if}
-                {/if}
-              </div>
-              <div class="flex gap-2">
-                <button
-                  onclick={endTrainingSession}
-                  disabled={isSubmittingTraining || trainingBuffer.length === 0}
-                  class="flex-1 text-xs px-3 py-2 bg-secondary hover:bg-[#436743] disabled:opacity-50 text-white rounded-md"
-                  >{isSubmittingTraining
-                    ? "Submitting..."
-                    : "End & Submit"}</button
-                >
-                <button
-                  onclick={() => {
-                    trainingSession = null;
-                    trainingBuffer = [];
-                  }}
-                  class="flex-1 text-xs px-3 py-2 border border-cream-300 dark:border-charcoal-600 rounded-md text-text-light dark:text-text-dark"
-                  >Cancel</button
-                >
-              </div>
+               <span class="material-symbols-outlined text-primary" style="font-size: 28px;">psychology</span>
             {/if}
           </div>
-        {/if}
-        {#if userRole && userRole !== "patient"}
-          <button
-            onclick={() => {
-              if (!requireAuthForAction("create a new replica")) return;
-              goto("/create-replicas");
-            }}
-            class="btn-tactile btn-tactile-primary w-full px-4 py-2 text-white rounded-md transition-colors mb-2 text-sm"
-          >
-            Create New Replica
-          </button>
-        {/if}
-        <button
-          onclick={fetchAllReplicas}
-          disabled={isFetchingAll}
-          class="btn-tactile btn-tactile-secondary w-full px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
-        >
-          {isFetchingAll ? "Fetching..." : "Fetch All Replicas"}
-        </button>
-      </div>
-
-      <!-- Sidebar Content -->
-      <div class="flex-1 overflow-y-auto p-4">
-        {#if sidebarView === "replicas"}
-          <!-- Main Replicas View -->
-          {#if isLoadingReplicas}
-            <div class="flex items-center justify-center py-8">
-              <svg
-                class="animate-spin w-6 h-6 text-primary dark:text-secondary"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                ></path>
-              </svg>
-            </div>
-          {:else if !isAuthenticated}
-            <div class="text-center py-8">
-              <div
-                class="w-16 h-16 mx-auto mb-4 text-cream-400 dark:text-charcoal-500"
-              >
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="1"
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  ></path>
-                </svg>
-              </div>
-              <h3
-                class="text-accessible-lg font-medium text-text-light dark:text-text-dark mb-2"
-              >
-                Demo Mode
-              </h3>
-              <p class="text-charcoal-600 dark:text-cream-400 mb-4">
-                You're viewing in demo mode. Log in to create and chat with your
-                personal AI replicas.
-              </p>
-              <div class="space-y-2">
-                <button
-                  onclick={() => goto("/login")}
-                  class="btn-tactile btn-tactile-primary w-full px-4 py-2 text-white rounded-md transition-colors text-sm"
-                >
-                  Log In
-                </button>
-                <button
-                  onclick={() => goto("/signup")}
-                  class="btn-tactile btn-tactile-secondary w-full px-4 py-2 rounded-md transition-colors text-sm"
-                >
-                  Sign Up
-                </button>
-              </div>
-            </div>
-          {:else if userReplicas.length === 0}
-            <div class="text-center py-8">
-              <div
-                class="w-16 h-16 mx-auto mb-4 text-cream-400 dark:text-charcoal-500"
-              >
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="1"
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  ></path>
-                </svg>
-              </div>
-              <h3
-                class="text-accessible-lg font-medium text-text-light dark:text-text-dark mb-2"
-              >
-                No Replicas Yet
-              </h3>
-              <p class="text-charcoal-600 dark:text-cream-400 mb-4">
-                Create your first AI replica to get started
-              </p>
-              {#if userRole && userRole !== "patient"}
-                <button
-                  onclick={() => goto("/create-replicas")}
-                  class="btn-tactile btn-tactile-primary px-4 py-2 text-white rounded-md transition-colors text-sm"
-                >
-                  Create Your First Replica
-                </button>
+          <div>
+            <h2 class="text-xl font-bold text-slate-800 dark:text-cream-100 leading-tight">
+              {selectedReplica ? selectedReplica.name : "Select a Replica"}
+            </h2>
+            <p class="text-sm text-text-sub dark:text-cream-300 font-medium">
+              {#if selectedReplica}
+                {selectedReplica.description}
+              {:else}
+                Choose an AI to begin chatting
               {/if}
-            </div>
-          {:else if isAuthenticated}
-            <!-- Show user's actual replicas when authenticated -->
-            <div class="space-y-4">
-              {#each userReplicas as replica (replica.replicaId)}
-                <div
-                  class="border border-cream-200 dark:border-charcoal-700 rounded-xl hover:bg-cream-100 dark:hover:bg-charcoal-600 transition-colors
-                {selectedReplica?.replicaId === replica.replicaId
-                    ? 'bg-primary/5 dark:bg-primary/10 border-primary dark:border-primary/50'
-                    : 'bg-surface-light dark:bg-surface-dark'}"
-                >
-                  <!-- Replica Header -->
-                  <div
-                    role="button"
-                    tabindex="0"
-                    onclick={() => selectReplica(replica)}
-                    onkeydown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        selectReplica(replica);
-                      }
-                    }}
-                    class="w-full p-4 text-left"
-                  >
-                    <div class="flex items-center gap-3">
-                      <div
-                        class="w-12 h-12 rounded-full overflow-hidden bg-cream-200 dark:bg-charcoal-600 flex-shrink-0"
-                      >
-                        {#if replica.profileImageUrl}
-                          <img
-                            src={replica.profileImageUrl}
-                            alt={replica.name}
-                            class="w-full h-full object-cover"
-                          />
-                        {:else}
-                          <div
-                            class="w-full h-full flex items-center justify-center text-charcoal-400 dark:text-cream-500"
-                          >
-                            <svg
-                              class="w-6 h-6"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                              ></path>
-                            </svg>
-                          </div>
-                        {/if}
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <h4
-                          class="font-medium text-text-light dark:text-text-dark truncate flex items-center gap-2"
-                        >
-                          {replica.name}
-                          {#if replica.lastTrained}
-                            <span
-                              class="text-[10px] px-1.5 py-0.5 bg-secondary/10 dark:bg-secondary/20 text-secondary dark:text-secondary rounded"
-                            >
-                              Trained
-                              {#if formatTimestamp(replica.lastTrained)}
-                                <span class="ml-2 text-[10px] opacity-75"
-                                  >{formatTimestamp(replica.lastTrained)}</span
-                                >
-                              {/if}
-                            </span>
-                          {/if}
-                        </h4>
-                        <p
-                          class="text-sm text-charcoal-600 dark:text-cream-400 truncate"
-                        >
-                          {replica.description}
-                        </p>
-                        <div class="flex items-center gap-2 mt-1">
-                          <span
-                            class="text-xs px-2 py-1 bg-secondary/10 dark:bg-secondary/20 text-secondary dark:text-secondary rounded"
-                          >
-                            {replica.coverageScore}% trained
-                          </span>
-                          {#if replica.isActive}
-                            <span class="w-2 h-2 bg-secondary rounded-full"
-                            ></span>
-                          {/if}
-                        </div>
-                      </div>
-                      <div class="flex items-center gap-1">
-                        <button
-                          type="button"
-                          aria-label="View conversations"
-                          onclick={(e) => {
-                            e.stopPropagation();
-                            openReplicaConversations(replica);
-                          }}
-                          class="p-2 text-charcoal-400 hover:text-primary dark:hover:text-primary-hover transition-colors cursor-pointer"
-                          title="View conversations"
-                        >
-                          <svg
-                            class="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M9 5l7 7-7 7"
-                            ></path>
-                          </svg>
-                        </button>
-
-                        <!-- Delete button - only show for non-patients -->
-                        {#if userRole && userRole !== "patient"}
-                          {#if confirmingDelete === replica.replicaId}
-                            <!-- Confirmation buttons -->
-                            <div class="flex items-center gap-1 ml-1">
-                              <button
-                                type="button"
-                                onclick={(e) => {
-                                  e.stopPropagation();
-                                  deleteReplica(replica.replicaId);
-                                }}
-                                disabled={isDeletingReplica}
-                                class="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors cursor-pointer disabled:opacity-50"
-                                title="Confirm delete"
-                              >
-                                {#if isDeletingReplica}
-                                  <svg
-                                    class="w-4 h-4 animate-spin"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                      stroke-width="2"
-                                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                    ></path>
-                                  </svg>
-                                {:else}
-                                  <svg
-                                    class="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                      stroke-width="2"
-                                      d="M5 13l4 4L19 7"
-                                    ></path>
-                                  </svg>
-                                {/if}
-                              </button>
-                              <button
-                                type="button"
-                                aria-label="Cancel delete operation"
-                                onclick={(e) => {
-                                  e.stopPropagation();
-                                  cancelDeleteReplica();
-                                }}
-                                class="p-1 text-charcoal-600 hover:text-charcoal-800 dark:text-cream-400 dark:hover:text-cream-300 transition-colors cursor-pointer"
-                                title="Cancel"
-                              >
-                                <svg
-                                  class="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12"
-                                  ></path>
-                                </svg>
-                              </button>
-                            </div>
-                          {:else}
-                            <!-- Delete button -->
-                            <button
-                              type="button"
-                              aria-label="Delete replica"
-                              onclick={(e) => {
-                                e.stopPropagation();
-                                confirmDeleteReplica(replica);
-                              }}
-                              class="p-2 text-charcoal-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
-                              title="Delete replica"
-                            >
-                              <svg
-                                class="w-5 h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                ></path>
-                              </svg>
-                            </button>
-                          {/if}
-                        {/if}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {:else}
-            <!-- Show demo replicas for non-authenticated users -->
-            <div class="space-y-4">
-              <div class="text-center py-4">
-                <p class="text-sm text-charcoal-600 dark:text-cream-400 mb-4">
-                  Demo Replicas - Click to see what Memory Lane can do!
-                </p>
-              </div>
-              {#each demoReplicas as replica (replica.replicaId)}
-                <button
-                  onclick={() => selectReplica(replica)}
-                  class="w-full p-4 border border-cream-200 dark:border-charcoal-700 rounded-xl hover:bg-cream-100 dark:hover:bg-charcoal-600 transition-colors text-left relative
-                  {selectedReplica?.replicaId === replica.replicaId
-                    ? 'bg-primary/5 dark:bg-primary/10 border-primary dark:border-primary/50'
-                    : 'bg-surface-light dark:bg-surface-dark'}"
-                >
-                  <!-- Demo overlay -->
-                  <div class="absolute top-2 right-2">
-                    <span
-                      class="px-2 py-1 bg-secondary/10 dark:bg-secondary/20 text-secondary dark:text-secondary text-xs rounded-full"
-                    >
-                      Demo
-                    </span>
-                  </div>
-
-                  <div class="flex items-center gap-3">
-                    <div
-                      class="w-12 h-12 rounded-full overflow-hidden bg-cream-200 dark:bg-charcoal-600 flex-shrink-0"
-                    >
-                      <div
-                        class="w-full h-full flex items-center justify-center text-charcoal-400 dark:text-cream-500"
-                      >
-                        <svg
-                          class="w-6 h-6"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                          ></path>
-                        </svg>
-                      </div>
-                    </div>
-                    <div class="flex-1 min-w-0 pr-8">
-                      <h4
-                        class="font-medium text-text-light dark:text-text-dark truncate"
-                      >
-                        {replica.name}
-                      </h4>
-                      <p
-                        class="text-sm text-charcoal-600 dark:text-cream-400 truncate"
-                      >
-                        {replica.description}
-                      </p>
-                      <div class="flex items-center gap-2 mt-1">
-                        <span
-                          class="text-xs px-2 py-1 bg-secondary/10 dark:bg-secondary/20 text-secondary dark:text-secondary rounded"
-                        >
-                          {replica.coverageScore}% trained
-                        </span>
-                        <span class="w-2 h-2 bg-secondary rounded-full"></span>
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              {/each}
-            </div>
-          {/if}
+            </p>
+          </div>
+        </div>
+      </header>
 
           {#if (isAuthenticated && userReplicas.length > 0) || (!isAuthenticated && demoReplicas.length > 0)}
             <div
@@ -1739,30 +1237,23 @@
       {/if}
 
       <!-- Chat Messages -->
-      <div class="flex-1 overflow-y-auto p-4" bind:this={chatContainer}>
+      <div class="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6" bind:this={chatContainer}>
         {#if chatMessages.length === 0}
           <div class="flex items-center justify-center h-full">
-            <div class="text-center">
+            <div class="text-center max-w-md mx-auto p-8 rounded-2xl bg-slate-50 dark:bg-charcoal-700/30 border border-slate-100 dark:border-charcoal-600">
               <div
-                class="w-16 h-16 mx-auto mb-4 text-charcoal-400 dark:text-cream-500"
+                class="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center text-primary"
               >
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="1"
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                  ></path>
-                </svg>
+                <span class="material-symbols-outlined text-3xl">waving_hand</span>
               </div>
               <h3
-                class="text-accessible-lg font-medium text-text-light dark:text-text-dark mb-2"
+                class="text-xl font-bold text-slate-800 dark:text-cream-50 mb-3"
               >
                 {selectedReplica
                   ? `Start chatting with ${selectedReplica.name}`
                   : "Start a conversation"}
               </h3>
-              <p class="text-charcoal-600 dark:text-cream-400">
+              <p class="text-text-sub dark:text-cream-300">
                 {selectedReplica
                   ? "Ask anything and your replica will respond based on your personality and training data."
                   : "Type a message below to begin chatting."}
@@ -1770,21 +1261,38 @@
             </div>
           </div>
         {:else}
-          <div class="space-y-4">
-            <!-- Note: Re-using the central MessageBubble style here if possible, but implementing the inline style per design system -->
+          <div class="space-y-6">
             {#each chatMessages as message (message.id)}
               <div
-                class="flex {message.sender === 'user'
+                class="flex w-full {message.sender === 'user'
                   ? 'justify-end'
                   : 'justify-start'}"
               >
-                <div
-                  class="max-w-xs lg:max-w-md px-4 py-2 rounded-2xl shadow-sm {message.sender ===
-                  'user'
-                    ? 'bg-primary dark:bg-primary-hover text-white rounded-br-none'
-                    : 'bg-surface-light dark:bg-surface-dark text-text-light dark:text-text-dark border-cream-200 dark:border-charcoal-700 border rounded-bl-none'}"
-                >
-                  {message.text}
+                <div class="flex max-w-[85%] lg:max-w-[75%] gap-3 {message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}">
+                  <!-- Avatar -->
+                  <div class="w-8 h-8 rounded-full overflow-hidden shrink-0 mt-1 flex items-center justify-center {message.sender === 'user' ? 'bg-primary border border-primary/20 text-white' : 'bg-slate-200 dark:bg-charcoal-600 border border-slate-300 dark:border-charcoal-500'}">
+                    {#if message.sender === 'user'}
+                      <span class="material-symbols-outlined text-sm">person</span>
+                    {:else if selectedReplica?.profileImageUrl}
+                      <img src={selectedReplica.profileImageUrl} alt="Avatar" class="w-full h-full object-cover" />
+                    {:else}
+                      <span class="material-symbols-outlined text-sm text-primary">psychology</span>
+                    {/if}
+                  </div>
+                  <!-- Bubble -->
+                  <div class="flex flex-col gap-1 {message.sender === 'user' ? 'items-end' : 'items-start'}">
+                    <div
+                      class="px-5 py-3.5 shadow-sm {message.sender ===
+                      'user'
+                        ? 'bg-primary text-white rounded-2xl rounded-tr-sm'
+                        : 'bg-white dark:bg-charcoal-700 text-slate-800 dark:text-cream-100 border border-slate-200 dark:border-charcoal-600 rounded-2xl rounded-tl-sm'}"
+                    >
+                      <p class="leading-relaxed whitespace-pre-wrap">{message.text}</p>
+                    </div>
+                    <span class="text-xs text-text-light dark:text-charcoal-400 font-medium px-1">
+                      {formatTimestamp(message.timestamp)}
+                    </span>
+                  </div>
                 </div>
               </div>
             {/each}
@@ -1802,7 +1310,7 @@
                 <button
                   onclick={() =>
                     handleSuggestedQuestion(selectedReplica.preferredQuestion)}
-                  class="w-full text-left px-3 py-2 text-sm bg-surface-light dark:bg-surface-dark border border-cream-300 dark:border-charcoal-500 rounded-lg hover:bg-cream-100 dark:hover:bg-charcoal-600 transition-colors duration-200 text-charcoal-700 dark:text-cream-200"
+                  class="w-full text-left px-3 py-2 text-sm bg-surface-light dark:bg-surface-dark border border-cream-300 dark:border-charcoal-500 rounded-lg hover:bg-cream-100 dark:hover:bg-charcoal-600 transition-colors duration-200 text-charcoal-700 dark:text-cream-200 hover:text-black dark:hover:text-white"
                 >
                   {selectedReplica.preferredQuestion}
                 </button>
@@ -1810,22 +1318,22 @@
             {/if}
 
             {#if isSendingMessage}
-              <div class="flex justify-start">
-                <div
-                  class="max-w-xs lg:max-w-md px-4 py-2 rounded-2xl bg-cream-200 dark:bg-charcoal-700 shadow-sm border border-cream-200 dark:border-charcoal-700 rounded-bl-none"
-                >
-                  <div class="flex space-x-1 py-1">
-                    <div
-                      class="w-2 h-2 bg-charcoal-500 dark:bg-cream-600 rounded-full animate-bounce"
-                    ></div>
-                    <div
-                      class="w-2 h-2 bg-charcoal-500 dark:bg-cream-600 rounded-full animate-bounce"
-                      style="animation-delay: 0.1s"
-                    ></div>
-                    <div
-                      class="w-2 h-2 bg-charcoal-500 dark:bg-cream-600 rounded-full animate-bounce"
-                      style="animation-delay: 0.2s"
-                    ></div>
+              <!-- Typing Indicator -->
+              <div class="flex w-full justify-start">
+                <div class="flex max-w-[85%] lg:max-w-[75%] gap-3 flex-row">
+                  <div class="w-8 h-8 rounded-full overflow-hidden shrink-0 mt-1 flex items-center justify-center bg-slate-200 dark:bg-charcoal-600 border border-slate-300 dark:border-charcoal-500">
+                    {#if selectedReplica?.profileImageUrl}
+                      <img src={selectedReplica.profileImageUrl} alt="Avatar" class="w-full h-full object-cover" />
+                    {:else}
+                      <span class="material-symbols-outlined text-sm text-primary">psychology</span>
+                    {/if}
+                  </div>
+                  <div class="flex flex-col gap-1 items-start">
+                    <div class="px-5 py-3.5 bg-white dark:bg-charcoal-700 border border-slate-200 dark:border-charcoal-600 rounded-2xl rounded-tl-sm flex items-center gap-1.5 min-h-[48px]">
+                      <div class="w-2 h-2 rounded-full bg-slate-400 dark:bg-charcoal-400 animate-bounce" style="animation-delay: 0ms"></div>
+                      <div class="w-2 h-2 rounded-full bg-slate-400 dark:bg-charcoal-400 animate-bounce" style="animation-delay: 150ms"></div>
+                      <div class="w-2 h-2 rounded-full bg-slate-400 dark:bg-charcoal-400 animate-bounce" style="animation-delay: 300ms"></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1836,10 +1344,12 @@
 
       <!-- Message Input -->
       <div
-        class="p-4 bg-surface-light dark:bg-surface-dark border-t border-cream-200 dark:border-charcoal-700"
+        class="border-t border-slate-100 dark:border-charcoal-700 bg-white dark:bg-charcoal-800 p-4 lg:p-6"
       >
-        <MessageInput on:send={handleSendMessage} disabled={isSendingMessage} />
+        <div class="max-w-4xl mx-auto flex items-end gap-3 bg-slate-50 dark:bg-charcoal-700/50 p-2 rounded-2xl border border-slate-200 dark:border-charcoal-600 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+          <MessageInput on:send={handleSendMessage} disabled={isSendingMessage} />
+        </div>
       </div>
-    </div>
+    </main>
   </div>
 </div>

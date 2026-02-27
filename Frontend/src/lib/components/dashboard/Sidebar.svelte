@@ -14,7 +14,7 @@
 </script>
 
 <aside
-    class="w-72 bg-[#1A2E35] dark:bg-black text-[#F5F5F2] flex flex-col fixed h-full z-20 transition-all duration-300 shadow-xl"
+    class="w-72 bg-primary dark:bg-black text-[#F5F5F2] flex flex-col fixed h-full z-20 transition-all duration-300 shadow-xl"
 >
     <div class="p-8 flex items-center space-x-3">
         <span class="material-symbols-outlined text-3xl text-secondary"
@@ -74,17 +74,26 @@
                 >
                     {#if userRole === "caretaker"}
                         <img
-                            alt="User"
+                            alt="User Profile"
                             class="w-full h-full object-cover"
-                            src="/images/dashboard/user-profile.jpg"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUZIYHiGmI9glXR_7_moAtqKs_aHxHKpGtqJDvasv1BtNtfAbYn6dypPSK9C0-N86R41QFPw9ejb3o0Q7qfYD32e1rZjDxxrEjRenRdxVeO4tJj_EBHBCcbJ8lkGWU4tMnylj82RfSX10GcL1XunooC_G5O9D8ccggLXU90cKbSgmMUnIpz2c1LQ-Ou3fR_Pj18vH0TtBygeuZs2dwEsOxkczDJW8UEF-7Amrgt03PBzf1eTDThIdV4G1ckU8WUBp01vw4uoJAGA"
                         />
                     {:else}
                         {userInitial}
                     {/if}
                 </div>
                 <div>
-                    <p class="text-sm font-semibold capitalize">{userRole}</p>
-                    <p class="text-xs text-gray-400">Memory Lane</p>
+                    {#if userRole === "caretaker"}
+                        <p class="text-sm font-semibold capitalize">
+                            Dr. Eleanor Smith
+                        </p>
+                        <p class="text-xs text-gray-400">Chief Caretaker</p>
+                    {:else}
+                        <p class="text-sm font-semibold capitalize">
+                            {userRole}
+                        </p>
+                        <p class="text-xs text-gray-400">Memory Lane</p>
+                    {/if}
                 </div>
             </div>
             <button

@@ -107,7 +107,7 @@
     </div>
   {/if}
 
-  {#if !isAuthPage && !isHomepage && !isDashboard}
+  {#if !isAuthPage && !isHomepage && !isDashboard && !$page.url.pathname.includes("/create-replicas")}
     <Navigation />
   {/if}
 

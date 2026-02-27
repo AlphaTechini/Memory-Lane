@@ -5,16 +5,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: "#0f2c59", // Deep Navy Blue
-        secondary: "#557c55", // Soft Sage Green
-        "background-light": "#fdfbf7", // Warm Ivory
-        "background-dark": "#101522",
+        primary: "#1A2E35", // Deep Navy for primary actions
+        secondary: "#D4AF37", // Muted Gold accent
+        "primary-hover": "#253b44",
+        "background-light": "#F5F5F2", // Ivory/Light Gray
+        "background-dark": "#121212", // Deep Dark for dark mode
         "surface-light": "#FFFFFF",
         "surface-dark": "#1E1E1E",
-        "text-light": "#1A2E35",
-        "text-dark": "#E2E2E2",
+        "text-light": "#1A2E35", // Deep Navy text
+        "text-dark": "#E2E2E2", // Off-white text
         "accent-sage": "#8FA38F",
-        "primary-hover": "#163c78",
+        "navy-deep": "#1a237e",
+        "ivory-warm": "#fdfaf1",
+        "sage-soft": "#e8f5e9",
         // Keep some legacy colors just in case they are used in other pages temporarily
         charcoal: {
           600: '#4A4A4A',

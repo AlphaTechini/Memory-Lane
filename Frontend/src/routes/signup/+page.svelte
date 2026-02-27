@@ -426,11 +426,11 @@
               <button
                 type="submit"
                 disabled={loading || !formValid}
-                class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 transition-all transform active:scale-[0.98] disabled:opacity-75 disabled:active:scale-100 flex items-center justify-center gap-2"
+                class="w-full bg-primary hover:bg-primary/90 text-slate-900 dark:text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 transition-all transform active:scale-[0.98] disabled:opacity-75 disabled:active:scale-100 flex items-center justify-center gap-2"
               >
                 {#if loading}
                   <svg
-                    class="animate-spin h-5 w-5 text-white"
+                    class="animate-spin h-5 w-5 text-slate-900 dark:text-white"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -518,7 +518,7 @@
           <button
             type="button"
             onclick={goToPatientLogin}
-            class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-16 px-8 bg-primary text-white text-lg font-bold shadow-lg shadow-primary/25 transition-transform active:scale-[0.98]"
+            class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-16 px-8 bg-primary text-slate-900 dark:text-white text-lg font-bold shadow-lg shadow-primary/25 transition-transform active:scale-[0.98]"
           >
             <span class="truncate">Go to Patient Sign In</span>
             <span class="material-symbols-outlined ml-2">login</span>
