@@ -135,12 +135,12 @@
 
         <div class="flex items-center justify-between mb-8">
           <h2
-            class="text-2xl font-serif font-bold text-primary dark:text-white"
+            class="text-2xl font-serif font-bold text-text-light dark:text-white"
           >
             Recent Patients
           </h2>
           <a
-            class="text-primary dark:text-secondary hover:text-secondary-hover font-bold flex items-center transition-colors"
+            class="text-primary dark:text-secondary hover:text-primary-hover dark:hover:text-accent-sage font-bold flex items-center transition-colors"
             href="/manage-patients"
           >
             View All <span class="material-icons-round ml-1 text-lg"
@@ -167,23 +167,23 @@
           <!-- Onboard Patient Card / Quick Action -->
           <article
             onclick={() => goto("/manage-patients")}
-            class="bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed border-gray-400 dark:border-gray-500 p-6 flex flex-col items-center justify-center transition-all hover:border-primary dark:hover:border-secondary cursor-pointer group h-full min-h-[250px]"
+            class="bg-surface-light dark:bg-surface-dark rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 p-8 flex flex-col items-center justify-center transition-all hover:border-primary dark:hover:border-secondary cursor-pointer group h-full min-h-[250px] shadow-sm hover:shadow-md"
           >
             <div
-              class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-4 group-hover:bg-primary/10 transition-colors"
+              class="w-16 h-16 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center mb-4 group-hover:bg-primary/10 dark:group-hover:bg-secondary/20 transition-colors"
             >
               <span
-                class="material-icons-round text-3xl text-gray-700 dark:text-gray-300 group-hover:text-primary dark:group-hover:text-secondary"
+                class="material-icons-round text-3xl text-gray-500 dark:text-gray-400 group-hover:text-primary dark:group-hover:text-secondary"
                 >add</span
               >
             </div>
             <h3
-              class="text-lg font-serif font-bold text-gray-800 dark:text-gray-100 group-hover:text-primary dark:group-hover:text-white text-center"
+              class="text-xl font-serif font-bold text-text-light dark:text-text-dark group-hover:text-primary dark:group-hover:text-secondary text-center mb-2"
             >
               Onboard New Patient
             </h3>
             <p
-              class="text-sm text-gray-700 dark:text-gray-300 font-medium text-center mt-2 max-w-[200px]"
+              class="text-sm text-gray-600 dark:text-gray-400 font-medium text-center max-w-[220px]"
             >
               Begin the memory preservation process for a new client.
             </p>
