@@ -9,7 +9,7 @@ In the AWS Console, ensure your Security Group has the following **Inbound Rules
 | Protocol | Port Range | Source | Reason |
 | --- | --- | --- | --- |
 | TCP | 22 | Your IP | SSH Access |
-| TCP | 3000 | 0.0.0.0/0 | Node Backend (Direct) |
+| TCP | 4000 | 0.0.0.0/0 | Node Backend (Direct) |
 | TCP | 80 | 0.0.0.0/0 | HTTP (for Nginx/Frontend) |
 | TCP | 443 | 0.0.0.0/0 | HTTPS |
 
@@ -52,9 +52,9 @@ chmod +x deploy.sh
 
 Create a `.env` file in the project directories on your server.
 
-**Location:** `~/memory-lane/backend/.env`
+**Location:** `~/Memory-Lane/backend/.env`
 ```env
-PORT=3000
+PORT=4000
 MONGODB_URL=your_atlas_uri (optional if using Dynamo)
 GROQ_API_KEY=your_key
 RAG_ENGINE_URL=http://localhost:8081
