@@ -4,7 +4,7 @@
 REPO_URL="https://github.com/AlphaTechini/Memory-Lane.git"
 # Detect user (ubuntu for Ubuntu, ec2-user for Amazon Linux)
 CURRENT_USER=$(whoami)
-APP_DIR="/home/$CURRENT_USER/memory-lane"
+APP_DIR="/home/$CURRENT_USER/Memory-Lane"
 
 echo "🚀 Starting Deployment on EC2 ($HOSTTYPE) as $CURRENT_USER..."
 

@@ -17,7 +17,7 @@ module.exports = {
             script: './src/index.js',
             cwd: './backend',
             env: {
-                PORT: '3000',
+                PORT: '4000',
                 RAG_ENGINE_URL: 'http://localhost:8081',
                 NODE_ENV: 'production'
             },
