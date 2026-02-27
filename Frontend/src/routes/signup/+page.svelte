@@ -216,7 +216,7 @@
                 alt="Professional caregiver"
                 class="w-12 h-12 rounded-full object-cover"
                 data-alt="Portrait of a smiling professional healthcare provider"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIXLh6SB3ixU3ucg4TfJUtBz3e5lzyh1tjv7-FatmMOrz4YdeUcAjIrvEULGmUW3IydQd4hucss4mzIebH9S6Wr2YQ_-gI-ihax_UqKuFlJhRlLpdAa-dRazc2Mj71-SBQVEDaZucwz8V1Qi7LGOXZDvBW5R5HoW_vT8NXN96o_8GB2mr8qNWiEXwKNhXxyRxpzAZFaoRC2YcAj8QaLDqmB0vUHDqwl5ttYM8wUT_c-rEydK-eAnd1a7rcWNmBzyoXofn3Zu_2cw"
+                src="/images/stitch/healthcare-provider.jpg"
               />
               <div>
                 <p class="text-sm font-medium italic">
@@ -498,7 +498,7 @@
           <img
             alt="Caring hands holding each other gently"
             class="w-full h-full object-cover"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0FdE7beJKTJK823Fo40ZsotLaQKVV90EE2ZH6JLSU9Dg12UHVSjWL9gzg9Lsy6figCCclse7Uk68bHfuyHSJmb7s_O9IVc8KakMYVbkFOuzet7WmHp-DC06tVZ76sMMpnxW73rU9iD6TbSIeEg5TinBclLQFijDh7zERg_-gjbZc7CnAFPTkdxr6WpqkxVmqLDaMmtG1ksR8AePSjdRd6qadoJonKcOIy_MjlX99ZbNafwxy3CuKYpJgtla2D0CR5EgovCGzGWg"
+            src="/images/stitch/caring-hands.jpg"
           />
         </div>
         <div class="flex flex-col gap-4 text-center">
