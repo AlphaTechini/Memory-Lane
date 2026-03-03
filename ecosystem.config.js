@@ -7,7 +7,14 @@ module.exports = {
             env: {
                 PORT: '8081',
                 STORAGE_BACKEND: 'dynamodb',
-                AWS_REGION: 'eu-north-1'
+                AWS_REGION: 'eu-north-1',
+                NODE_ENV: 'development'
+            },
+            env_production: {
+                PORT: '8081',
+                STORAGE_BACKEND: 'dynamodb',
+                AWS_REGION: 'eu-north-1',
+                NODE_ENV: 'production'
             },
             autorestart: true,
             watch: false
@@ -17,6 +24,11 @@ module.exports = {
             script: './src/index.js',
             cwd: './backend',
             env: {
+                PORT: '4000',
+                RAG_ENGINE_URL: 'http://localhost:8081',
+                NODE_ENV: 'development'
+            },
+            env_production: {
                 PORT: '4000',
                 RAG_ENGINE_URL: 'http://localhost:8081',
                 NODE_ENV: 'production'
