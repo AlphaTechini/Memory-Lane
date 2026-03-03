@@ -147,9 +147,7 @@ func init() {
 		if idx := indexOf(line, '='); idx > 0 {
 			key := trimSpace(line[:idx])
 			val := trimSpace(line[idx+1:])
-			if os.Getenv(key) == "" { // don't override existing env
-				os.Setenv(key, val)
-			}
+			os.Setenv(key, val)
 		}
 	}
 }

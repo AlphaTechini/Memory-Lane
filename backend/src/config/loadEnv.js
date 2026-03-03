@@ -1,8 +1,8 @@
 // Centralized early environment loading so all subsequent imports see populated process.env
 import dotenv from 'dotenv';
 
-// Load .env only once; dotenv is idempotent
-const result = dotenv.config();
+// Load .env only once; we set 'override: true' so .env always wins over PM2 cached values
+const result = dotenv.config({ override: true });
 
 if (process.env.NODE_ENV !== 'test') {
   if (result.error) {
@@ -13,4 +13,4 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // Optionally export nothing; side-effect module
-export {}; 
+export { }; 
