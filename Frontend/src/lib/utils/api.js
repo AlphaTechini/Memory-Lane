@@ -2,13 +2,13 @@
 import { dev } from '$app/environment';
 
 // Get API base URL from environment or default to production URL
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  (dev ? 'http://localhost:4000' : 'https://win-api-sensay.cyberpunk.work');
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
+  (dev ? 'http://localhost:4000' : 'https://memorylaneapi.cyberpunkinc.xyz');
 
 // Helper function for making API calls
 export function apiUrl(endpoint) {
-  // For internal SvelteKit API routes, just use the path
-  if (endpoint.startsWith('/api/')) {
+  // For internal SvelteKit API routes, only use relative path if explicitly told to
+  if (endpoint.startsWith('/api/') && import.meta.env.VITE_USE_RELATIVE_API === 'true') {
     return endpoint;
   }
   // Remove leading slash if present to avoid double slashes
