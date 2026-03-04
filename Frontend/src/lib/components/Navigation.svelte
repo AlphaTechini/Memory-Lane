@@ -61,7 +61,7 @@
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
 <nav
-  class="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 px-4 py-3"
+  class="bg-[#0F2C59] backdrop-blur-sm border-b border-blue-900/50 sticky top-0 z-50 px-4 py-3"
 >
   <div class="max-w-6xl mx-auto flex items-center justify-between">
     <!-- Logo and Home - Always visible, large touch target -->
@@ -71,8 +71,7 @@
       aria-label="Go to Home - Memory Lane"
     >
       <img src="/logo.png" alt="" class="h-10 w-auto" aria-hidden="true" />
-      <span
-        class="text-xl font-bold text-slate-900 dark:text-white tracking-tight"
+      <span class="text-xl font-bold text-white tracking-tight"
         >Memory Lane</span
       >
     </a>
@@ -84,8 +83,8 @@
         onclick={goHome}
         class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors {currentPath ===
         '/dashboard'
-          ? 'bg-primary/10 text-primary dark:bg-blue-900/40 dark:text-blue-400'
-          : 'text-slate-600 hover:text-primary hover:bg-slate-100 dark:text-slate-300 dark:hover:text-blue-400 dark:hover:bg-slate-800'}"
+          ? 'bg-white/15 text-white'
+          : 'text-blue-100 hover:text-white hover:bg-white/10'}"
         aria-current={currentPath === "/dashboard" ? "page" : undefined}
       >
         <svg
@@ -110,8 +109,8 @@
         onclick={() => goto("/chat-replicas")}
         class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors {currentPath ===
           '/chat-replicas' || currentPath === '/'
-          ? 'bg-primary/10 text-primary dark:bg-blue-900/40 dark:text-blue-400'
-          : 'text-slate-600 hover:text-primary hover:bg-slate-100 dark:text-slate-300 dark:hover:text-blue-400 dark:hover:bg-slate-800'}"
+          ? 'bg-white/15 text-white'
+          : 'text-blue-100 hover:text-white hover:bg-white/10'}"
         aria-current={currentPath === "/chat-replicas" ? "page" : undefined}
       >
         <svg
@@ -138,8 +137,8 @@
         class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors {currentPath.startsWith(
           '/gallery',
         )
-          ? 'bg-primary/10 text-primary dark:bg-blue-900/40 dark:text-blue-400'
-          : 'text-slate-600 hover:text-primary hover:bg-slate-100 dark:text-slate-300 dark:hover:text-blue-400 dark:hover:bg-slate-800'}"
+          ? 'bg-white/15 text-white'
+          : 'text-blue-100 hover:text-white hover:bg-white/10'}"
         aria-current={currentPath.startsWith("/gallery") ? "page" : undefined}
       >
         <svg
@@ -167,8 +166,8 @@
           class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors {currentPath.startsWith(
             '/create-replicas',
           )
-            ? 'bg-primary/10 text-primary dark:bg-blue-900/40 dark:text-blue-400'
-            : 'text-slate-600 hover:text-primary hover:bg-slate-100 dark:text-slate-300 dark:hover:text-blue-400 dark:hover:bg-slate-800'}"
+            ? 'bg-white/15 text-white'
+            : 'text-blue-100 hover:text-white hover:bg-white/10'}"
           aria-current={currentPath.startsWith("/create-replicas")
             ? "page"
             : undefined}
@@ -197,8 +196,8 @@
           class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors {currentPath.startsWith(
             '/manage-patients',
           )
-            ? 'bg-primary/10 text-primary dark:bg-blue-900/40 dark:text-blue-400'
-            : 'text-slate-600 hover:text-primary hover:bg-slate-100 dark:text-slate-300 dark:hover:text-blue-400 dark:hover:bg-slate-800'}"
+            ? 'bg-white/15 text-white'
+            : 'text-blue-100 hover:text-white hover:bg-white/10'}"
           aria-current={currentPath.startsWith("/manage-patients")
             ? "page"
             : undefined}
@@ -235,7 +234,7 @@
       <!-- Mobile menu button -->
       <button
         onclick={() => (showMobileMenu = !showMobileMenu)}
-        class="md:hidden btn-tactile-secondary min-w-[48px] min-h-[48px] p-2"
+        class="md:hidden text-white min-w-[44px] min-h-[44px] p-2 hover:bg-white/10 rounded-lg transition-colors"
         aria-label={showMobileMenu ? "Close menu" : "Open menu"}
         aria-expanded={showMobileMenu}
       >
@@ -266,7 +265,7 @@
       {#if isAuthenticated}
         <button
           onclick={logout}
-          class="hidden md:flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-full text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+          class="hidden md:flex items-center gap-2 px-4 py-2 border border-white/20 rounded-full text-sm font-medium text-white hover:bg-white/10 transition-colors shadow-sm"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -288,13 +287,13 @@
         <div class="hidden md:flex items-center gap-2">
           <button
             onclick={() => goto("/login")}
-            class="text-slate-700 dark:text-slate-300 hover:text-primary dark:hover:text-blue-300 text-sm font-medium transition-colors font-display"
+            class="text-blue-100 hover:text-white text-sm font-medium transition-colors font-display"
           >
             Log In
           </button>
           <button
             onclick={() => goto("/signup")}
-            class="flex items-center justify-center rounded-full h-10 px-6 bg-primary hover:bg-primary/90 transition-colors text-white text-sm font-bold tracking-wide shadow-lg shadow-blue-900/10"
+            class="flex items-center justify-center rounded-full h-10 px-6 bg-white hover:bg-blue-50 transition-colors text-[#0F2C59] text-sm font-bold tracking-wide shadow-lg"
           >
             Sign Up
           </button>
@@ -306,7 +305,7 @@
   <!-- Mobile menu - Full screen, large touch targets -->
   {#if showMobileMenu}
     <div
-      class="md:hidden fixed inset-0 top-[65px] bg-white dark:bg-slate-900 z-50 p-4 overflow-y-auto"
+      class="md:hidden fixed inset-0 top-[65px] bg-[#0F2C59] z-50 p-4 overflow-y-auto"
     >
       <div class="flex flex-col gap-3">
         <button
@@ -316,8 +315,8 @@
           }}
           class="flex w-full items-center gap-4 px-4 py-3 rounded-xl text-left {currentPath ===
           '/dashboard'
-            ? 'bg-primary/10 text-primary dark:bg-blue-900/40 dark:text-blue-400'
-            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}"
+            ? 'bg-white/15 text-white'
+            : 'text-blue-100 hover:bg-white/10'}"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -342,8 +341,8 @@
           }}
           class="flex w-full items-center gap-4 px-4 py-3 rounded-xl text-left {currentPath ===
           '/chat-replicas'
-            ? 'bg-primary/10 text-primary dark:bg-blue-900/40 dark:text-blue-400'
-            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}"
+            ? 'bg-white/15 text-white'
+            : 'text-blue-100 hover:bg-white/10'}"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -370,8 +369,8 @@
           class="flex w-full items-center gap-4 px-4 py-3 rounded-xl text-left {currentPath.startsWith(
             '/gallery',
           )
-            ? 'bg-primary/10 text-primary dark:bg-blue-900/40 dark:text-blue-400'
-            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}"
+            ? 'bg-white/15 text-white'
+            : 'text-blue-100 hover:bg-white/10'}"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -399,8 +398,8 @@
             class="flex w-full items-center gap-4 px-4 py-3 rounded-xl text-left {currentPath.startsWith(
               '/create-replicas',
             )
-              ? 'bg-primary/10 text-primary dark:bg-blue-900/40 dark:text-blue-400'
-              : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}"
+              ? 'bg-white/15 text-white'
+              : 'text-blue-100 hover:bg-white/10'}"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -427,8 +426,8 @@
             class="flex w-full items-center gap-4 px-4 py-3 rounded-xl text-left {currentPath.startsWith(
               '/manage-patients',
             )
-              ? 'bg-primary/10 text-primary dark:bg-blue-900/40 dark:text-blue-400'
-              : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}"
+              ? 'bg-white/15 text-white'
+              : 'text-blue-100 hover:bg-white/10'}"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -449,7 +448,7 @@
           </button>
         {/if}
 
-        <hr class="my-3 border-slate-200 dark:border-slate-800" />
+        <hr class="my-3 border-blue-900/50" />
 
         {#if isAuthenticated}
           <button
@@ -457,7 +456,7 @@
               logout();
               showMobileMenu = false;
             }}
-            class="flex items-center gap-2 px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors w-full justify-center"
+            class="flex items-center gap-2 px-4 py-3 border border-white/20 rounded-xl text-base font-semibold text-white hover:bg-white/10 transition-colors w-full justify-center"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -481,7 +480,7 @@
               goto("/login");
               showMobileMenu = false;
             }}
-            class="flex items-center gap-2 px-4 py-3 rounded-xl text-base font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors w-full justify-center"
+            class="flex items-center gap-2 px-4 py-3 rounded-xl text-base font-semibold text-blue-100 hover:text-white hover:bg-white/10 transition-colors w-full justify-center"
           >
             <span class="text-base font-semibold">Log In</span>
           </button>
@@ -490,7 +489,7 @@
               goto("/signup");
               showMobileMenu = false;
             }}
-            class="flex items-center justify-center rounded-xl py-3 w-full bg-primary hover:bg-primary/90 transition-colors text-white text-base font-bold shadow-sm"
+            class="flex items-center justify-center rounded-xl py-3 w-full bg-white hover:bg-blue-50 transition-colors text-[#0F2C59] text-base font-bold shadow-sm"
           >
             <span class="text-base font-semibold">Sign Up</span>
           </button>

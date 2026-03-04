@@ -20,49 +20,51 @@
         <span class="material-symbols-outlined text-3xl text-secondary"
             >psychology</span
         >
-        <span class="text-2xl font-serif font-bold tracking-wide"
+        <span class="text-2xl font-serif font-bold tracking-tight"
             >Memory Lane</span
         >
     </div>
 
-    <nav class="flex-1 px-4 space-y-2 mt-4">
+    <nav class="flex-1 px-4 space-y-2 mt-4 font-display">
         <a
-            class="flex items-center space-x-4 px-6 py-4 bg-white/10 rounded-xl text-white transition-colors duration-200"
+            class="flex items-center space-x-4 px-6 py-4 bg-white/15 rounded-full text-white transition-colors duration-200"
             href="/dashboard"
         >
-            <span class="material-symbols-outlined text-2xl">dashboard</span>
+            <span class="material-symbols-outlined text-2xl">grid_view</span>
             <span class="text-lg font-medium">Dashboard</span>
         </a>
         {#if userRole === "caretaker"}
             <a
-                class="flex items-center space-x-4 px-6 py-4 hover:bg-white/5 rounded-xl text-gray-300 hover:text-white transition-colors duration-200"
+                class="flex items-center space-x-4 px-6 py-4 hover:bg-white/10 rounded-full text-gray-300 hover:text-white transition-colors duration-200"
                 href="/manage-patients"
             >
-                <span class="material-symbols-outlined text-2xl">people</span>
+                <span class="material-symbols-outlined text-2xl">groups</span>
                 <span class="text-lg font-medium">Patients</span>
             </a>
             <a
-                class="flex items-center space-x-4 px-6 py-4 hover:bg-white/5 rounded-xl text-gray-300 hover:text-white transition-colors duration-200"
+                class="flex items-center space-x-4 px-6 py-4 hover:bg-white/10 rounded-full text-gray-300 hover:text-white transition-colors duration-200"
                 href="/create-replicas"
             >
-                <span class="material-symbols-outlined text-2xl">smart_toy</span
+                <span class="material-symbols-outlined text-2xl"
+                    >psychology</span
                 >
                 <span class="text-lg font-medium">AI Replicas</span>
             </a>
         {/if}
         <a
-            class="flex items-center space-x-4 px-6 py-4 hover:bg-white/5 rounded-xl text-gray-300 hover:text-white transition-colors duration-200"
+            class="flex items-center space-x-4 px-6 py-4 hover:bg-white/10 rounded-full text-gray-300 hover:text-white transition-colors duration-200"
             href="/gallery"
         >
-            <span class="material-symbols-outlined text-2xl">collections</span>
+            <span class="material-symbols-outlined text-2xl">photo_library</span
+            >
             <span class="text-lg font-medium">Memory Galleries</span>
         </a>
         <a
-            class="flex items-center space-x-4 px-6 py-4 hover:bg-white/5 rounded-xl text-gray-300 hover:text-white transition-colors duration-200"
-            href="/chat-replicas"
+            class="flex items-center space-x-4 px-6 py-4 hover:bg-white/10 rounded-full text-gray-300 hover:text-white transition-colors duration-200"
+            href="/settings"
         >
-            <span class="material-symbols-outlined text-2xl">chat</span>
-            <span class="text-lg font-medium">Chat</span>
+            <span class="material-symbols-outlined text-2xl">settings</span>
+            <span class="text-lg font-medium">Settings</span>
         </a>
     </nav>
 
