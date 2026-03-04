@@ -105,7 +105,7 @@
       console.log("Sending to backend...");
 
       // Send to backend
-      const backendUrl = apiUrl("/api/auth/google");
+      const backendUrl = apiUrl("/auth/google");
       console.log("Backend URL:", backendUrl);
 
       const response = await fetch(backendUrl, {
