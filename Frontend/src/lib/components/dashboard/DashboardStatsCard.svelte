@@ -27,10 +27,12 @@
                 >{title}</span
             >
         </div>
-        <div class="z-10">
-            <!-- Reduced font size to prevent overflow (text-2xl to text-3xl) -->
+        <div
+            class="z-10 text-center flex flex-col items-center justify-center h-full pt-4"
+        >
+            <!-- Reduced font size to prevent overflow (text-xl to text-2xl), centered -->
             <h3
-                class="text-3xl lg:text-3xl font-serif font-bold mb-2 leading-tight"
+                class="text-2xl lg:text-3xl font-serif font-bold mb-2 leading-tight px-2"
             >
                 {value}
             </h3>
@@ -59,7 +61,7 @@
         </div>
         <div>
             <h3
-                class="text-5xl font-serif font-bold text-primary dark:text-white mb-2"
+                class="text-5xl font-serif font-bold text-gray-900 dark:text-white mb-2"
             >
                 {value}
             </h3>

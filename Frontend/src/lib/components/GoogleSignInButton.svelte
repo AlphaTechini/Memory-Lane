@@ -104,8 +104,8 @@
       console.log("ID token obtained (length:", idToken.length, ")");
       console.log("Sending to backend...");
 
-      // Send to backend
-      const backendUrl = apiUrl("/auth/google");
+      // Send to backend via internal proxy to set cookies
+      const backendUrl = "/api/auth/google";
       console.log("Backend URL:", backendUrl);
 
       const response = await fetch(backendUrl, {

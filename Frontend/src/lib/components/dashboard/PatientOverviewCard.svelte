@@ -37,7 +37,7 @@
             {/if}
             <div>
                 <h3
-                    class="text-xl font-serif font-bold text-primary dark:text-white"
+                    class="text-xl font-serif font-bold text-gray-900 dark:text-white"
                 >
                     {name}
                 </h3>
