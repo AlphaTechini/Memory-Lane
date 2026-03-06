@@ -114,7 +114,7 @@
 
 {#if authChecked && isAuth}
   <div
-    class="bg-[#F5F5F2] dark:bg-background-dark text-text-light dark:text-text-dark transition-colors duration-300 min-h-screen flex font-sans selection:bg-primary/20 selection:text-primary"
+    class="bg-[#F5F5F2] dark:bg-background-dark text-black dark:text-text-dark transition-colors duration-300 min-h-screen flex font-sans selection:bg-primary/20 selection:text-primary"
   >
     <!-- Sidebar -->
     <Sidebar {userRole} />

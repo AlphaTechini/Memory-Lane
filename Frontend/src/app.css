@@ -55,10 +55,42 @@ body {
   font-family: 'Lato', 'Open Sans', system-ui, -apple-system, sans-serif;
   line-height: var(--line-height-base);
   background-color: var(--color-bg-primary);
-  color: var(--color-text-primary);
+  color: #000000;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* ===================================================
+   CONTRAST RULES: light bg = dark text, vice versa
+   =================================================== */
+
+/* In light mode, force all text in main content black
+   unless it's inside a dark-background element. */
+:not(.dark) main h1,
+:not(.dark) main h2,
+:not(.dark) main h3,
+:not(.dark) main h4,
+:not(.dark) main h5,
+:not(.dark) main h6,
+:not(.dark) main p,
+:not(.dark) main span:not([class*="text-white"]):not([class*="text-green"]):not([class*="text-blue"]:not([class*="text-yellow"])),
+:not(.dark) main a:not([class*="text-white"]),
+:not(.dark) main label,
+:not(.dark) main legend {
+  color: #000000;
+}
+
+/* Exempt elements inside dark-background containers */
+:not(.dark) main [class*="bg-primary"] *,
+:not(.dark) main [class*="bg-blue-9"] *,
+:not(.dark) main [class*="bg-navy"] *,
+:not(.dark) main button[class*="bg-primary"],
+:not(.dark) main button[class*="bg-blue"],
+:not(.dark) main button[class*="bg-primary"] *,
+:not(.dark) main button[class*="bg-blue"] * {
+  color: #ffffff;
+}
+
 
 /* ============================================
    TACTILE BUTTON STYLES

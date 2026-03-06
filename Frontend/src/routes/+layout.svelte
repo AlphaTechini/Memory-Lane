@@ -62,7 +62,7 @@
 </svelte:head>
 
 <div
-  class="min-h-screen bg-cream-50 dark:bg-charcoal-900 text-charcoal-800 dark:text-cream-100 font-accessible transition-colors duration-200"
+  class="min-h-screen bg-cream-50 dark:bg-charcoal-900 text-black dark:text-cream-100 font-accessible transition-colors duration-200"
 >
   {#if showBanner && !isHomepage}
     <div class="fixed top-0 left-0 w-full z-50">
