@@ -114,7 +114,7 @@
 
 {#if authChecked && isAuth}
   <div
-    class="bg-[#F5F5F2] dark:bg-background-dark text-black dark:text-text-dark transition-colors duration-300 min-h-screen flex font-sans selection:bg-primary/20 selection:text-primary"
+    class="bg-[#F5F5F2] text-black transition-colors duration-300 min-h-screen flex font-sans selection:bg-primary/20 selection:text-primary"
   >
     <!-- Sidebar -->
     <Sidebar {userRole} />
@@ -123,16 +123,12 @@
     <main class="ml-72 flex-1 p-8 lg:p-12 overflow-y-auto h-screen w-full">
       <header class="flex justify-between items-center mb-12">
         <div>
-          <h1
-            class="text-4xl lg:text-5xl font-serif font-bold text-black dark:text-white mb-2"
-          >
+          <h1 class="text-4xl lg:text-5xl font-serif font-bold text-black mb-2">
             Welcome back{#if user}, {user.firstName ||
                 user.name ||
                 "Dr. Smith"}{/if}
           </h1>
-          <p
-            class="text-black dark:text-gray-200 lg:text-xl font-medium font-sans"
-          >
+          <p class="text-black lg:text-xl font-medium font-sans">
             {#if userRole === "caretaker"}
               Here's what's happening with your patients today.
             {:else}
@@ -189,11 +185,11 @@
         </section>
 
         <div class="flex items-center justify-between mb-8">
-          <h2 class="text-3xl font-serif font-bold text-black dark:text-white">
+          <h2 class="text-3xl font-serif font-bold text-black">
             Recent Patients
           </h2>
           <a
-            class="text-black dark:text-gray-300 hover:text-secondary font-medium font-display flex items-center transition-colors text-lg"
+            class="text-black hover:text-secondary font-medium font-display flex items-center transition-colors text-lg"
             href="/manage-patients"
           >
             View All Patients <span

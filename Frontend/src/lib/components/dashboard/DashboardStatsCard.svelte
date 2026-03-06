@@ -47,7 +47,7 @@
     >
         <div class="flex justify-between items-start">
             <span
-                class="text-black dark:text-gray-400 font-medium uppercase tracking-wider text-sm font-display"
+                class="text-black font-medium uppercase tracking-wider text-sm font-display"
                 >{title}</span
             >
             {#if highlightText}
@@ -60,12 +60,10 @@
             {/if}
         </div>
         <div>
-            <h3
-                class="text-5xl font-serif font-bold text-black dark:text-white mb-2"
-            >
+            <h3 class="text-5xl font-serif font-bold text-black mb-2">
                 {value}
             </h3>
-            <p class="text-black dark:text-gray-300 font-medium font-sans">
+            <p class="text-black font-medium font-sans">
                 {subtitle}
             </p>
         </div>
