@@ -548,48 +548,30 @@
   class="relative flex min-h-screen flex-col bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display"
 >
   <!-- Header / Navigation -->
-  <header
-    class="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-white/80 backdrop-blur-md dark:bg-background-dark/80 dark:border-slate-800"
-  >
-    <div class="max-w-5xl mx-auto px-6 h-20 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <a
-          href="/dashboard"
-          class="flex items-center gap-3 hover:opacity-80 transition-opacity"
-        >
-          <div
-            class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center"
-          >
-            <span class="material-symbols-outlined text-blue-900 text-2xl"
-              >clinical_notes</span
-            >
-          </div>
-          <h1
-            class="font-bold tracking-tight text-primary uppercase tracking-widest text-sm"
-          >
-            Bio-Digital Systems
-          </h1>
-        </a>
-      </div>
-      <div class="flex items-center gap-4">
-        <button
-          class="p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-        >
-          <span
-            class="material-symbols-outlined text-slate-600 dark:text-slate-400"
-            >help_outline</span
-          >
-        </button>
-        <button
-          class="p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-        >
-          <span
-            class="material-symbols-outlined text-slate-600 dark:text-slate-400 text-2xl"
-            >settings</span
-          >
-        </button>
-      </div>
-    </div>
+  <header class="absolute top-0 left-0 p-6 z-50">
+    <a
+      href="/dashboard"
+      class="w-10 h-10 flex items-center justify-center rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-hover active:scale-95 transition-all duration-200 group"
+      title="Go to Home"
+      aria-label="Go to Home"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="group-hover:scale-110 transition-transform"
+        aria-hidden="true"
+      >
+        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        <polyline points="9,22 9,12 15,12 15,22" />
+      </svg>
+    </a>
   </header>
 
   <main class="flex-1 max-w-5xl mx-auto w-full px-6 py-12">
@@ -663,9 +645,10 @@
           Secure Neural Mapping
         </div>
         <h2
-          class="text-5xl md:text-6xl font-extrabold text-navy-deep mb-6 tracking-tight leading-tight"
+          class="text-5xl md:text-6xl font-extrabold mb-6 tracking-tight leading-tight"
+          style="color: #00008B;"
         >
-          Create Your <span class="text-navy-deep">Digital Replica</span>
+          Create Your <span style="color: #00008B;">Digital Replica</span>
         </h2>
         <p class="text-xl text-black max-w-2xl font-light leading-relaxed">
           Build a sophisticated AI architecture that synthesizes your cognitive
@@ -677,7 +660,7 @@
       <div class="space-y-8">
         <div class="flex items-end justify-between">
           <div>
-            <h3 class="text-2xl font-bold text-navy-deep">
+            <h3 class="text-2xl font-bold" style="color: #00008B;">
               Select Core Persona
             </h3>
             <p class="text-black text-sm mt-1">
@@ -703,12 +686,11 @@
                 >
                   {templateIcons[key] || "👤"}
                 </div>
-                <h4 class="text-xl font-bold text-navy-deep mb-2">
+                <h4 class="text-xl font-bold text-white mb-2">
                   {displayNames[key] || key}
                 </h4>
-                <p class="text-black text-sm leading-relaxed">
-                  {templates[key].length} questions to map cognitive & emotional
-                  traits.
+                <p class="text-white text-sm leading-relaxed">
+                  Answer some questions to create replica
                 </p>
               </div>
             </div>
