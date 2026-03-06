@@ -139,7 +139,7 @@
         {#if userRole === "caretaker"}
           <button
             onclick={() => goto("/create-replicas")}
-            class="bg-primary hover:bg-primary-hover text-white px-6 py-4 rounded-xl flex items-center space-x-2 shadow-lg hover:shadow-xl transition-all duration-300 group"
+            class="bg-primary hover:bg-primary-hover text-black px-6 py-4 rounded-xl flex items-center space-x-2 shadow-lg hover:shadow-xl transition-all duration-300 group"
           >
             <span
               class="material-symbols-outlined text-xl font-bold group-hover:rotate-90 transition-transform"
@@ -230,20 +230,21 @@
           {/if}
 
           <!-- Onboard Patient Card / Quick Action -->
-          <article
+          <button
+            type="button"
             onclick={() => goto("/manage-patients")}
-            class="bg-gray-50 dark:bg-gray-800/50 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-600 p-6 flex flex-col items-center justify-center transition-all hover:border-primary dark:hover:border-secondary cursor-pointer group h-full min-h-[250px]"
+            class="bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-600 p-6 flex flex-col items-center justify-center transition-all hover:border-primary dark:hover:border-secondary cursor-pointer group h-full min-h-[250px] w-full"
           >
             <div
               class="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-4 group-hover:bg-primary/10 transition-colors"
             >
               <span
-                class="material-symbols-outlined text-3xl text-gray-400 dark:text-gray-500 group-hover:text-primary dark:group-hover:text-secondary"
+                class="material-symbols-outlined text-3xl text-gray-400 group-hover:text-primary dark:group-hover:text-secondary"
                 >add</span
               >
             </div>
             <h3
-              class="text-xl font-serif font-bold text-black dark:text-gray-400 group-hover:text-black dark:group-hover:text-white text-center"
+              class="text-xl font-serif font-bold text-black group-hover:text-black text-center"
             >
               Onboard New Patient
             </h3>
@@ -252,7 +253,7 @@
             >
               Begin the memory preservation process for a new client.
             </p>
-          </article>
+          </button>
         </div>
       {:else}
         <!-- Patient View -->

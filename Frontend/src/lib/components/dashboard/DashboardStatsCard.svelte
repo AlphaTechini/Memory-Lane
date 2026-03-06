@@ -23,7 +23,7 @@
         </div>
         <div class="z-10">
             <span
-                class="text-white/70 font-medium uppercase tracking-wider text-sm font-display"
+                class="text-white/80 font-medium uppercase tracking-wider text-xs font-display"
                 >{title}</span
             >
         </div>
@@ -32,11 +32,11 @@
         >
             <!-- Reduced font size to prevent overflow (text-xl to text-2xl), centered -->
             <h3
-                class="text-2xl lg:text-3xl font-serif font-bold mb-2 leading-tight px-2"
+                class="text-xl lg:text-2xl font-serif font-bold mb-2 leading-tight px-1"
             >
                 {value}
             </h3>
-            <p class="text-white/80 font-medium text-sm font-sans">
+            <p class="text-white/90 font-medium text-xs font-sans">
                 {subtitle}
             </p>
         </div>
@@ -47,7 +47,7 @@
     >
         <div class="flex justify-between items-start">
             <span
-                class="text-black font-medium uppercase tracking-wider text-sm font-display"
+                class="text-black font-medium uppercase tracking-wider text-xs font-display"
                 >{title}</span
             >
             {#if highlightText}
@@ -60,7 +60,9 @@
             {/if}
         </div>
         <div>
-            <h3 class="text-5xl font-serif font-bold text-black mb-2">
+            <h3
+                class="text-4xl lg:text-5xl font-serif font-bold text-black mb-2"
+            >
                 {value}
             </h3>
             <p class="text-black font-medium font-sans">
