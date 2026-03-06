@@ -558,14 +558,14 @@
           class="flex items-center gap-3 hover:opacity-80 transition-opacity"
         >
           <div
-            class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center"
+            class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center"
           >
-            <span class="material-symbols-outlined text-primary text-2xl"
+            <span class="material-symbols-outlined text-blue-900 text-2xl"
               >clinical_notes</span
             >
           </div>
           <h1
-            class="font-bold tracking-tight text-navy-deep dark:text-slate-100 uppercase tracking-widest text-sm"
+            class="font-bold tracking-tight text-blue-900 dark:text-slate-100 uppercase tracking-widest text-sm"
           >
             Bio-Digital Systems
           </h1>
@@ -666,9 +666,11 @@
           Secure Neural Mapping
         </div>
         <h2
-          class="text-5xl md:text-6xl font-extrabold text-navy-deep dark:text-slate-100 mb-6 tracking-tight leading-tight"
+          class="text-5xl md:text-6xl font-extrabold text-blue-700 dark:text-blue-400 mb-6 tracking-tight leading-tight"
         >
-          Create Your <span class="text-primary">Digital Replica</span>
+          Create Your <span class="text-blue-700 dark:text-blue-400"
+            >Digital Replica</span
+          >
         </h2>
         <p
           class="text-xl text-slate-500 dark:text-slate-400 max-w-2xl font-light leading-relaxed"
@@ -682,7 +684,7 @@
       <div class="space-y-8">
         <div class="flex items-end justify-between">
           <div>
-            <h3 class="text-2xl font-bold text-navy-deep dark:text-slate-100">
+            <h3 class="text-2xl font-bold text-blue-900 dark:text-slate-100">
               Select Core Persona
             </h3>
             <p class="text-slate-500 text-sm mt-1">
@@ -709,7 +711,7 @@
                   {templateIcons[key] || "👤"}
                 </div>
                 <h4
-                  class="text-xl font-bold text-navy-deep dark:text-white mb-2"
+                  class="text-xl font-bold text-blue-900 dark:text-white mb-2"
                 >
                   {displayNames[key] || key}
                 </h4>
@@ -740,7 +742,7 @@
               Calibration Phase
             </div>
             <h2
-              class="text-3xl font-extrabold text-navy-deep dark:text-slate-100 tracking-tight"
+              class="text-3xl font-extrabold text-blue-900 dark:text-slate-100 tracking-tight"
             >
               {displayNames[state.template] || "Template"} Mapping
             </h2>
@@ -880,17 +882,15 @@
     <!-- USER PROVIDED ACTION FOOTER & METADATA -->
     {#if state.currentStep === 0 && !state.template}
       <div
-        class="mt-16 p-8 bg-navy-deep rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl"
+        class="mt-16 p-6 px-10 bg-blue-900 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl max-w-4xl mx-auto"
       >
-        <div class="flex items-center gap-4 text-white">
-          <div class="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
-            <span class="material-symbols-outlined text-ivory-warm"
-              >neurology</span
-            >
+        <div class="flex items-center gap-4 text-white pl-4">
+          <div class="p-3 bg-white/10 rounded-full backdrop-blur-sm">
+            <span class="material-symbols-outlined text-white">psychology</span>
           </div>
           <div>
             <p class="font-bold text-lg">Next: Persona Customization</p>
-            <p class="text-slate-300 text-sm">
+            <p class="text-blue-200 text-sm">
               Fine-tune voice, vocabulary, and core memories.
             </p>
           </div>
@@ -898,7 +898,7 @@
         <!-- In the original HTML this button probably progressed to step 1 blindly. We require selecting a template first. Let's make it jump to 'Self' to skip selection or just focus on grids -->
         <button
           onclick={() => selectTemplate("self")}
-          class="w-full md:w-auto px-10 py-4 bg-primary text-white rounded-xl font-bold text-lg shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all flex items-center justify-center gap-2"
+          class="w-full md:w-auto px-8 py-3.5 bg-blue-700 text-white rounded-full font-bold text-lg shadow-lg shadow-blue-900/40 hover:bg-blue-600 transition-all flex items-center justify-center gap-2 mr-2"
         >
           Initialize Setup
           <span class="material-symbols-outlined">arrow_forward</span>
@@ -932,13 +932,13 @@
     >
       <div class="flex items-center gap-2">
         <div
-          class="w-6 h-6 bg-navy-deep rounded flex items-center justify-center"
+          class="w-6 h-6 bg-blue-900 rounded flex items-center justify-center"
         >
           <span class="material-symbols-outlined text-white text-[12px]"
             >analytics</span
           >
         </div>
-        <span class="text-sm font-bold text-navy-deep dark:text-slate-100"
+        <span class="text-sm font-bold text-blue-900 dark:text-slate-100"
           >BDS v4.2.0</span
         >
       </div>

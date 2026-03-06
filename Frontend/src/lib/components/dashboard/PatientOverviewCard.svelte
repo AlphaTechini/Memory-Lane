@@ -37,11 +37,11 @@
             {/if}
             <div>
                 <h3
-                    class="text-xl font-serif font-bold text-gray-900 dark:text-white"
+                    class="text-xl font-serif font-bold text-black dark:text-white"
                 >
                     {name}
                 </h3>
-                <p class="text-sm font-sans text-gray-500 dark:text-gray-400">
+                <p class="text-sm font-sans text-black dark:text-gray-400">
                     ID: #{replicaId || "NEW"}
                 </p>
             </div>
@@ -56,7 +56,7 @@
     </div>
     <div class="mb-6 flex-1 font-sans">
         <div
-            class="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-2"
+            class="flex items-center text-sm text-black dark:text-gray-400 mb-2"
         >
             <span
                 class="material-symbols-outlined text-base mr-2 text-secondary"
@@ -64,7 +64,7 @@
             >
             Last interaction: {lastInteraction}
         </div>
-        <div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+        <div class="flex items-center text-sm text-black dark:text-gray-400">
             <span
                 class="material-symbols-outlined text-base mr-2 text-secondary"
                 >photo_library</span
@@ -77,7 +77,7 @@
     >
         <button
             onclick={() => goto(`/gallery?replicaId=${replicaId}`)}
-            class="flex-1 py-2 px-4 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-primary dark:text-white font-medium text-sm transition-colors text-center border border-gray-200 dark:border-gray-600"
+            class="flex-1 py-2 px-4 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-black dark:text-white font-medium text-sm transition-colors text-center border border-gray-200 dark:border-gray-600"
         >
             View Gallery
         </button>

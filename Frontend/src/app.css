@@ -10,17 +10,21 @@
 
 :root {
   /* Warm Clarity Light Theme (Default) */
-  --color-bg-primary: #FDFBF7;      /* Cream - no glare */
+  --color-bg-primary: #FDFBF7;
+  /* Cream - no glare */
   --color-bg-secondary: #FAF7F0;
   --color-bg-card: #FFFFFF;
-  --color-text-primary: #333333;     /* Charcoal - not pure black */
+  --color-text-primary: #333333;
+  /* Charcoal - not pure black */
   --color-text-secondary: #4A4A4A;
   --color-text-muted: #6B6B6B;
-  --color-accent-primary: #06B6D4;   /* Bright Cyan-Teal */
-  --color-accent-secondary: #FF7043; /* Muted Coral */
+  --color-accent-primary: #06B6D4;
+  /* Bright Cyan-Teal */
+  --color-accent-secondary: #FF7043;
+  /* Muted Coral */
   --color-border: #E0D4BE;
   --color-focus: #22D3EE;
-  
+
   /* Accessible sizing */
   --font-size-base: 18px;
   --line-height-base: 1.7;
@@ -73,9 +77,9 @@ body {
   font-weight: 600;
   border-radius: 12px;
   border: 2px solid transparent;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 
-              0 2px 4px -1px rgba(0, 0, 0, 0.06),
-              inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
   transition: all 0.15s ease-out;
   cursor: pointer;
   user-select: none;
@@ -83,9 +87,9 @@ body {
 
 .btn-tactile:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.15), 
-              0 3px 6px -2px rgba(0, 0, 0, 0.1),
-              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.15),
+    0 3px 6px -2px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .btn-tactile:active {
@@ -261,8 +265,15 @@ body {
 }
 
 @keyframes pulse-recording {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(244, 81, 30, 0.4); }
-  50% { box-shadow: 0 0 0 12px rgba(244, 81, 30, 0); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(244, 81, 30, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 12px rgba(244, 81, 30, 0);
+  }
 }
 
 /* ============================================
@@ -292,36 +303,7 @@ body {
   border-bottom-left-radius: 4px;
 }
 
-/* ============================================
-   HOME BUTTON - Always visible anchor
-   ============================================ */
 
-.home-anchor-btn {
-  position: fixed;
-  bottom: 1.5rem;
-  left: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-width: 120px;
-  height: 56px;
-  padding: 0 1.5rem;
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: white;
-  background: linear-gradient(180deg, #06B6D4 0%, #0891B2 100%);
-  border: 3px solid #0891B2;
-  border-radius: 28px;
-  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
-  z-index: 1000;
-  transition: all 0.15s;
-}
-
-.home-anchor-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(6, 182, 212, 0.4);
-}
 
 /* ============================================
    ACCESSIBILITY UTILITIES
@@ -345,6 +327,7 @@ body {
 
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -359,7 +342,7 @@ body {
   :root {
     --color-border: #333333;
   }
-  
+
   .btn-tactile {
     border-width: 3px;
   }

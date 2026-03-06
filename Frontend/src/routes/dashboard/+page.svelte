@@ -124,14 +124,14 @@
       <header class="flex justify-between items-center mb-12">
         <div>
           <h1
-            class="text-4xl lg:text-5xl font-serif font-bold text-primary dark:text-white mb-2"
+            class="text-4xl lg:text-5xl font-serif font-bold text-black dark:text-white mb-2"
           >
             Welcome back{#if user}, {user.firstName ||
                 user.name ||
                 "Dr. Smith"}{/if}
           </h1>
           <p
-            class="text-gray-800 dark:text-gray-200 lg:text-xl font-medium font-sans"
+            class="text-black dark:text-gray-200 lg:text-xl font-medium font-sans"
           >
             {#if userRole === "caretaker"}
               Here's what's happening with your patients today.
@@ -189,13 +189,11 @@
         </section>
 
         <div class="flex items-center justify-between mb-8">
-          <h2
-            class="text-3xl font-serif font-bold text-primary dark:text-white"
-          >
+          <h2 class="text-3xl font-serif font-bold text-black dark:text-white">
             Recent Patients
           </h2>
           <a
-            class="text-primary dark:text-gray-300 hover:text-secondary font-medium font-display flex items-center transition-colors text-lg"
+            class="text-black dark:text-gray-300 hover:text-secondary font-medium font-display flex items-center transition-colors text-lg"
             href="/manage-patients"
           >
             View All Patients <span
@@ -215,12 +213,12 @@
             <div
               class="col-span-full text-center py-12 bg-surface-light rounded-2xl border border-gray-100 dark:border-gray-700"
             >
-              <p class="text-xl font-serif text-gray-500 mb-4">
+              <p class="text-xl font-serif text-black mb-4">
                 No patients found
               </p>
               <button
                 onclick={() => goto("/create-replicas")}
-                class="text-primary font-medium hover:underline"
+                class="text-black font-medium hover:underline"
                 >Create an AI Replica to get started</button
               >
             </div>
@@ -249,12 +247,12 @@
               >
             </div>
             <h3
-              class="text-xl font-serif font-bold text-gray-500 dark:text-gray-400 group-hover:text-primary dark:group-hover:text-white text-center"
+              class="text-xl font-serif font-bold text-black dark:text-gray-400 group-hover:text-black dark:group-hover:text-white text-center"
             >
               Onboard New Patient
             </h3>
             <p
-              class="text-sm font-sans text-gray-400 text-center mt-2 max-w-[200px]"
+              class="text-sm font-sans text-black text-center mt-2 max-w-[200px]"
             >
               Begin the memory preservation process for a new client.
             </p>
