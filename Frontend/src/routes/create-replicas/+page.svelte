@@ -565,7 +565,7 @@
             >
           </div>
           <h1
-            class="font-bold tracking-tight text-blue-900 dark:text-slate-100 uppercase tracking-widest text-sm"
+            class="font-bold tracking-tight text-primary uppercase tracking-widest text-sm"
           >
             Bio-Digital Systems
           </h1>
@@ -594,14 +594,11 @@
 
   <main class="flex-1 max-w-5xl mx-auto w-full px-6 py-12">
     {#if !isAuthenticated}
-      <div
-        class="mb-8 p-4 bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 rounded-lg"
-      >
-        <p class="text-sm text-primary dark:text-ivory-warm">
+      <div class="mb-8 p-4 bg-primary/10 border border-primary/20 rounded-lg">
+        <p class="text-sm text-primary">
           🔍 You're in preview mode. <a
             href="/login"
-            class="underline hover:text-navy-deep dark:hover:text-white font-semibold"
-            >Log in</a
+            class="underline hover:text-navy-deep font-semibold">Log in</a
           > to create your personal AI replica.
         </p>
       </div>
@@ -660,34 +657,31 @@
       <!-- USER PROVIDED HERO SECTION -->
       <div class="mb-16">
         <div
-          class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sage-soft border border-emerald-200 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-300 text-xs font-semibold uppercase tracking-wider mb-6"
+          class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sage-soft border border-emerald-400 text-emerald-900 text-xs font-semibold uppercase tracking-wider mb-6"
         >
           <span class="material-symbols-outlined text-[14px]">verified</span>
           Secure Neural Mapping
         </div>
         <h2
-          class="text-5xl md:text-6xl font-extrabold text-blue-700 dark:text-blue-400 mb-6 tracking-tight leading-tight"
+          class="text-5xl md:text-6xl font-extrabold text-primary mb-6 tracking-tight leading-tight"
         >
-          Create Your <span class="text-blue-700 dark:text-blue-400"
-            >Digital Replica</span
-          >
+          Create Your <span class="text-primary">Digital Replica</span>
         </h2>
         <p
-          class="text-xl text-slate-500 dark:text-slate-400 max-w-2xl font-light leading-relaxed"
+          class="text-xl text-slate-800 dark:text-slate-300 max-w-2xl font-light leading-relaxed"
         >
           Build a sophisticated AI architecture that synthesizes your cognitive
           patterns, emotional intelligence, and unique communication style.
         </p>
+        >
       </div>
 
       <!-- USER PROVIDED TEMPLATE GRID -->
       <div class="space-y-8">
         <div class="flex items-end justify-between">
           <div>
-            <h3 class="text-2xl font-bold text-blue-900 dark:text-slate-100">
-              Select Core Persona
-            </h3>
-            <p class="text-slate-500 text-sm mt-1">
+            <h3 class="text-2xl font-bold text-primary">Select Core Persona</h3>
+            <p class="text-slate-800 dark:text-slate-300 text-sm mt-1">
               Choose a baseline template to begin the calibration process.
             </p>
           </div>
@@ -710,13 +704,11 @@
                 >
                   {templateIcons[key] || "👤"}
                 </div>
-                <h4
-                  class="text-xl font-bold text-blue-900 dark:text-white mb-2"
-                >
+                <h4 class="text-xl font-bold text-primary mb-2">
                   {displayNames[key] || key}
                 </h4>
                 <p
-                  class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed"
+                  class="text-slate-800 dark:text-slate-400 text-sm leading-relaxed"
                 >
                   {templates[key].length} questions to map cognitive & emotional
                   traits.
