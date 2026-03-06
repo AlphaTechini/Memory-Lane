@@ -76,7 +76,8 @@
   {#if showHome}
     <button
       onclick={goHome}
-      class="w-10 h-10 flex items-center justify-center rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-hover active:scale-95 transition-all duration-200 group"
+      class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-cream-200 shadow-sm hover:shadow-md hover:bg-cream-50 active:scale-95 transition-all duration-200 group"
+      style="color: #00008B;"
       title="Go to Home"
       aria-label="Go to Home"
     >

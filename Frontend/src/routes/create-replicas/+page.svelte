@@ -551,7 +551,8 @@
   <header class="absolute top-0 left-0 p-6 z-50">
     <a
       href="/dashboard"
-      class="w-10 h-10 flex items-center justify-center rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary-hover active:scale-95 transition-all duration-200 group"
+      class="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-cream-200 shadow-sm hover:shadow-md hover:bg-cream-50 active:scale-95 transition-all duration-200 group"
+      style="color: #00008B;"
       title="Go to Home"
       aria-label="Go to Home"
     >
@@ -916,13 +917,13 @@
       <div
         class="flex gap-8 text-sm text-slate-500 dark:text-slate-400 font-medium"
       >
-        <a class="hover:text-primary transition-colors" href="#"
+        <a class="hover:text-primary transition-colors" href="/"
           >Ethics Protocol</a
         >
-        <a class="hover:text-primary transition-colors" href="#"
+        <a class="hover:text-primary transition-colors" href="/"
           >Privacy Charter</a
         >
-        <a class="hover:text-primary transition-colors" href="#"
+        <a class="hover:text-primary transition-colors" href="/"
           >System Status</a
         >
       </div>
