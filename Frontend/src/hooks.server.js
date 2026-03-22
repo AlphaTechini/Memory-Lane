@@ -13,7 +13,7 @@ export async function handle({ event, resolve }) {
   // Set user in locals if token exists
   if (token) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+      const response = await fetch(`${API_BASE_URL}/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

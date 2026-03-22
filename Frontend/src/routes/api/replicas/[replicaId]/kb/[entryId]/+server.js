@@ -13,7 +13,7 @@ export async function DELETE({ params, cookies }) {
     }
 
     const { replicaId, entryId } = params;
-    const response = await fetch(`${API_BASE_URL}/api/replicas/${replicaId}/kb/${entryId}`, {
+    const response = await fetch(`${API_BASE_URL}/replicas/${replicaId}/kb/${entryId}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${authToken}`

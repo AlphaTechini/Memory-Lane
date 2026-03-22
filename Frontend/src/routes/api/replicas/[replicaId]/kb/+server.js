@@ -13,7 +13,7 @@ export async function GET({ params, cookies }) {
     }
 
     const { replicaId } = params;
-    const response = await fetch(`${API_BASE_URL}/api/replicas/${replicaId}/kb`, {
+    const response = await fetch(`${API_BASE_URL}/replicas/${replicaId}/kb`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${authToken}`
@@ -40,7 +40,7 @@ export async function POST({ params, request, cookies }) {
     const { replicaId } = params;
     const body = await request.json();
     
-    const response = await fetch(`${API_BASE_URL}/api/replicas/${replicaId}/kb`, {
+    const response = await fetch(`${API_BASE_URL}/replicas/${replicaId}/kb`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${authToken}`,

@@ -15,7 +15,7 @@ export async function POST({ params, request, cookies }) {
     const { replicaId } = params;
     const body = await request.json();
     
-    const response = await fetch(`${API_BASE_URL}/api/replicas/${replicaId}/chat`, {
+    const response = await fetch(`${API_BASE_URL}/replicas/${replicaId}/chat`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${authToken}`,

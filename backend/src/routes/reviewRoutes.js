@@ -20,7 +20,7 @@ export default async function reviewRoutes(server) {
      * List pending reviews for the authenticated user.
      * Requires caretaker role.
      */
-    server.get('/api/reviews', {
+    server.get('/reviews', {
         preHandler: [authenticateToken],
     }, async (request, reply) => {
         try {
@@ -60,7 +60,7 @@ export default async function reviewRoutes(server) {
      * POST /api/reviews/:sessionId/approve
      * Approve a review — commits proposed memories and identity updates.
      */
-    server.post('/api/reviews/:sessionId/approve', {
+    server.post('/reviews/:sessionId/approve', {
         preHandler: [authenticateToken],
     }, async (request, reply) => {
         try {
@@ -128,7 +128,7 @@ export default async function reviewRoutes(server) {
      * POST /api/reviews/:sessionId/reject
      * Reject a review — discards all proposals.
      */
-    server.post('/api/reviews/:sessionId/reject', {
+    server.post('/reviews/:sessionId/reject', {
         preHandler: [authenticateToken],
     }, async (request, reply) => {
         try {
@@ -167,7 +167,7 @@ export default async function reviewRoutes(server) {
      * GET /api/reviews/health
      * Check RAG engine health from the Node side.
      */
-    server.get('/api/reviews/health', async (request, reply) => {
+    server.get('/reviews/health', async (request, reply) => {
         const health = await ragHealth();
         return reply.send(health);
     });

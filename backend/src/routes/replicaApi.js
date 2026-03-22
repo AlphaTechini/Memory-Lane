@@ -76,7 +76,7 @@ async function replicaRoutes(fastify, options) {
   /**
    * Create a new replica from wizard data (protected route)
    */
-  fastify.post('/api/replicas', {
+  fastify.post('/replicas', {
     schema: createReplicaSchema,
     preHandler: [authenticateToken, requireCaretaker]
   }, async (request, reply) => {
@@ -295,7 +295,7 @@ async function replicaRoutes(fastify, options) {
   /**
    * Reconcile local replicas with remote API state
    */
-  fastify.post('/api/replicas/reconcile', { preHandler: [authenticateToken, requireCaretaker] }, async (request, reply) => {
+  fastify.post('/replicas/reconcile', { preHandler: [authenticateToken, requireCaretaker] }, async (request, reply) => {
     try {
       const userId = getValidatedRequestUserId(request, reply);
       if (!userId) return;
@@ -409,7 +409,7 @@ async function replicaRoutes(fastify, options) {
   /**
    * Get user's replicas (protected route)
    */
-  fastify.get('/api/user/replicas', {
+  fastify.get('/user/replicas', {
     preHandler: authenticateToken
   }, async (request, reply) => {
     try {
@@ -523,7 +523,7 @@ async function replicaRoutes(fastify, options) {
   /**
    * Get accessible replicas for patient users (protected route)
    */
-  fastify.get('/api/user/accessible-replicas', {
+  fastify.get('/user/accessible-replicas', {
     preHandler: authenticateToken
   }, async (request, reply) => {
     try {
@@ -638,7 +638,7 @@ async function replicaRoutes(fastify, options) {
   /**
    * Get a single replica by id (protected route)
    */
-  fastify.get('/api/replicas/:replicaId', {
+  fastify.get('/replicas/:replicaId', {
     preHandler: [authenticateToken, validatePatientCaretakerRelationship]
   }, async (request, reply) => {
     try {
@@ -706,7 +706,7 @@ async function replicaRoutes(fastify, options) {
   /**
    * Chat with a replica (protected route)
    */
-  fastify.post('/api/replicas/:replicaId/chat', {
+  fastify.post('/replicas/:replicaId/chat', {
     preHandler: [authenticateToken]
   }, async (request, reply) => {
     try {
@@ -964,7 +964,7 @@ async function replicaRoutes(fastify, options) {
    * Get conversation history for a user with a specific replica
    * Each user (patient/caretaker) has separate conversation history
    */
-  fastify.get('/api/replicas/:replicaId/conversations', {
+  fastify.get('/replicas/:replicaId/conversations', {
     preHandler: [authenticateToken]
   }, async (request, reply) => {
     try {
@@ -1037,7 +1037,7 @@ async function replicaRoutes(fastify, options) {
   /**
    * Get all conversations for a user (across all replicas they have access to)
    */
-  fastify.get('/api/conversations', {
+  fastify.get('/conversations', {
     preHandler: [authenticateToken]
   }, async (request, reply) => {
     try {
@@ -1106,7 +1106,7 @@ async function replicaRoutes(fastify, options) {
    * Get a specific conversation by ID
    * Users can only access their own conversations (automatic separation by userId)
    */
-  fastify.get('/api/conversations/:conversationId', {
+  fastify.get('/conversations/:conversationId', {
     preHandler: [authenticateToken]
   }, async (request, reply) => {
     try {
@@ -1186,7 +1186,7 @@ async function replicaRoutes(fastify, options) {
    * Compatibility endpoint: just return messages for a conversation
    * Users can only access their own conversations (automatic separation by userId)
    */
-  fastify.get('/api/conversations/:conversationId/messages', {
+  fastify.get('/conversations/:conversationId/messages', {
     preHandler: [authenticateToken]
   }, async (request, reply) => {
     try {
@@ -1245,7 +1245,7 @@ async function replicaRoutes(fastify, options) {
   /**
    * Delete a replica (protected route - caretakers only)
    */
-  fastify.delete('/api/replicas/:replicaId', {
+  fastify.delete('/replicas/:replicaId', {
     preHandler: [authenticateToken, requireCaretaker]
   }, async (request, reply) => {
     try {
@@ -1323,7 +1323,7 @@ async function replicaRoutes(fastify, options) {
   /**
    * Clear deleted replicas tracking (admin function)
    */
-  fastify.delete('/api/replicas/deleted-tracking', {
+  fastify.delete('/replicas/deleted-tracking', {
     preHandler: authenticateToken
   }, async (request, reply) => {
     try {
@@ -1350,7 +1350,7 @@ async function replicaRoutes(fastify, options) {
   /**
    * Get training status
    */
-  fastify.get('/api/replicas/:replicaId/kb/:entryId/status', async (request, reply) => {
+  fastify.get('/replicas/:replicaId/kb/:entryId/status', async (request, reply) => {
     try {
       const { replicaId, entryId } = request.params;
       // This concept doesn't directly map to Supavec's file-based system.
@@ -1378,7 +1378,7 @@ async function replicaRoutes(fastify, options) {
   });
 
   // Knowledge base management convenience endpoints (protected)
-  fastify.get('/api/replicas/:replicaId/kb', { preHandler: authenticateToken }, async (request, reply) => {
+  fastify.get('/replicas/:replicaId/kb', { preHandler: authenticateToken }, async (request, reply) => {
     try {
       const { replicaId } = request.params;
       if (!replicaId || typeof replicaId !== 'string' || !/^[A-Za-z0-9_-]{6,128}$/.test(replicaId)) {
@@ -1398,7 +1398,7 @@ async function replicaRoutes(fastify, options) {
     }
   });
 
-  fastify.get('/api/replicas/:replicaId/kb/:entryId', { preHandler: authenticateToken }, async (request, reply) => {
+  fastify.get('/replicas/:replicaId/kb/:entryId', { preHandler: authenticateToken }, async (request, reply) => {
     try {
       const { replicaId, entryId } = request.params;
       if (!replicaId || typeof replicaId !== 'string' || !/^[A-Za-z0-9_-]{6,128}$/.test(replicaId)) {
@@ -1481,7 +1481,7 @@ async function replicaRoutes(fastify, options) {
     }
   });
 
-  fastify.delete('/api/replicas/:replicaId/kb/:entryId', { preHandler: [authenticateToken, requireCaretaker] }, async (request, reply) => {
+  fastify.delete('/replicas/:replicaId/kb/:entryId', { preHandler: [authenticateToken, requireCaretaker] }, async (request, reply) => {
     try {
       const { replicaId, entryId } = request.params;
       // In Supavec, an "entry" is a file. Deleting an entry is deleting the file.
@@ -1582,7 +1582,7 @@ async function replicaRoutes(fastify, options) {
    * Update knowledge base entry
    * PATCH /api/replicas/:replicaId/kb/:entryId
    */
-  fastify.patch('/api/replicas/:replicaId/kb/:entryId', {
+  fastify.patch('/replicas/:replicaId/kb/:entryId', {
     preHandler: authenticateToken,
     schema: updateKnowledgeBaseSchema
   }, async (request, reply) => {
@@ -1676,7 +1676,7 @@ async function replicaRoutes(fastify, options) {
   /**
    * Update replica whitelist emails (protected route)
    */
-  fastify.put('/api/replicas/:replicaId', {
+  fastify.put('/replicas/:replicaId', {
     preHandler: authenticateToken
   }, async (request, reply) => {
     try {
@@ -1724,7 +1724,7 @@ async function replicaRoutes(fastify, options) {
   /**
    * Bulk add patient email to multiple replicas (protected route - caretakers only)
    */
-  fastify.post('/api/caretaker/add-patient-email', {
+  fastify.post('/caretaker/add-patient-email', {
     preHandler: [authenticateToken, requireCaretaker]
   }, async (request, reply) => {
     try {
@@ -1759,7 +1759,7 @@ async function replicaRoutes(fastify, options) {
   /**
    * Train a Replica using a document file (PDF, DOCX, TXT) (protected route - caretakers only)
    */
-  fastify.post('/api/replicas/:replicaId/train/file', {
+  fastify.post('/replicas/:replicaId/train/file', {
     preHandler: [authenticateToken, requireCaretaker]
   }, async (request, reply) => {
     try {

@@ -9,7 +9,7 @@ export default async function journalRoutes(fastify, options) {
     /**
      * Fetch all journals for the authenticated patient/user
      */
-    fastify.get('/api/journals', { preHandler: [authenticateToken] }, async (request, reply) => {
+    fastify.get('/journals', { preHandler: [authenticateToken] }, async (request, reply) => {
         try {
             const patientId = request.user.id;
             const journals = await Journal.find({ patientId }).sort({ createdAt: -1 });
@@ -24,7 +24,7 @@ export default async function journalRoutes(fastify, options) {
     /**
      * Upload and process a new journal (PDF, DOCX, TXT)
      */
-    fastify.post('/api/journals/upload', { preHandler: [authenticateToken] }, async (request, reply) => {
+    fastify.post('/journals/upload', { preHandler: [authenticateToken] }, async (request, reply) => {
         try {
             const data = await request.file();
             if (!data) {

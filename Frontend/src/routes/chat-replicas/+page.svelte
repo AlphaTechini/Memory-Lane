@@ -478,7 +478,7 @@
       } else {
         // Fallback: attempt legacy /messages path if present
         const alt = await fetch(
-          `${API_BASE_URL}/api/conversations/${conversationId}/messages`,
+          `${API_BASE_URL}/conversations/${conversationId}/messages`,
           {
             headers: { Authorization: `Bearer ${token}` },
           },
@@ -636,7 +636,7 @@
         );
       } else {
         // Generic chat (no auth required)
-        response = await fetch(`${API_BASE_URL}/api/chat/generic`, {
+        response = await fetch(`${API_BASE_URL}/chat/generic`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -775,7 +775,7 @@
       // Submit the collected chat messages as training data
       console.log("Submitting training data to API...");
       const response = await fetch(
-        `${API_BASE_URL}/api/replicas/${selectedReplica.replicaId}/training-sessions/${sessionId}/complete`,
+        `${API_BASE_URL}/replicas/${selectedReplica.replicaId}/training-sessions/${sessionId}/complete`,
         {
           method: "POST",
           headers: {

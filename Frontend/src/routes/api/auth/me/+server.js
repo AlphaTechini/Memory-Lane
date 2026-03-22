@@ -12,7 +12,7 @@ export async function GET({ cookies }) {
       return json({ success: false, message: 'Not authenticated' }, { status: 401 });
     }
     
-    const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    const response = await fetch(`${API_BASE_URL}/auth/me`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }

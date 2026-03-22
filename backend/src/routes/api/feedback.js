@@ -30,7 +30,7 @@ export async function feedbackRoutes(fastify, opts) {
    * Body: { name: string, email: string, body: string }
    * Auth: Optional (works for both authenticated and non-authenticated users)
    */
-  fastify.post('/api/feedback', async (request, reply) => {
+  fastify.post('/feedback', async (request, reply) => {
     try {
       const { name, email, body } = request.body || {};
 

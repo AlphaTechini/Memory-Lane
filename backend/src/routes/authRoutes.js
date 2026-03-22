@@ -565,10 +565,10 @@ async function authRoutes(fastify, options) {
 	});
 
 	/**
-	 * GET /api/auth/me
+	 * GET /auth/me
 	 * Get current user info (protected route)
 	 */
-	fastify.get('/api/auth/me', {
+	fastify.get('/auth/me', {
 		preHandler: authenticateToken
 	}, async (request, reply) => {
 		try {

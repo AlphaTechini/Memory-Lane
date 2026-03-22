@@ -13,7 +13,7 @@ export async function GET({ params, cookies }) {
     }
 
     const { conversationId } = params;
-    const response = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}`, {
+    const response = await fetch(`${API_BASE_URL}/conversations/${conversationId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${authToken}`

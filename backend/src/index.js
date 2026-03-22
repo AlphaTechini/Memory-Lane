@@ -203,21 +203,27 @@ try {
 }
 
 // Register routes
-await server.register(authRoutes, { prefix: '/api' });
-await server.register(replicaRoutes);
-await server.register(galleryRoutes);
-await server.register(replicaImageRoutes);
-await server.register(genericChatRoutes);
-await server.register(journalRoutes);
-// Register API routes (feedback, etc)
-const apiRoutes = (await import('./routes/api/index.js')).default;
-await server.register(apiRoutes);
-// Register health check routes with enhanced monitoring
+// Register all API services under /api prefix for consistency
+await server.register(async (api) => {
+  await api.register(authRoutes);
+  await api.register(replicaRoutes);
+  await api.register(galleryRoutes);
+  await api.register(replicaImageRoutes);
+  await api.register(genericChatRoutes);
+  await api.register(journalRoutes);
+  
+  // Register sub-API routes (feedback, etc)
+  const apiSubRoutes = (await import('./routes/api/index.js')).default;
+  await api.register(apiSubRoutes);
+
+  // Register review routes (caretaker review queue)
+  const reviewRoutes = (await import('./routes/reviewRoutes.js')).default;
+  await api.register(reviewRoutes);
+});
+
+// Register health check routes with enhanced monitoring (top-level)
 const healthRoutes = (await import('./routes/healthApi.js')).default;
 await server.register(healthRoutes);
-// Register review routes (caretaker review queue for memory proposals)
-const reviewRoutes = (await import('./routes/reviewRoutes.js')).default;
-await server.register(reviewRoutes);
 
 // Admin routes (import conditionally to avoid loading in production accidentally)
 if (process.env.NODE_ENV === 'development' || process.env.ENABLE_ADMIN_ROUTES === 'true') {

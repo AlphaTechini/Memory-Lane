@@ -12,7 +12,7 @@ export async function GET({ cookies }) {
       return json({ success: false, message: 'Not authenticated' }, { status: 401 });
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/replicas`, {
+    const response = await fetch(`${API_BASE_URL}/replicas`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${authToken}`,
@@ -39,7 +39,7 @@ export async function POST({ request, cookies }) {
 
     const body = await request.json();
     
-    const response = await fetch(`${API_BASE_URL}/api/replicas`, {
+    const response = await fetch(`${API_BASE_URL}/replicas`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${authToken}`,

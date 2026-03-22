@@ -12,7 +12,7 @@ export async function POST({ cookies }) {
       return json({ success: false, message: 'Not authenticated' }, { status: 401 });
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/replicas/reconcile`, {
+    const response = await fetch(`${API_BASE_URL}/replicas/reconcile`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${authToken}`

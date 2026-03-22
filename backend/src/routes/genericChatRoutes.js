@@ -10,7 +10,7 @@ async function genericChatRoutes(fastify, options) {
   /**
    * Generic chat endpoint (protected route)
    */
-  fastify.post('/api/chat/generic', { 
+  fastify.post('/chat/generic', { 
     preHandler: authenticateToken 
   }, async (request, reply) => {
     try {
