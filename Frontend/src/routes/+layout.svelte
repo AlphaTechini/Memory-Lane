@@ -1,4 +1,6 @@
 <script>
+  import { onMount } from "svelte";
+  import { PUBLIC_WAKE_API_URL } from "$env/static/public";
   import "../app.css";
   import { browser } from "$app/environment";
   import { page } from "$app/stores";
@@ -10,6 +12,15 @@
   import { injectAnalytics } from "@vercel/analytics/sveltekit";
 
   injectAnalytics({ mode: dev ? "development" : "production" });
+
+  onMount(() => {
+    if (browser && PUBLIC_WAKE_API_URL) {
+      // Ping the API Gateway to wake up the backend EC2 instance
+      fetch(PUBLIC_WAKE_API_URL, { method: "GET", mode: "no-cors" }).catch((err) =>
+        console.error("Failed to ping API gateway:", err),
+      );
+    }
+  });
 
   let { children } = $props();
 
