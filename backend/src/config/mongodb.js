@@ -49,11 +49,20 @@ class MongoDBConfig {
       console.log('Connecting to MongoDB via Mongoose...');
       
       const options = {
-        maxPoolSize: 10, // Maintain up to 10 socket connections
-        serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
-        socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
-        bufferCommands: false, // Disable mongoose buffering
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+        bufferCommands: false,
       };
+
+      // Route through SOCKS5 proxy when configured (e.g. Cloudflare WARP in proxy mode)
+      const proxyHost = process.env.SOCKS_PROXY_HOST;
+      const proxyPort = process.env.SOCKS_PROXY_PORT;
+      if (proxyHost) {
+        options.proxyHost = proxyHost;
+        options.proxyPort = parseInt(proxyPort || '1080', 10);
+        console.log(`🔀 Using SOCKS5 proxy at ${proxyHost}:${options.proxyPort}`);
+      }
 
       await mongoose.connect(this.connectionString, options);
       this.connected = true;
