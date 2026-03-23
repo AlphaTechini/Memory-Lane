@@ -70,6 +70,7 @@
     name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=5.0"
   />
+  <link rel="canonical" href={`https://memorylane.cyberpunk.work${$page.url.pathname}`} />
 </svelte:head>
 
 <div
